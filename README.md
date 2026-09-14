@@ -295,3 +295,5 @@ MIT
 ## Support
 
 For issues or questions, please contact your system administrator.
+
+<!-- regression automation smoke test -->
