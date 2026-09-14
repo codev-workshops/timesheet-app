@@ -11,7 +11,11 @@
     "test:coverage": "jest --coverage",
     "test:coverage:html": "jest --coverage && open coverage/index.html",
     "test:verbose": "jest --verbose",
-    "test:ci": "jest --coverage --ci --maxWorkers=2"
+    "test:ci": "jest --coverage --ci --maxWorkers=2",
+    "loadtest:seed": "node loadtest/seed.js",
+    "loadtest:smoke": "node loadtest/smoke.js",
+    "loadtest:read": "k6 run loadtest/read-load.js",
+    "loadtest:export": "k6 run loadtest/export-load.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -26,6 +30,7 @@
     "sqlite3": "^5.1.6"
   },
   "devDependencies": {
+    "autocannon": "^7.15.0",
     "jest": "^29.7.0",
     "nodemon": "^3.0.2",
     "supertest": "^6.3.3"
