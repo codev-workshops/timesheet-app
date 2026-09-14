@@ -46,6 +46,15 @@ describe('Observability middleware', () => {
       expect(res.headers['x-request-id']).toBe('my-trace-id');
       expect(res.body.requestId).toBe('my-trace-id');
     });
+
+    test('replaces malformed or oversized X-Request-Id values with a generated one', async () => {
+      const oversized = 'a'.repeat(200);
+      const res1 = await request(app).get('/api/things/1').set('X-Request-Id', oversized);
+      expect(res1.headers['x-request-id']).toMatch(/^[0-9a-f-]{36}$/);
+
+      const res2 = await request(app).get('/api/things/1').set('X-Request-Id', 'bad id {json}');
+      expect(res2.headers['x-request-id']).toMatch(/^[0-9a-f-]{36}$/);
+    });
   });
 
   describe('requestLogger', () => {

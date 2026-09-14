@@ -30,20 +30,34 @@ function routeTemplate(req) {
   return 'unmatched';
 }
 
+// Runs `callback(aborted)` exactly once when the response completes, whether it
+// finished normally or the client disconnected first.
+function onResponseDone(res, callback) {
+  let done = false;
+  const finish = (aborted) => () => {
+    if (done) return;
+    done = true;
+    callback(aborted);
+  };
+  res.once('finish', finish(false));
+  res.once('close', finish(!res.writableFinished));
+}
+
 function requestLogger(req, res, next) {
   captureRoute(req);
   const start = process.hrtime.bigint();
 
-  res.on('finish', () => {
+  onResponseDone(res, (aborted) => {
     const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
     const log = req.log || logger;
-    const level = res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info';
-    log.log(level, 'http request', {
+    const level = aborted || res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info';
+    log.log(level, aborted ? 'http request aborted' : 'http request', {
       requestId: req.requestId,
       method: req.method,
       route: routeTemplate(req),
       path: req.originalUrl,
       status: res.statusCode,
+      aborted,
       durationMs: Math.round(durationMs * 1000) / 1000,
       contentLength: res.get('Content-Length'),
       userAgent: req.get('user-agent'),
@@ -54,4 +68,4 @@ function requestLogger(req, res, next) {
   next();
 }
 
-module.exports = { requestLogger, routeTemplate, captureRoute };
+module.exports = { requestLogger, routeTemplate, captureRoute, onResponseDone };

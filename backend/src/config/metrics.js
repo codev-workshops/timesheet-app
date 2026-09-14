@@ -1,5 +1,5 @@
 const client = require('prom-client');
-const { routeTemplate, captureRoute } = require('../middleware/requestLogger');
+const { routeTemplate, captureRoute, onResponseDone } = require('../middleware/requestLogger');
 
 const registry = new client.Registry();
 registry.setDefaultLabels({ service: 'timesheet-app-backend' });
@@ -29,11 +29,11 @@ function metricsMiddleware(req, res, next) {
   captureRoute(req);
   const start = process.hrtime.bigint();
 
-  res.on('finish', () => {
+  onResponseDone(res, (aborted) => {
     const labels = {
       method: req.method,
       route: routeTemplate(req),
-      status_code: String(res.statusCode)
+      status_code: aborted ? 'aborted' : String(res.statusCode)
     };
     httpRequestsTotal.inc(labels);
 
