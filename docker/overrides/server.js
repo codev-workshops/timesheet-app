@@ -7,7 +7,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
 const logger = require('./config/logger');
-const { metricsMiddleware, metricsHandler } = require('./config/metrics');
+const { metricsMiddleware, metricsAuth, metricsHandler } = require('./config/metrics');
 const { requestContext } = require('./middleware/requestContext');
 const { requestLogger } = require('./middleware/requestLogger');
 
@@ -47,31 +47,31 @@ app.use(cors({
   credentials: true
 }));
 
+// Observability: correlation context, metrics and structured HTTP request
+// logging run before anything that can short-circuit a request
+app.use(requestContext);
+app.use(metricsMiddleware);
+app.use(requestLogger);
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  max: 100, // limit each IP to 100 requests per windowMs
+  skip: (req) => req.path === '/health' || req.path === '/metrics'
 });
 app.use(limiter);
-
-// Metrics and structured HTTP request logging
-app.use(metricsMiddleware);
-app.use(requestLogger);
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
-
-// Request correlation context (requestId + req.log)
-app.use(requestContext);
 
 // Health check
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// Prometheus metrics
-app.get('/metrics', metricsHandler);
+// Prometheus metrics (optionally protected by METRICS_TOKEN)
+app.get('/metrics', metricsAuth, metricsHandler);
 
 // API Routes
 app.use('/api/auth', authRoutes);

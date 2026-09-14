@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const client = require('prom-client');
 const { routeTemplate, captureRoute, onResponseDone } = require('../middleware/requestLogger');
 
@@ -46,6 +47,21 @@ function metricsMiddleware(req, res, next) {
   next();
 }
 
+// When METRICS_TOKEN is set, /metrics requires `Authorization: Bearer <token>`.
+function metricsAuth(req, res, next) {
+  const token = process.env.METRICS_TOKEN;
+  if (!token) return next();
+  const header = req.get('authorization') || '';
+  const provided = header.startsWith('Bearer ') ? header.slice(7) : '';
+  const expected = Buffer.from(token);
+  const actual = Buffer.from(provided);
+  if (actual.length === expected.length && crypto.timingSafeEqual(actual, expected)) {
+    return next();
+  }
+  res.set('WWW-Authenticate', 'Bearer');
+  res.status(401).json({ error: 'Unauthorized' });
+}
+
 async function metricsHandler(req, res) {
   res.set('Content-Type', registry.contentType);
   res.end(await registry.metrics());
@@ -54,6 +70,7 @@ async function metricsHandler(req, res) {
 module.exports = {
   registry,
   metricsMiddleware,
+  metricsAuth,
   metricsHandler,
   httpRequestsTotal,
   httpRequestDurationSeconds

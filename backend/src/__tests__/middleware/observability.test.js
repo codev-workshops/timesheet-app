@@ -3,21 +3,21 @@ const request = require('supertest');
 const logger = require('../../config/logger');
 const { requestContext } = require('../../middleware/requestContext');
 const { requestLogger } = require('../../middleware/requestLogger');
-const { registry, metricsMiddleware, metricsHandler } = require('../../config/metrics');
+const { registry, metricsMiddleware, metricsAuth, metricsHandler } = require('../../config/metrics');
 
 function buildApp() {
   const app = express();
+  app.use(requestContext);
   app.use(metricsMiddleware);
   app.use(requestLogger);
   app.use(express.json());
-  app.use(requestContext);
   app.get('/health', (req, res) => res.json({ status: 'OK' }));
-  app.get('/metrics', metricsHandler);
+  app.get('/metrics', metricsAuth, metricsHandler);
   const router = express.Router();
   router.get('/:id', (req, res) => res.json({ id: req.params.id, requestId: req.requestId }));
   router.get('/boom/:id', () => { throw new Error('boom'); });
   app.use('/api/things', router);
-  app.use((err, req, res, next) => res.status(500).json({ error: err.message }));
+  app.use((err, req, res, next) => res.status(err.status || 500).json({ error: err.message }));
   return app;
 }
 
@@ -57,7 +57,39 @@ describe('Observability middleware', () => {
     });
   });
 
+  describe('metricsAuth', () => {
+    afterEach(() => { delete process.env.METRICS_TOKEN; });
+
+    test('allows anonymous access when METRICS_TOKEN is unset', async () => {
+      const res = await request(app).get('/metrics');
+      expect(res.status).toBe(200);
+    });
+
+    test('requires a matching bearer token when METRICS_TOKEN is set', async () => {
+      process.env.METRICS_TOKEN = 'scrape-secret';
+      expect((await request(app).get('/metrics')).status).toBe(401);
+      expect((await request(app).get('/metrics').set('Authorization', 'Bearer wrong')).status).toBe(401);
+      const ok = await request(app).get('/metrics').set('Authorization', 'Bearer scrape-secret');
+      expect(ok.status).toBe(200);
+      expect(ok.headers['content-type']).toBe(registry.contentType);
+    });
+  });
+
   describe('requestLogger', () => {
+    test('logs malformed JSON bodies with the correlation id', async () => {
+      const res = await request(app)
+        .post('/api/things/1')
+        .set('X-Request-Id', 'rid-bad-json')
+        .set('Content-Type', 'application/json')
+        .send('{not json');
+      expect(res.status).toBe(400);
+      expect(res.headers['x-request-id']).toBe('rid-bad-json');
+      expect(logger.log).toHaveBeenCalledWith('warn', 'http request', expect.objectContaining({
+        requestId: 'rid-bad-json',
+        status: 400
+      }));
+    });
+
     test('logs method, route template, status and duration as structured fields', async () => {
       await request(app).get('/api/things/42').set('X-Request-Id', 'rid-1');
 
