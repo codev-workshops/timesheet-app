@@ -1,3 +1,4 @@
+const logger = require('../../config/logger');
 const { errorHandler } = require('../../middleware/errorHandler');
 
 describe('Error Handler Middleware', () => {
@@ -11,8 +12,7 @@ describe('Error Handler Middleware', () => {
     };
     next = jest.fn();
     
-    // Mock console.error to avoid cluttering test output
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.spyOn(logger, 'log').mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -126,13 +126,37 @@ describe('Error Handler Middleware', () => {
     });
   });
 
-  describe('Console Logging', () => {
-    test('should log error to console', () => {
+  describe('Structured Logging', () => {
+    test('should log error through base logger with request context', () => {
       const error = new Error('Test error');
-      
+      req = { requestId: 'abc-123', method: 'GET', originalUrl: '/api/clients' };
+
       errorHandler(error, req, res, next);
 
-      expect(console.error).toHaveBeenCalledWith('Error:', error);
+      expect(logger.log).toHaveBeenCalledWith('error', 'request failed', expect.objectContaining({
+        requestId: 'abc-123',
+        method: 'GET',
+        path: '/api/clients',
+        status: 500,
+        severity: 'error',
+        err: expect.objectContaining({ message: 'Test error', stack: expect.any(String) })
+      }));
+    });
+
+    test('should prefer req.log when available', () => {
+      const error = new Error('Test error');
+      req = { log: { log: jest.fn() } };
+
+      errorHandler(error, req, res, next);
+
+      expect(req.log.log).toHaveBeenCalledWith('error', 'request failed', expect.any(Object));
+      expect(logger.log).not.toHaveBeenCalled();
+    });
+
+    test('should log Joi validation errors at warn level', () => {
+      errorHandler({ isJoi: true, details: [] }, req, res, next);
+
+      expect(logger.log).toHaveBeenCalledWith('warn', 'request failed', expect.objectContaining({ status: 400 }));
     });
   });
 });

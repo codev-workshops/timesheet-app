@@ -1,5 +1,6 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const logger = require('../config/logger');
 
 let db = null;
 let isClosing = false;
@@ -13,10 +14,10 @@ function getDatabase() {
     // Use in-memory database as specified in requirements
     db = new sqlite3.Database(':memory:', (err) => {
       if (err) {
-        console.error('Error opening database:', err);
+        logger.error('failed to open database', { err: logger.serializeError(err) });
         throw err;
       }
-      console.log('Connected to SQLite in-memory database');
+      logger.info('connected to sqlite database', { type: 'in-memory' });
     });
   }
   return db;
@@ -72,7 +73,7 @@ async function initializeDatabase() {
       database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_user_email ON work_entries (user_email)`);
       database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_date ON work_entries (date)`);
 
-      console.log('Database tables created successfully');
+      logger.info('database tables created');
       resolve();
     });
   });
@@ -109,9 +110,9 @@ function closeDatabase() {
       isClosing = false;
       db = null;
       if (err) {
-        console.error('Error closing database:', err);
+        logger.error('failed to close database', { err: logger.serializeError(err) });
       } else {
-        console.log('Database connection closed');
+        logger.info('database connection closed');
       }
       resolve();
     });
