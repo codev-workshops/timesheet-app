@@ -1,5 +1,16 @@
+const logger = require('../config/logger');
+
 function errorHandler(err, req, res, next) {
-  console.error('Error:', err);
+  const log = req.log || logger;
+  const status = err.isJoi ? 400 : (err.status || 500);
+  log.log(status >= 500 ? 'error' : 'warn', 'request failed', {
+    requestId: req.requestId,
+    method: req.method,
+    path: req.originalUrl || req.path,
+    status,
+    severity: status >= 500 ? 'error' : 'warn',
+    err: logger.serializeError(err)
+  });
 
   // Joi validation errors
   if (err.isJoi) {

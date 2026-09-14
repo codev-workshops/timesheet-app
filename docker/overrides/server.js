@@ -1,9 +1,15 @@
+require('./tracing');
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const helmet = require('helmet');
-const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+
+const logger = require('./config/logger');
+const { metricsMiddleware, metricsHandler } = require('./config/metrics');
+const { requestContext } = require('./middleware/requestContext');
+const { requestLogger } = require('./middleware/requestLogger');
 
 const authRoutes = require('./routes/auth');
 const clientRoutes = require('./routes/clients');
@@ -48,17 +54,24 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Logging
-app.use(morgan('combined'));
+// Metrics and structured HTTP request logging
+app.use(metricsMiddleware);
+app.use(requestLogger);
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Request correlation context (requestId + req.log)
+app.use(requestContext);
+
 // Health check
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
 });
+
+// Prometheus metrics
+app.get('/metrics', metricsHandler);
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -90,12 +103,14 @@ async function startServer() {
   try {
     await initializeDatabase();
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`Server running on port ${PORT}`);
-      console.log(`Health check: http://localhost:${PORT}/health`);
-      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      logger.info('server started', {
+        port: PORT,
+        healthCheck: `http://localhost:${PORT}/health`,
+        environment: process.env.NODE_ENV || 'development'
+      });
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    logger.error('failed to start server', { err: logger.serializeError(error) });
     process.exit(1);
   }
 }
