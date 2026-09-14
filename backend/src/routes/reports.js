@@ -1,6 +1,7 @@
 const express = require('express');
 const { getDatabase } = require('../database/init');
 const { authenticateUser } = require('../middleware/auth');
+const config = require('../config');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const PDFDocument = require('pdfkit');
 const path = require('path');
@@ -65,6 +66,10 @@ router.get('/client/:clientId', (req, res) => {
 
 // Export client report as CSV
 router.get('/export/csv/:clientId', (req, res) => {
+  if (!config.features.csvExport) {
+    return res.status(404).json({ error: 'CSV export is disabled' });
+  }
+
   const clientId = parseInt(req.params.clientId);
   
   if (isNaN(clientId)) {
@@ -148,6 +153,10 @@ router.get('/export/csv/:clientId', (req, res) => {
 
 // Export client report as PDF
 router.get('/export/pdf/:clientId', (req, res) => {
+  if (!config.features.pdfReports) {
+    return res.status(404).json({ error: 'PDF reports are disabled' });
+  }
+
   const clientId = parseInt(req.params.clientId);
   
   if (isNaN(clientId)) {
