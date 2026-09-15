@@ -77,3 +77,13 @@ export interface ApiResponse<T> {
   error?: string;
   message?: string;
 }
+
+export interface FeatureFlags {
+  darkMode: boolean;
+  csvExport: boolean;
+  pdfReports: boolean;
+}
+
+export interface AppConfig {
+  features: FeatureFlags;
+}
