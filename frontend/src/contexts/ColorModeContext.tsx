@@ -7,7 +7,7 @@ import {
 } from './ColorModeContextValue';
 
 interface ColorModeProviderProps {
-  children: (mode: PaletteMode) => ReactNode;
+  children: ReactNode;
 }
 
 function readStoredMode(): PaletteMode {
@@ -31,5 +31,5 @@ export const ColorModeProvider: React.FC<ColorModeProviderProps> = ({ children }
     [mode, toggleColorMode]
   );
 
-  return <ColorModeContext.Provider value={value}>{children(mode)}</ColorModeContext.Provider>;
+  return <ColorModeContext.Provider value={value}>{children}</ColorModeContext.Provider>;
 };

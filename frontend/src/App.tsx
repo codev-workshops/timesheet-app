@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, type ReactNode } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
@@ -8,6 +8,8 @@ import { AuthProvider } from './contexts/AuthContext';
 import { FeatureFlagsProvider } from './contexts/FeatureFlagsContext';
 import { ColorModeProvider } from './contexts/ColorModeContext';
 import { useAuth } from './hooks/useAuth';
+import { useFeatureFlags } from './hooks/useFeatureFlags';
+import { useColorMode } from './hooks/useColorMode';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -36,6 +38,20 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+const ThemedApp: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { features } = useFeatureFlags();
+  const { mode } = useColorMode();
+  const effectiveMode: PaletteMode = features.darkMode ? mode : 'light';
+  const theme = useMemo(() => buildTheme(effectiveMode), [effectiveMode]);
+
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      {children}
+    </ThemeProvider>
+  );
+};
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -77,14 +93,11 @@ const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <FeatureFlagsProvider>
         <ColorModeProvider>
-          {(mode) => (
-            <ThemeProvider theme={buildTheme(mode)}>
-              <CssBaseline />
-              <AuthProvider>
-                <AppContent />
-              </AuthProvider>
-            </ThemeProvider>
-          )}
+          <ThemedApp>
+            <AuthProvider>
+              <AppContent />
+            </AuthProvider>
+          </ThemedApp>
         </ColorModeProvider>
       </FeatureFlagsProvider>
     </QueryClientProvider>
