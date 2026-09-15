@@ -1,5 +1,6 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const config = require('../config');
 
 let db = null;
 let isClosing = false;
@@ -10,13 +11,16 @@ function getDatabase() {
     // Reset state when creating a new database connection
     isClosing = false;
     isClosed = false;
-    // Use in-memory database as specified in requirements
-    db = new sqlite3.Database(':memory:', (err) => {
+    db = new sqlite3.Database(config.database.path, (err) => {
       if (err) {
         console.error('Error opening database:', err);
         throw err;
       }
-      console.log('Connected to SQLite in-memory database');
+      console.log(
+        config.database.path === ':memory:'
+          ? 'Connected to SQLite in-memory database'
+          : `Connected to SQLite database at ${config.database.path}`
+      );
     });
   }
   return db;

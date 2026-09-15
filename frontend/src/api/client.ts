@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios';
+import { type AppConfig } from '../types/api';
 
 // Use empty string to make requests relative to the current origin
 // Vite proxy will forward /api requests to the backend
@@ -136,6 +137,11 @@ class ApiClient {
   // Health check
   async healthCheck() {
     const response = await this.client.get('/health');
+    return response.data;
+  }
+
+  async getConfig(): Promise<AppConfig> {
+    const response = await this.client.get<AppConfig>('/api/config');
     return response.data;
   }
 }

@@ -2,8 +2,11 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { type PaletteMode } from '@mui/material';
 import CssBaseline from '@mui/material/CssBaseline';
 import { AuthProvider } from './contexts/AuthContext';
+import { FeatureFlagsProvider } from './contexts/FeatureFlagsContext';
+import { ColorModeProvider } from './contexts/ColorModeContext';
 import { useAuth } from './hooks/useAuth';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
@@ -12,16 +15,18 @@ import ClientsPage from './pages/ClientsPage';
 import WorkEntriesPage from './pages/WorkEntriesPage';
 import ReportsPage from './pages/ReportsPage';
 
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#1976d2',
+const buildTheme = (mode: PaletteMode) =>
+  createTheme({
+    palette: {
+      mode,
+      primary: {
+        main: '#1976d2',
+      },
+      secondary: {
+        main: '#dc004e',
+      },
     },
-    secondary: {
-      main: '#dc004e',
-    },
-  },
-});
+  });
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -70,12 +75,18 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
-      </ThemeProvider>
+      <FeatureFlagsProvider>
+        <ColorModeProvider>
+          {(mode) => (
+            <ThemeProvider theme={buildTheme(mode)}>
+              <CssBaseline />
+              <AuthProvider>
+                <AppContent />
+              </AuthProvider>
+            </ThemeProvider>
+          )}
+        </ColorModeProvider>
+      </FeatureFlagsProvider>
     </QueryClientProvider>
   );
 };

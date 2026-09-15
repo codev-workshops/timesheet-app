@@ -22,15 +22,39 @@ import {
   Assignment as AssignmentIcon,
   Assessment as AssessmentIcon,
   Logout as LogoutIcon,
+  Brightness4 as Brightness4Icon,
+  Brightness7 as Brightness7Icon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useFeatureFlags } from '../hooks/useFeatureFlags';
+import { useColorMode } from '../hooks/useColorMode';
 
 const drawerWidth = 240;
 
 interface LayoutProps {
   children: ReactNode;
 }
+
+const ColorModeToggle: React.FC = () => {
+  const { features } = useFeatureFlags();
+  const { mode, toggleColorMode } = useColorMode();
+
+  if (!features.darkMode) {
+    return null;
+  }
+
+  return (
+    <IconButton
+      color="inherit"
+      aria-label={mode === 'dark' ? 'switch to light mode' : 'switch to dark mode'}
+      onClick={toggleColorMode}
+      size="small"
+    >
+      {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
+    </IconButton>
+  );
+};
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
@@ -96,6 +120,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {menuItems.find(item => item.path === location.pathname)?.text || 'Time Tracker'}
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <ColorModeToggle />
             <Typography variant="body2">{user?.email}</Typography>
             <Avatar sx={{ width: 32, height: 32 }}>
               {user?.email?.charAt(0).toUpperCase()}
