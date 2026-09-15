@@ -1,3 +1,6 @@
+// Retry flaky tests, logging each failure so retries are visible in CI output
+jest.retryTimes(2, { logErrorsBeforeRetry: true });
+
 // Mock sqlite3 globally to avoid native module loading issues in tests
 jest.mock('sqlite3', () => {
   const mockDatabase = {

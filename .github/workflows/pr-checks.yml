@@ -10,11 +10,16 @@ permissions:
   contents: read
   pull-requests: write
 
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   security-audit:
     name: Security Audit (CVE Check)
     if: "!contains(github.event.pull_request.user.login, 'devin')"
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       has_vulnerabilities: ${{ steps.audit.outputs.has_vulnerabilities }}
       total_severe: ${{ steps.audit.outputs.total_severe }}
@@ -30,10 +35,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        working-directory: frontend
-        run: npm ci
+        uses: ./.github/actions/npm-ci-retry
+        with:
+          working-directory: frontend
 
       - name: Run npm audit
         id: audit
@@ -41,8 +49,18 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          AUDIT_OUTPUT=$(npm audit --json 2>&1)
+          AUDIT_OUTPUT=$(npm audit --json 2>/dev/null)
           echo "$AUDIT_OUTPUT" > /tmp/audit-results.json
+
+          # Fail closed: only trust the counts if npm audit produced a well-formed report.
+          if ! echo "$AUDIT_OUTPUT" | jq -e '.metadata.vulnerabilities' > /dev/null 2>&1; then
+            echo "::error::npm audit did not return a well-formed report (missing .metadata.vulnerabilities). Treating as a tooling/transient failure, not a clean result."
+            echo "$AUDIT_OUTPUT" | head -c 4000
+            echo "audit_tooling_failed=true" >> "$GITHUB_OUTPUT"
+            echo "has_vulnerabilities=unknown" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          echo "audit_tooling_failed=false" >> "$GITHUB_OUTPUT"
 
           HIGH=$(echo "$AUDIT_OUTPUT" | jq -r '.metadata.vulnerabilities.high // 0')
           CRITICAL=$(echo "$AUDIT_OUTPUT" | jq -r '.metadata.vulnerabilities.critical // 0')
@@ -103,12 +121,21 @@ jobs:
           echo "Failing job: ${{ steps.audit.outputs.total_severe }} high/critical vulnerabilities found."
           exit 1
 
+      - name: Fail if audit could not be evaluated
+        if: steps.audit.outputs.audit_tooling_failed == 'true'
+        run: |
+          echo "::error::Failing job: npm audit did not produce a valid report, so the CVE gate could not be evaluated."
+          exit 1
+
   test-coverage:
     name: Quality Gate (Test Coverage)
     if: "!contains(github.event.pull_request.user.login, 'devin')"
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     outputs:
       coverage_failed: ${{ steps.coverage.outputs.coverage_failed }}
+      tests_failed: ${{ steps.coverage.outputs.tests_failed }}
+      tooling_failed: ${{ steps.coverage.outputs.tooling_failed }}
       coverage_failures: ${{ steps.coverage.outputs.coverage_failures }}
       coverage_table: ${{ steps.coverage.outputs.coverage_table }}
 
@@ -120,15 +147,21 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        working-directory: frontend
-        run: npm ci
+        uses: ./.github/actions/npm-ci-retry
+        with:
+          working-directory: frontend
 
       - name: Run tests with coverage
         id: coverage
         working-directory: frontend
         continue-on-error: true
+        env:
+          NO_COLOR: '1'
+          FORCE_COLOR: '0'
         run: |
           set +e
           COVERAGE_OUTPUT=$(npm run test:coverage 2>&1)
@@ -136,29 +169,54 @@ jobs:
 
           echo "$COVERAGE_OUTPUT"
 
-          if [ $COVERAGE_EXIT -ne 0 ]; then
-            FAILURES=$(echo "$COVERAGE_OUTPUT" | grep "^ERROR:" || true)
-            TABLE=$(echo "$COVERAGE_OUTPUT" | sed -n '/^-\{5,\}/,/^-\{5,\}$/p')
+          echo "coverage_failed=false" >> "$GITHUB_OUTPUT"
+          echo "tests_failed=false" >> "$GITHUB_OUTPUT"
+          echo "tooling_failed=false" >> "$GITHUB_OUTPUT"
 
-            echo "coverage_failed=true" >> "$GITHUB_OUTPUT"
+          if [ $COVERAGE_EXIT -eq 0 ]; then
+            echo "All tests passed and coverage thresholds met."
+            exit 0
+          fi
 
+          # vitest exits non-zero for three distinct reasons; tell them apart.
+          # 1. Coverage below configured thresholds (vite.config.ts test.coverage.thresholds)
+          THRESHOLD_FAILURES=$(echo "$COVERAGE_OUTPUT" | grep -E '^ERROR: Coverage for .* does not meet' || true)
+          # 2. Real test failures
+          TEST_FAILURES=$(echo "$COVERAGE_OUTPUT" | grep -E '^ FAIL |^\s+× |^\s*Tests\s+[0-9]+ failed' || true)
+
+          TABLE=$(echo "$COVERAGE_OUTPUT" | sed -n '/^-\{5,\}/,/^=\{5,\}$/p')
+          {
+            echo "coverage_table<<TABLE_EOF"
+            echo "$TABLE"
+            echo "TABLE_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          if [ -n "$TEST_FAILURES" ]; then
+            echo "tests_failed=true" >> "$GITHUB_OUTPUT"
             {
               echo "coverage_failures<<FAIL_EOF"
-              echo "$FAILURES"
+              echo "$TEST_FAILURES"
               echo "FAIL_EOF"
             } >> "$GITHUB_OUTPUT"
-
-            {
-              echo "coverage_table<<TABLE_EOF"
-              echo "$TABLE"
-              echo "TABLE_EOF"
-            } >> "$GITHUB_OUTPUT"
-
-            echo "::warning::Test coverage is below the 80% threshold."
-          else
-            echo "coverage_failed=false" >> "$GITHUB_OUTPUT"
-            echo "All coverage thresholds met."
+            echo "::error::Frontend unit tests failed (this is a test failure, not a coverage shortfall)."
+            exit 1
           fi
+
+          if [ -n "$THRESHOLD_FAILURES" ]; then
+            echo "coverage_failed=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "coverage_failures<<FAIL_EOF"
+              echo "$THRESHOLD_FAILURES"
+              echo "FAIL_EOF"
+            } >> "$GITHUB_OUTPUT"
+            echo "::error::Test coverage is below the 80% threshold."
+            exit 1
+          fi
+
+          # 3. Neither marker: missing script, crash, OOM, etc.
+          echo "tooling_failed=true" >> "$GITHUB_OUTPUT"
+          echo "::error::Test run exited with code ${COVERAGE_EXIT} without reporting test or coverage failures (tooling error: missing script, crash, or OOM)."
+          exit 1
 
       - name: Comment findings on PR
         if: steps.coverage.outputs.coverage_failed == 'true'
@@ -190,6 +248,50 @@ jobs:
 
           gh pr comment ${{ github.event.pull_request.number }} --body "$COMMENT"
 
+      - name: Fail if coverage below threshold
+        if: steps.coverage.outputs.coverage_failed == 'true'
+        run: |
+          echo "::error::Failing job: frontend test coverage is below the 80% threshold."
+          exit 1
+
+      - name: Fail if tests failed
+        if: steps.coverage.outputs.tests_failed == 'true'
+        run: |
+          echo "::error::Failing job: frontend unit tests failed."
+          exit 1
+
+      - name: Fail if test tooling errored
+        if: steps.coverage.outputs.tooling_failed == 'true'
+        run: |
+          echo "::error::Failing job: frontend test run crashed or could not start (tooling error, not a coverage or test verdict)."
+          exit 1
+
+  backend-tests:
+    name: Backend Tests (Jest)
+    if: "!contains(github.event.pull_request.user.login, 'devin')"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        uses: ./.github/actions/npm-ci-retry
+        with:
+          working-directory: backend
+
+      - name: Run backend test suite with coverage
+        working-directory: backend
+        run: npm run test:ci
+
 
   trigger-devin-cve-fix:
     name: Trigger Devin CVE Auto-Fix
@@ -197,8 +299,10 @@ jobs:
     if: |
       always() &&
       github.event.pull_request.user.login == 'bsmitches' &&
-      needs.security-audit.result == 'failure'
+      needs.security-audit.result == 'failure' &&
+      needs.security-audit.outputs.has_vulnerabilities == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Check for prior Devin CVE fix attempt
@@ -269,7 +373,12 @@ jobs:
               tags: ["cve-fix", "npm-audit", "security", "automated"]
             }')
 
+          # Retry only transient failures (connection errors/timeouts, 429, 5xx); curl's --retry
+          # never retries other 4xx, so a bad request fails fast. This runs only when the guard
+          # above found no prior attempt, so retries cannot create duplicate sessions.
           HTTP_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
+            --max-time 30 \
+            --retry 3 --retry-delay 2 --retry-max-time 60 --retry-connrefused \
             -H "Authorization: Bearer ${DEVIN_API_KEY}" \
             -H "Content-Type: application/json" \
             -d "$REQUEST_BODY" \
@@ -277,6 +386,7 @@ jobs:
 
           HTTP_BODY=$(echo "$HTTP_RESPONSE" | sed '/^HTTP_STATUS:/d')
           HTTP_CODE=$(echo "$HTTP_RESPONSE" | grep '^HTTP_STATUS:' | cut -d: -f2)
+          HTTP_CODE=${HTTP_CODE:-000}
 
           if [ "$HTTP_CODE" -eq 200 ]; then
             SESSION_URL=$(echo "$HTTP_BODY" | jq -r '.url')
