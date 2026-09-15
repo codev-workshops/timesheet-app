@@ -26,6 +26,21 @@ jest.mock('pdfkit', () => {
   }));
 });
 
+// Fixed clock so timestamped filenames/"Generated" lines are deterministic.
+// Only Date is faked; timers stay real so supertest/express I/O is unaffected.
+const FIXED_NOW = new Date('2024-06-15T10:30:45.123Z');
+const REAL_TIMER_APIS = [
+  'hrtime', 'nextTick', 'performance', 'queueMicrotask',
+  'requestAnimationFrame', 'cancelAnimationFrame', 'requestIdleCallback', 'cancelIdleCallback',
+  'setImmediate', 'clearImmediate', 'setInterval', 'clearInterval', 'setTimeout', 'clearTimeout'
+];
+beforeAll(() => {
+  jest.useFakeTimers({ now: FIXED_NOW, doNotFake: REAL_TIMER_APIS });
+});
+afterAll(() => {
+  jest.useRealTimers();
+});
+
 const reportRoutes = require('../../routes/reports');
 jest.mock('../../middleware/auth', () => ({
   authenticateUser: (req, res, next) => {
@@ -239,6 +254,95 @@ describe('Report Routes', () => {
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ error: 'Internal server error' });
+    });
+
+    test('should handle database error when fetching work entries', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, name: 'Test Client' });
+      });
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(new Error('Database error'), null);
+      });
+
+      const response = await request(app).get('/api/reports/export/pdf/1');
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Internal server error' });
+    });
+
+    test('should stream a PDF with a timestamped filename', async () => {
+      const PDFDocument = require('pdfkit');
+      let doc;
+      PDFDocument.mockImplementationOnce(() => {
+        doc = {
+          fontSize: jest.fn().mockReturnThis(),
+          text: jest.fn().mockReturnThis(),
+          moveDown: jest.fn().mockReturnThis(),
+          moveTo: jest.fn().mockReturnThis(),
+          lineTo: jest.fn().mockReturnThis(),
+          stroke: jest.fn().mockReturnThis(),
+          addPage: jest.fn().mockReturnThis(),
+          pipe: jest.fn((res) => { doc.pipedTo = res; }),
+          end: jest.fn(() => doc.pipedTo.end()),
+          y: 100
+        };
+        return doc;
+      });
+
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, name: 'Acme & Co' });
+      });
+      const entries = Array.from({ length: 6 }, (_, i) => ({
+        date: `2024-01-0${i + 1}`, hours: i + 1, description: i === 0 ? null : `Work ${i}`
+      }));
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, entries);
+      });
+
+      const response = await request(app).get('/api/reports/export/pdf/1');
+
+      expect(response.status).toBe(200);
+      expect(response.headers['content-type']).toBe('application/pdf');
+      expect(response.headers['content-disposition'])
+        .toBe('attachment; filename="Acme___Co_report_2024-06-15T10-30-45-123Z.pdf"');
+      expect(doc.text).toHaveBeenCalledWith('Total Hours: 21.00');
+      expect(doc.text).toHaveBeenCalledWith(`Generated: ${FIXED_NOW.toLocaleString()}`);
+      expect(doc.text).toHaveBeenCalledWith('No description', 230, 100, { width: 300 });
+      // separator line after every 5 entries: 1 header line + 1 separator
+      expect(doc.stroke).toHaveBeenCalledTimes(2);
+      expect(doc.end).toHaveBeenCalled();
+    });
+
+    test('should add a new page when the cursor runs past the page', async () => {
+      const PDFDocument = require('pdfkit');
+      let doc;
+      PDFDocument.mockImplementationOnce(() => {
+        doc = {
+          fontSize: jest.fn().mockReturnThis(),
+          text: jest.fn().mockReturnThis(),
+          moveDown: jest.fn().mockReturnThis(),
+          moveTo: jest.fn().mockReturnThis(),
+          lineTo: jest.fn().mockReturnThis(),
+          stroke: jest.fn().mockReturnThis(),
+          addPage: jest.fn().mockReturnThis(),
+          pipe: jest.fn((res) => { doc.pipedTo = res; }),
+          end: jest.fn(() => doc.pipedTo.end()),
+          y: 750
+        };
+        return doc;
+      });
+
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, name: 'Test Client' });
+      });
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, [{ date: '2024-01-01', hours: 2, description: 'Work' }]);
+      });
+
+      const response = await request(app).get('/api/reports/export/pdf/1');
+
+      expect(response.status).toBe(200);
+      expect(doc.addPage).toHaveBeenCalledTimes(1);
     });
   });
 

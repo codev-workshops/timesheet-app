@@ -133,14 +133,43 @@ describe('Database Initialization', () => {
       expect(consoleErrorSpy).toHaveBeenCalledWith('Error closing database:', expect.any(Error));
     });
 
-    test('should handle multiple close calls safely', () => {
+    test('should handle multiple close calls safely', async () => {
       const db = getDatabase();
       // Reset close mock to default behavior (no error)
       db.close.mockImplementation((callback) => callback(null));
-      closeDatabase();
-      closeDatabase(); // Second call should not throw
+      await closeDatabase();
+      await closeDatabase(); // Second call should not throw
 
+      expect(db.close).toHaveBeenCalledTimes(1);
       expect(consoleErrorSpy).not.toHaveBeenCalled();
+    });
+
+    test('should share an in-flight close between concurrent callers', async () => {
+      const db = getDatabase();
+      let finishClose;
+      db.close.mockImplementation((callback) => {
+        finishClose = () => callback(null);
+      });
+
+      const first = closeDatabase();
+      const second = closeDatabase();
+
+      expect(second).toBe(first);
+      expect(db.close).toHaveBeenCalledTimes(1);
+
+      finishClose();
+      await expect(Promise.all([first, second])).resolves.toEqual([undefined, undefined]);
+      expect(consoleLogSpy).toHaveBeenCalledWith('Database connection closed');
+    });
+
+    test('should resolve immediately when no connection is open', async () => {
+      const db = getDatabase();
+      db.close.mockImplementation((callback) => callback(null));
+      await closeDatabase();
+      db.close.mockClear();
+
+      await expect(closeDatabase()).resolves.toBeUndefined();
+      expect(db.close).not.toHaveBeenCalled();
     });
   });
 

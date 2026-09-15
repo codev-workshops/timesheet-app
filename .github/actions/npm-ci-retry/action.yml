@@ -1,0 +1,39 @@
+name: npm ci (with retry)
+description: Runs `npm ci` with up to 3 attempts and 1s/2s/4s exponential backoff for transient registry/network failures.
+
+inputs:
+  working-directory:
+    description: Directory containing package.json and package-lock.json
+    required: true
+  max-attempts:
+    description: Total number of attempts
+    required: false
+    default: '3'
+
+runs:
+  using: composite
+  steps:
+    - name: npm ci
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        MAX_ATTEMPTS: ${{ inputs.max-attempts }}
+      run: |
+        attempt=1
+        delay=1
+        while true; do
+          echo "::group::npm ci (attempt ${attempt}/${MAX_ATTEMPTS})"
+          if npm ci --no-audit --no-fund; then
+            echo "::endgroup::"
+            exit 0
+          fi
+          echo "::endgroup::"
+          if [ "$attempt" -ge "$MAX_ATTEMPTS" ]; then
+            echo "::error::npm ci failed after ${MAX_ATTEMPTS} attempts"
+            exit 1
+          fi
+          echo "::warning::npm ci attempt ${attempt} failed; retrying in ${delay}s"
+          sleep "$delay"
+          attempt=$((attempt + 1))
+          delay=$((delay * 2))
+        done

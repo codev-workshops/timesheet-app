@@ -16,8 +16,25 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
+// Fixed clock so createdAt timestamps are deterministic.
+// Only Date is faked; timers stay real so supertest/express I/O is unaffected.
+const FIXED_NOW = new Date('2024-06-15T10:30:45.123Z');
+const REAL_TIMER_APIS = [
+  'hrtime', 'nextTick', 'performance', 'queueMicrotask',
+  'requestAnimationFrame', 'cancelAnimationFrame', 'requestIdleCallback', 'cancelIdleCallback',
+  'setImmediate', 'clearImmediate', 'setInterval', 'clearInterval', 'setTimeout', 'clearTimeout'
+];
+
 describe('Auth Routes', () => {
   let mockDb;
+
+  beforeAll(() => {
+    jest.useFakeTimers({ now: FIXED_NOW, doNotFake: REAL_TIMER_APIS });
+  });
+
+  afterAll(() => {
+    jest.useRealTimers();
+  });
 
   beforeEach(() => {
     mockDb = {
@@ -67,6 +84,7 @@ describe('Auth Routes', () => {
       expect(response.status).toBe(201);
       expect(response.body.message).toBe('User created and logged in successfully');
       expect(response.body.user.email).toBe('newuser@example.com');
+      expect(response.body.user.createdAt).toBe('2024-06-15T10:30:45.123Z');
       expect(mockDb.run).toHaveBeenCalledWith(
         'INSERT INTO users (email) VALUES (?)',
         ['newuser@example.com'],
