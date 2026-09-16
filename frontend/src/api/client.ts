@@ -4,6 +4,12 @@ import axios, { type AxiosInstance, type AxiosResponse } from 'axios';
 // Vite proxy will forward /api requests to the backend
 const API_BASE_URL = '';
 
+const getCookie = (name: string): string | undefined => {
+  const cookies = document.cookie.split('; ');
+  const cookie = cookies.find((entry) => entry.startsWith(`${name}=`));
+  return cookie ? decodeURIComponent(cookie.substring(name.length + 1)) : undefined;
+};
+
 class ApiClient {
   private client: AxiosInstance;
 
@@ -11,17 +17,20 @@ class ApiClient {
     this.client = axios.create({
       baseURL: API_BASE_URL,
       timeout: 10000,
+      withCredentials: true,
       headers: {
         'Content-Type': 'application/json',
       },
     });
 
-    // Request interceptor to add email header
     this.client.interceptors.request.use(
       (config) => {
-        const userEmail = localStorage.getItem('userEmail');
-        if (userEmail) {
-          config.headers['x-user-email'] = userEmail;
+        const method = config.method?.toLowerCase();
+        if (method && ['post', 'put', 'patch', 'delete'].includes(method)) {
+          const csrfToken = getCookie('csrfToken');
+          if (csrfToken) {
+            config.headers['X-CSRF-Token'] = csrfToken;
+          }
         }
         return config;
       },
@@ -34,9 +43,10 @@ class ApiClient {
     this.client.interceptors.response.use(
       (response: AxiosResponse) => response,
       (error) => {
-        if (error.response?.status === 401) {
-          // Clear stored email on auth error
-          localStorage.removeItem('userEmail');
+        if (
+          error.response?.status === 401 &&
+          !window.location.pathname.startsWith('/login')
+        ) {
           window.location.href = '/login';
         }
         return Promise.reject(error);
@@ -52,6 +62,11 @@ class ApiClient {
 
   async getCurrentUser() {
     const response = await this.client.get('/api/auth/me');
+    return response.data;
+  }
+
+  async logout() {
+    const response = await this.client.post('/api/auth/logout');
     return response.data;
   }
 

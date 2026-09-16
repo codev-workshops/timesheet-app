@@ -11,10 +11,10 @@ A full-stack web application for tracking and reporting employee hourly work acr
 - For production use, modify `backend/src/database/init.js` to use file-based SQLite instead of `:memory:`
 
 ### Authentication
-- Email-only authentication with JWT tokens
+- Email-only authentication with a JWT cookie and CSRF protection
 - No password required - assumes trusted internal network
 - Anyone with a valid email can create an account and log in
-- Consider integrating with company SSO for production use
+- The JWT payload contains `{ email }`, is signed with `JWT_SECRET`, and expires after 24 hours by default (`JWT_EXPIRES_IN`)
 
 ## Features
 
@@ -51,7 +51,8 @@ A full-stack web application for tracking and reporting employee hourly work acr
 │   │   ├── database/
 │   │   │   └── init.js           # Database initialization
 │   │   ├── middleware/
-│   │   │   ├── auth.js           # JWT authentication
+│   │   │   ├── auth.js           # JWT cookie authentication
+│   │   │   ├── csrf.js           # CSRF double-submit protection
 │   │   │   └── errorHandler.js  # Error handling
 │   │   ├── routes/
 │   │   │   ├── auth.js           # Authentication endpoints
@@ -113,6 +114,9 @@ PORT=3001
 NODE_ENV=development
 FRONTEND_URL=http://localhost:5173
 JWT_SECRET=your-secure-secret-key-change-this
+JWT_EXPIRES_IN=24h
+DATABASE_URL=
+SENDGRID_API_KEY=
 ```
 
 5. Start the development server:
@@ -161,8 +165,10 @@ Frontend will be running at `http://localhost:5173`
 ## API Endpoints
 
 ### Authentication
-- `POST /api/auth/login` - Login with email, returns JWT token
-- `GET /api/auth/me` - Get current user info (requires auth)
+- `POST /api/auth/login` - Login with email; sets the `token` and `csrfToken` cookies
+- `POST /api/auth/logout` - Clear authentication cookies
+- `GET /api/auth/csrf` - Refresh the CSRF cookie (requires auth)
+- `GET /api/auth/me` - Get current user info and restore a session
 
 ### Clients
 - `GET /api/clients` - Get all clients
@@ -183,12 +189,15 @@ Frontend will be running at `http://localhost:5173`
 - `GET /api/reports/export/csv/:clientId` - Export report as CSV
 - `GET /api/reports/export/pdf/:clientId` - Export report as PDF
 
-All authenticated endpoints require `Authorization: Bearer <token>` header.
+The JWT is delivered in an `httpOnly; SameSite=Strict` cookie named `token` (and is `Secure` in production), so it is never exposed to JavaScript. POST, PUT, PATCH, and DELETE requests echo the non-httpOnly `csrfToken` cookie in the `X-CSRF-Token` header; login and logout are exempt.
 
 ## Security Features
 
-- JWT-based authentication with 24-hour token expiration
-- Rate limiting on authentication endpoints (5 attempts per 15 minutes)
+- JWT payload `{ email }` signed with `JWT_SECRET`, with 24-hour expiration by default (`JWT_EXPIRES_IN`)
+- JWT authentication cookie named `token` with `httpOnly`, `SameSite=Strict`, and production `Secure` attributes
+- CSRF double-submit protection using the `csrfToken` cookie and `X-CSRF-Token` header
+- Login rate limiting (5 attempts per 15 minutes per IP) plus global rate limiting (100 requests per 15 minutes)
+- Logout clears both authentication cookies
 - CORS protection
 - Helmet security headers
 - Input validation with Joi schemas
@@ -260,8 +269,9 @@ npm run preview  # Preview production build
 See `backend/DEPLOYMENT.md` for detailed production deployment instructions.
 
 ### Quick Production Checklist
-- [ ] Set strong `JWT_SECRET` in environment variables
+- [ ] Set strong `JWT_SECRET` and optional `JWT_EXPIRES_IN` in environment variables
 - [ ] Configure proper `FRONTEND_URL` for CORS
+- [ ] Use HTTPS so production `Secure` cookies are sent
 - [ ] Consider switching to file-based SQLite for data persistence
 - [ ] Set up HTTPS/SSL certificates
 - [ ] Configure proper logging and monitoring

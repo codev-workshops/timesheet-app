@@ -12,7 +12,10 @@
 - Email-only authentication assumes trusted network environment
 - No password protection - anyone with a valid company email can access
 - Consider integrating with company SSO for production use
-- JWT tokens expire after 24 hours
+- JWT payloads contain `{ email }`, are signed with `JWT_SECRET`, and expire after 24 hours by default (`JWT_EXPIRES_IN`)
+- The JWT is delivered in an `httpOnly; SameSite=Strict` cookie named `token`; it is `Secure` in production and never exposed to JavaScript
+- CSRF protection uses a double-submit `csrfToken` cookie and `X-CSRF-Token` header on POST, PUT, PATCH, and DELETE; login and logout are exempt
+- `/api/auth/logout` clears both cookies, and `/api/auth/me` restores the session
 
 ## Environment Configuration
 
@@ -33,7 +36,12 @@ NODE_ENV=production
 PORT=3001
 FRONTEND_URL=https://your-frontend-domain.com
 JWT_SECRET=your-generated-secret-key-here
+JWT_EXPIRES_IN=24h
+DATABASE_URL=
+SENDGRID_API_KEY=
 ```
+
+Production `Secure` cookies require HTTPS. `FRONTEND_URL` must be an explicit origin (not a wildcard) because credentialed CORS is enabled. Credentials previously committed in `src/config/production.js` must be treated as compromised and rotated.
 
 ## Production Deployment Steps
 

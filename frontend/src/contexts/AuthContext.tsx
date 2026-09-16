@@ -2,6 +2,7 @@ import React, { useState, useEffect, type ReactNode } from 'react';
 import { type User } from '../types/api';
 import apiClient from '../api/client';
 import { AuthContext, type AuthContextType } from './AuthContextValue';
+import axios from 'axios';
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -13,15 +14,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const storedEmail = localStorage.getItem('userEmail');
-      
-      if (storedEmail) {
-        try {
-          const response = await apiClient.getCurrentUser();
-          setUser(response.user);
-        } catch (error) {
+      try {
+        const response = await apiClient.getCurrentUser();
+        setUser(response.user);
+      } catch (error: unknown) {
+        if (!axios.isAxiosError(error) || error.response?.status !== 401) {
           console.error('Auth check failed:', error);
-          localStorage.removeItem('userEmail');
         }
       }
       setIsLoading(false);
@@ -34,16 +32,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await apiClient.login(email);
       setUser(response.user);
-      localStorage.setItem('userEmail', email);
     } catch (error) {
       console.error('Login failed:', error);
       throw error;
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('userEmail');
+  const logout = async () => {
+    try {
+      await apiClient.logout();
+    } finally {
+      setUser(null);
+    }
   };
 
   const value: AuthContextType = {

@@ -26,7 +26,7 @@ All original requirements have been fully implemented:
 - **UI Library**: Material UI for professional, responsive design
 - **State Management**: React Query for server state, Context API for auth
 - **Routing**: React Router v6 for navigation
-- **HTTP Client**: Axios with JWT interceptors
+- **HTTP Client**: Axios with credentialed JWT-cookie and CSRF handling
 
 **Key Pages:**
 - Login Page - Email-based authentication
@@ -38,7 +38,7 @@ All original requirements have been fully implemented:
 ### Backend (Node.js + Express)
 - **Runtime**: Node.js with Express framework
 - **Database**: SQLite in-memory (as specified)
-- **Authentication**: JWT tokens with 24-hour expiration
+- **Authentication**: JWT payload `{ email }` in a 24-hour `httpOnly` cookie
 - **Validation**: Joi schemas for input validation
 - **Security**: CORS, Helmet, Rate Limiting
 - **Export**: PDFKit for PDF, csv-writer for CSV
@@ -53,11 +53,15 @@ All original requirements have been fully implemented:
 
 ## 🔒 Security Features Implemented
 
-1. **JWT Authentication**
-   - Secure token-based authentication
-   - 24-hour token expiration
-   - Bearer token in Authorization header
-   - Automatic token refresh on page load
+1. **JWT Cookie Authentication**
+   - JWT payload `{ email }` signed with `JWT_SECRET`
+   - 24-hour expiration by default, configurable with `JWT_EXPIRES_IN`
+   - Delivered only in `httpOnly; SameSite=Strict` cookie `token`, with `Secure` in production
+   - `/api/auth/me` restores the session on page load
+   - Logout clears the authentication and CSRF cookies
+2. **CSRF Double-Submit Protection**
+   - The `csrfToken` cookie is echoed in `X-CSRF-Token` for POST, PUT, PATCH, and DELETE
+   - Login and logout are exempt
 
 2. **Rate Limiting**
    - 5 login attempts per 15 minutes per IP
@@ -174,7 +178,7 @@ Open http://localhost:5173 and log in with any email address.
 ### Frontend
 - TypeScript strict mode for type safety
 - React Query for efficient data fetching and caching
-- Axios interceptors for automatic JWT token injection
+- Axios sends credentialed requests and adds the CSRF header from the `csrfToken` cookie
 - Material UI date picker for work entry dates
 - Blob handling for file downloads (CSV/PDF)
 
@@ -213,7 +217,7 @@ Open http://localhost:5173 and log in with any email address.
 1. **Backend changes**: Auto-reload with nodemon
 2. **Frontend changes**: Hot Module Replacement (HMR) with Vite
 3. **Type safety**: TypeScript catches errors at compile time
-4. **API testing**: Use curl or Postman with JWT tokens
+4. **API testing**: Use curl or Postman with cookies and the CSRF header
 
 ---
 

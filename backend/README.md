@@ -60,12 +60,9 @@ npm start
 
 ## Authentication
 
-The API uses simple email-based authentication. Include the user's email in the `x-user-email` header for all authenticated requests.
+The API uses a JWT containing `{ email }`, signed with `JWT_SECRET` and expiring after 24 hours by default (`JWT_EXPIRES_IN`). Login sets the JWT in an `httpOnly; SameSite=Strict` cookie named `token` (`Secure` in production), so JavaScript cannot read it. Login also sets a non-httpOnly `csrfToken` cookie; clients must echo it in the `X-CSRF-Token` header for POST, PUT, PATCH, and DELETE requests. Login and logout are CSRF-exempt.
 
-Example:
-```
-x-user-email: user@company.com
-```
+Use `POST /api/auth/logout` to clear both cookies. Use `GET /api/auth/me` to restore the current session and `GET /api/auth/csrf` to refresh the CSRF cookie.
 
 ## Database Schema
 
