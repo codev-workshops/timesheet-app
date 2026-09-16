@@ -1,3 +1,6 @@
+const mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+jest.mock('../../config/logger', () => ({ logger: mockLogger }));
+
 const sqlite3 = require('sqlite3');
 const { getDatabase, initializeDatabase, closeDatabase } = require('../../database/init');
 
@@ -22,19 +25,12 @@ jest.mock('sqlite3', () => {
 });
 
 describe('Database Initialization', () => {
-  let consoleLogSpy, consoleErrorSpy;
-
   beforeEach(() => {
-    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-    
     // Reset the database singleton
     jest.resetModules();
   });
 
   afterEach(() => {
-    consoleLogSpy.mockRestore();
-    consoleErrorSpy.mockRestore();
     jest.clearAllMocks();
   });
 
@@ -43,7 +39,7 @@ describe('Database Initialization', () => {
       const db = getDatabase();
       
       expect(db).toBeDefined();
-      expect(consoleLogSpy).toHaveBeenCalledWith('Connected to SQLite in-memory database');
+      expect(mockLogger.info).toHaveBeenCalledWith('Connected to SQLite in-memory database');
     });
 
     test('should return same database instance on multiple calls', () => {
@@ -70,7 +66,7 @@ describe('Database Initialization', () => {
       const { getDatabase: getDatabaseWithError } = require('../../database/init');
       
       expect(() => getDatabaseWithError()).toThrow('Connection failed');
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Error opening database:', expect.any(Error));
+      expect(mockLogger.error).toHaveBeenCalledWith('Error opening database', { err: expect.any(Error) });
     });
   });
 
@@ -107,7 +103,7 @@ describe('Database Initialization', () => {
     test('should log success message', async () => {
       await initializeDatabase();
       
-      expect(consoleLogSpy).toHaveBeenCalledWith('Database tables created successfully');
+      expect(mockLogger.info).toHaveBeenCalledWith('Database tables created successfully');
     });
 
     test('should resolve promise on success', async () => {
@@ -121,7 +117,7 @@ describe('Database Initialization', () => {
       closeDatabase();
 
       expect(db.close).toHaveBeenCalled();
-      expect(consoleLogSpy).toHaveBeenCalledWith('Database connection closed');
+      expect(mockLogger.info).toHaveBeenCalledWith('Database connection closed');
     });
 
     test('should handle close error gracefully', () => {
@@ -130,7 +126,7 @@ describe('Database Initialization', () => {
 
       closeDatabase();
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Error closing database:', expect.any(Error));
+      expect(mockLogger.error).toHaveBeenCalledWith('Error closing database', { err: expect.any(Error) });
     });
 
     test('should handle multiple close calls safely', () => {
@@ -140,7 +136,7 @@ describe('Database Initialization', () => {
       closeDatabase();
       closeDatabase(); // Second call should not throw
 
-      expect(consoleErrorSpy).not.toHaveBeenCalled();
+      expect(mockLogger.error).not.toHaveBeenCalled();
     });
   });
 

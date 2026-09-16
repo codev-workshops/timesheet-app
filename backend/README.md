@@ -100,3 +100,62 @@ x-user-email: user@company.com
 ## Health Check
 
 The API includes a health check endpoint at `/health` that returns server status and timestamp.
+
+## Observability
+
+### Structured logging
+
+All logs are emitted as JSON lines via [Winston](https://github.com/winstonjs/winston) with `timestamp`,
+`level`, `message`, `service: "timesheet-backend"` and, when available, `requestId`. Errors are passed
+as `{ err }` metadata so the stack trace is captured. Every HTTP request produces an access log entry
+with `method`, `url`, `status`, `responseTimeMs` and `requestId`.
+
+- `LOG_LEVEL` – Winston log level (`error`, `warn`, `info`, `debug`, ...). Defaults to `info`;
+  automatically `silent` under Jest unless set explicitly.
+
+### Correlation IDs (`x-request-id`)
+
+Each request is assigned a correlation ID. If the client sends an `x-request-id` header it is reused,
+otherwise a UUID is generated. The ID is:
+
+- echoed back on the response as the `x-request-id` header,
+- available in handlers as `req.requestId`,
+- automatically attached to every log line written while handling the request (via `AsyncLocalStorage`).
+
+### Prometheus metrics
+
+`GET /metrics` (unauthenticated, like `/health`) exposes Prometheus metrics via `prom-client`:
+
+- default Node.js/process metrics (`process_*`, `nodejs_*`)
+- `http_requests_total{method,route,status_code}`
+- `http_request_duration_seconds{method,route,status_code}` (histogram)
+- `http_request_errors_total{method,route,status_code}` for 4xx/5xx responses
+
+The `route` label is the matched Express route pattern (e.g. `/api/clients/:id`), not the raw URL.
+
+#### Local Prometheus + Grafana
+
+`docker/observability/docker-compose.yml` runs Prometheus and Grafana against a backend started on the host:
+
+```bash
+cd backend && npm run dev                       # backend on :3001
+docker compose -f docker/observability/docker-compose.yml up -d   # from the repo root
+```
+
+- Prometheus: http://localhost:9090 (scrapes `host.docker.internal:3001/metrics` every 15s)
+- Grafana: http://localhost:3000 (admin / admin) with a provisioned Prometheus datasource and a
+  "Timesheet Backend" dashboard (request rate, error rate, latency percentiles, process metrics)
+
+Stop with `docker compose -f docker/observability/docker-compose.yml down` (add `-v` to drop the data volumes).
+
+### Distributed tracing (OpenTelemetry)
+
+`npm start` and `npm run dev` preload `src/tracing.js` (`node -r ./src/tracing.js src/server.js`), which
+starts the OpenTelemetry Node SDK with auto-instrumentation for HTTP and Express and exports spans over
+OTLP/HTTP. Tracing is skipped under Jest and fails gracefully when no collector is reachable.
+
+- `OTEL_EXPORTER_OTLP_ENDPOINT` – collector base URL; traces are sent to `<endpoint>/v1/traces`.
+  Defaults to `http://localhost:4318`.
+- `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` – full traces URL, overrides the above.
+- `OTEL_SDK_DISABLED=true` – disable tracing entirely.
+- `OTEL_LOG_LEVEL` – `none` (default), `error`, `warn`, `info` or `debug` for SDK diagnostics.

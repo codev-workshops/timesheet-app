@@ -1,18 +1,18 @@
 const { errorHandler } = require('../../middleware/errorHandler');
+const { logger } = require('../../config/logger');
 
 describe('Error Handler Middleware', () => {
   let req, res, next;
 
   beforeEach(() => {
-    req = {};
+    req = { requestId: 'req-123', method: 'GET', originalUrl: '/api/test' };
     res = {
       status: jest.fn().mockReturnThis(),
       json: jest.fn()
     };
     next = jest.fn();
     
-    // Mock console.error to avoid cluttering test output
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.spyOn(logger, 'error').mockImplementation(() => logger);
   });
 
   afterEach(() => {
@@ -126,13 +126,18 @@ describe('Error Handler Middleware', () => {
     });
   });
 
-  describe('Console Logging', () => {
-    test('should log error to console', () => {
+  describe('Logging', () => {
+    test('should log error with request context', () => {
       const error = new Error('Test error');
       
       errorHandler(error, req, res, next);
 
-      expect(console.error).toHaveBeenCalledWith('Error:', error);
+      expect(logger.error).toHaveBeenCalledWith('Request failed', {
+        err: error,
+        requestId: 'req-123',
+        method: 'GET',
+        path: '/api/test'
+      });
     });
   });
 });
