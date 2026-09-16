@@ -133,6 +133,21 @@ otherwise a UUID is generated. The ID is:
 
 The `route` label is the matched Express route pattern (e.g. `/api/clients/:id`), not the raw URL.
 
+#### Local Prometheus + Grafana
+
+`docker/observability/docker-compose.yml` runs Prometheus and Grafana against a backend started on the host:
+
+```bash
+cd backend && npm run dev                       # backend on :3001
+docker compose -f docker/observability/docker-compose.yml up -d   # from the repo root
+```
+
+- Prometheus: http://localhost:9090 (scrapes `host.docker.internal:3001/metrics` every 15s)
+- Grafana: http://localhost:3000 (admin / admin) with a provisioned Prometheus datasource and a
+  "Timesheet Backend" dashboard (request rate, error rate, latency percentiles, process metrics)
+
+Stop with `docker compose -f docker/observability/docker-compose.yml down` (add `-v` to drop the data volumes).
+
 ### Distributed tracing (OpenTelemetry)
 
 `npm start` and `npm run dev` preload `src/tracing.js` (`node -r ./src/tracing.js src/server.js`), which
