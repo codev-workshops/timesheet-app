@@ -1,5 +1,20 @@
 const Joi = require('joi');
 
+// Calendar date as a plain YYYY-MM-DD string; kept as a string so no timezone conversion happens.
+const calendarDateSchema = Joi.string()
+  .pattern(/^\d{4}-\d{2}-\d{2}$/)
+  .custom((value, helpers) => {
+    const parsed = new Date(`${value}T00:00:00Z`);
+    if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
+      return helpers.error('date.calendar');
+    }
+    return value;
+  })
+  .messages({
+    'string.pattern.base': '"date" must be in YYYY-MM-DD format',
+    'date.calendar': '"date" must be a valid calendar date'
+  });
+
 const clientSchema = Joi.object({
   name: Joi.string().trim().min(1).max(255).required(),
   description: Joi.string().trim().max(1000).optional().allow(''),
@@ -11,14 +26,14 @@ const workEntrySchema = Joi.object({
   clientId: Joi.number().integer().positive().required(),
   hours: Joi.number().positive().max(24).precision(2).required(),
   description: Joi.string().trim().max(1000).optional().allow(''),
-  date: Joi.date().iso().required()
+  date: calendarDateSchema.required()
 });
 
 const updateWorkEntrySchema = Joi.object({
   clientId: Joi.number().integer().positive().optional(),
   hours: Joi.number().positive().max(24).precision(2).optional(),
   description: Joi.string().trim().max(1000).optional().allow(''),
-  date: Joi.date().iso().optional()
+  date: calendarDateSchema.optional()
 }).min(1); // At least one field must be provided
 
 const updateClientSchema = Joi.object({
