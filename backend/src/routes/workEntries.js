@@ -17,11 +17,11 @@ router.get('/', (req, res) => {
     SELECT we.id, we.client_id, we.hours, we.description, we.date, 
            we.created_at, we.updated_at, c.name as client_name
     FROM work_entries we
-    JOIN clients c ON we.client_id = c.id
+    JOIN clients c ON we.client_id = c.id AND c.user_email = ?
     WHERE we.user_email = ?
   `;
   
-  const params = [req.userEmail];
+  const params = [req.userEmail, req.userEmail];
   
   if (clientId) {
     const clientIdNum = parseInt(clientId);
@@ -58,9 +58,9 @@ router.get('/:id', (req, res) => {
     `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
             we.created_at, we.updated_at, c.name as client_name
      FROM work_entries we
-     JOIN clients c ON we.client_id = c.id
+     JOIN clients c ON we.client_id = c.id AND c.user_email = ?
      WHERE we.id = ? AND we.user_email = ?`,
-    [workEntryId, req.userEmail],
+    [req.userEmail, workEntryId, req.userEmail],
     (err, row) => {
       if (err) {
         console.error('Database error:', err);
@@ -116,9 +116,9 @@ router.post('/', (req, res, next) => {
               `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
                       we.created_at, we.updated_at, c.name as client_name
                FROM work_entries we
-               JOIN clients c ON we.client_id = c.id
-               WHERE we.id = ?`,
-              [this.lastID],
+               JOIN clients c ON we.client_id = c.id AND c.user_email = ?
+               WHERE we.id = ? AND we.user_email = ?`,
+              [req.userEmail, this.lastID, req.userEmail],
               (err, row) => {
                 if (err) {
                   console.error('Database error:', err);
@@ -233,9 +233,9 @@ router.put('/:id', (req, res, next) => {
               `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
                       we.created_at, we.updated_at, c.name as client_name
                FROM work_entries we
-               JOIN clients c ON we.client_id = c.id
-               WHERE we.id = ?`,
-              [workEntryId],
+               JOIN clients c ON we.client_id = c.id AND c.user_email = ?
+               WHERE we.id = ? AND we.user_email = ?`,
+              [req.userEmail, workEntryId, req.userEmail],
               (err, row) => {
                 if (err) {
                   console.error('Database error:', err);

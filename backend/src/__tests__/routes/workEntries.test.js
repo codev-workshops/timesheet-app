@@ -57,7 +57,7 @@ describe('Work Entry Routes', () => {
 
     test('should filter by client ID when provided', async () => {
       mockDb.all.mockImplementation((query, params, callback) => {
-        expect(params).toEqual(['test@example.com', 1]);
+        expect(params).toEqual(['test@example.com', 'test@example.com', 1]);
         callback(null, []);
       });
 
@@ -65,7 +65,7 @@ describe('Work Entry Routes', () => {
 
       expect(mockDb.all).toHaveBeenCalledWith(
         expect.stringContaining('AND we.client_id = ?'),
-        ['test@example.com', 1],
+        ['test@example.com', 'test@example.com', 1],
         expect.any(Function)
       );
     });
