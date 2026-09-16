@@ -1,5 +1,12 @@
+const { logger } = require('../config/logger');
+
 function errorHandler(err, req, res, next) {
-  console.error('Error:', err);
+  logger.error('Request failed', {
+    err,
+    requestId: req.requestId,
+    method: req.method,
+    path: req.originalUrl || req.url
+  });
 
   // Joi validation errors
   if (err.isJoi) {

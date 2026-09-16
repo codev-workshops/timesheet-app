@@ -1,8 +1,13 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+
+const { logger } = require('./config/logger');
+const { registry } = require('./config/metrics');
+const { requestContext } = require('./middleware/requestContext');
+const { httpLogger } = require('./middleware/httpLogger');
+const { metricsMiddleware } = require('./middleware/metricsMiddleware');
 
 const authRoutes = require('./routes/auth');
 const clientRoutes = require('./routes/clients');
@@ -14,6 +19,11 @@ const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Request correlation, structured access logging and metrics
+app.use(requestContext);
+app.use(httpLogger);
+app.use(metricsMiddleware);
 
 // Security middleware
 app.use(helmet());
@@ -29,9 +39,6 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Logging
-app.use(morgan('combined'));
-
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -39,6 +46,16 @@ app.use(express.urlencoded({ extended: true }));
 // Health check
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// Prometheus metrics
+app.get('/metrics', async (req, res, next) => {
+  try {
+    res.set('Content-Type', registry.contentType);
+    res.end(await registry.metrics());
+  } catch (err) {
+    next(err);
+  }
 });
 
 // Routes
@@ -60,15 +77,20 @@ async function startServer() {
   try {
     await initializeDatabase();
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-      console.log(`Health check: http://localhost:${PORT}/health`);
+      logger.info('Server started', {
+        port: PORT,
+        healthCheck: `http://localhost:${PORT}/health`,
+        metrics: `http://localhost:${PORT}/metrics`
+      });
     });
-  } catch (error) {
-    console.error('Failed to start server:', error);
+  } catch (err) {
+    logger.error('Failed to start server', { err });
     process.exit(1);
   }
 }
 
-startServer();
+if (require.main === module) {
+  startServer();
+}
 
 module.exports = app;
