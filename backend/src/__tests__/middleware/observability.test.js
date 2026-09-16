@@ -1,6 +1,7 @@
 const request = require('supertest');
 const app = require('../../server');
 const { logger, getRequestId } = require('../../config/logger');
+const { getDatabase } = require('../../database/init');
 
 describe('Observability', () => {
   describe('request correlation', () => {
@@ -58,6 +59,46 @@ describe('Observability', () => {
       expect(res.text).toContain(
         'http_request_errors_total{method="GET",route="/api/clients",status_code="401"'
       );
+    });
+
+    test('keeps the mounted route pattern for errors forwarded to the error handler', async () => {
+      getDatabase().get.mockImplementation((query, params, cb) => cb(null, { email: params[0] }));
+      const res400 = await request(app)
+        .post('/api/clients')
+        .set('x-user-email', 'metrics@example.com')
+        .send({});
+      expect(res400.status).toBe(400);
+
+      const res = await request(app).get('/metrics');
+      expect(res.text).toContain(
+        'http_requests_total{method="POST",route="/api/clients/",status_code="400"'
+      );
+    });
+
+    test('labels unknown paths as unmatched instead of the raw URL', async () => {
+      await request(app).get('/definitely-not-a-route-1');
+      await request(app).get('/definitely-not-a-route-2');
+      const res = await request(app).get('/metrics');
+
+      expect(res.text).toContain(
+        'http_requests_total{method="GET",route="unmatched",status_code="404"'
+      );
+      expect(res.text).not.toContain('definitely-not-a-route');
+    });
+  });
+
+  describe('error serialization', () => {
+    test('serializes err metadata with message and stack', () => {
+      const { MESSAGE } = require('triple-beam');
+      const info = logger.format.transform({
+        level: 'error',
+        message: 'boom',
+        err: new TypeError('bad thing')
+      });
+      const entry = JSON.parse(info[MESSAGE]);
+
+      expect(entry.err).toMatchObject({ name: 'TypeError', message: 'bad thing' });
+      expect(entry.err.stack).toContain('TypeError: bad thing');
     });
   });
 });
