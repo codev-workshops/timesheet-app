@@ -87,7 +87,7 @@ A full-stack web application for tracking and reporting employee hourly work acr
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+ installed
+- Node.js 20.17+ installed (required by `sqlite3@6`)
 - npm or yarn package manager
 
 ### Backend Setup
