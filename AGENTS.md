@@ -8,3 +8,4 @@ Multi-tenant time-tracking app: Express + SQLite backend, React 19 + MUI fronten
 - Commands: test `cd backend && npm test` · lint `cd frontend && npm run lint` · build `cd frontend && npm run build`.
 - Dev servers: backend `cd backend && npm run dev` (port 3001) · frontend `cd frontend && npm run dev` (port 5173).
 - For code review, use the `/review` skill. For security checks, use the `/security-audit` skill.
+- Review checklist and severity policy for every PR: `REVIEW.md` (ingested by Devin Review).
