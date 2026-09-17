@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios';
+import type { CreateProjectRequest, UpdateProjectRequest } from '../types/api';
 
 // Use empty string to make requests relative to the current origin
 // Vite proxy will forward /api requests to the backend
@@ -83,6 +84,32 @@ class ApiClient {
 
   async deleteAllClients() {
     const response = await this.client.delete('/api/clients');
+    return response.data;
+  }
+
+  // Project endpoints
+  async getProjects() {
+    const response = await this.client.get('/api/projects');
+    return response.data;
+  }
+
+  async getProject(id: number) {
+    const response = await this.client.get(`/api/projects/${id}`);
+    return response.data;
+  }
+
+  async createProject(projectData: CreateProjectRequest) {
+    const response = await this.client.post('/api/projects', projectData);
+    return response.data;
+  }
+
+  async updateProject(id: number, projectData: UpdateProjectRequest) {
+    const response = await this.client.put(`/api/projects/${id}`, projectData);
+    return response.data;
+  }
+
+  async deleteProject(id: number) {
+    const response = await this.client.delete(`/api/projects/${id}`);
     return response.data;
   }
 
