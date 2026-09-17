@@ -83,13 +83,16 @@ describe('Project Routes', () => {
       );
     });
 
-    test('should return 400 for invalid clientId filter', async () => {
-      const response = await request(app).get('/api/projects?clientId=abc');
+    test.each(['abc', '1abc', '0', '-1', '1.5', ''])(
+      'should return 400 for malformed clientId filter "%s"',
+      async (clientId) => {
+        const response = await request(app).get(`/api/projects?clientId=${clientId}`);
 
-      expect(response.status).toBe(400);
-      expect(response.body).toEqual({ error: 'Invalid client ID' });
-      expect(mockDb.all).not.toHaveBeenCalled();
-    });
+        expect(response.status).toBe(400);
+        expect(response.body).toEqual({ error: 'Invalid client ID' });
+        expect(mockDb.all).not.toHaveBeenCalled();
+      }
+    );
 
     test('should return empty array when no projects exist', async () => {
       mockDb.all.mockImplementation((query, params, callback) => {
@@ -142,12 +145,16 @@ describe('Project Routes', () => {
       expect(response.body).toEqual({ error: 'Project not found' });
     });
 
-    test('should return 400 for invalid project ID', async () => {
-      const response = await request(app).get('/api/projects/invalid');
+    test.each(['invalid', '1xyz', '0', '-1', '1.5'])(
+      'should return 400 for malformed project ID "%s"',
+      async (id) => {
+        const response = await request(app).get(`/api/projects/${id}`);
 
-      expect(response.status).toBe(400);
-      expect(response.body).toEqual({ error: 'Invalid project ID' });
-    });
+        expect(response.status).toBe(400);
+        expect(response.body).toEqual({ error: 'Invalid project ID' });
+        expect(mockDb.get).not.toHaveBeenCalled();
+      }
+    );
 
     test('should handle database error', async () => {
       mockDb.get.mockImplementation((query, params, callback) => {

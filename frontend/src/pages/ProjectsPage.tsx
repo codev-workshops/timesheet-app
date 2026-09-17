@@ -78,12 +78,16 @@ const ProjectsPage: React.FC = () => {
 
   const queryClient = useQueryClient();
 
-  const { data: projectsData, isLoading } = useQuery({
+  const {
+    data: projectsData,
+    isLoading,
+    isError: isProjectsError,
+  } = useQuery({
     queryKey: ['projects'],
     queryFn: () => apiClient.getProjects(),
   });
 
-  const { data: clientsData } = useQuery({
+  const { data: clientsData, isError: isClientsError } = useQuery({
     queryKey: ['clients'],
     queryFn: () => apiClient.getClients(),
   });
@@ -200,10 +204,27 @@ const ProjectsPage: React.FC = () => {
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4">Projects</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpen()}>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => handleOpen()}
+          disabled={isClientsError}
+        >
           Add Project
         </Button>
       </Box>
+
+      {isProjectsError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          Failed to load projects. Please try again later.
+        </Alert>
+      )}
+
+      {isClientsError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          Failed to load clients. Projects cannot be created until clients are available.
+        </Alert>
+      )}
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
@@ -286,7 +307,9 @@ const ProjectsPage: React.FC = () => {
                 <TableRow>
                   <TableCell colSpan={6} align="center">
                     <Typography color="text.secondary" sx={{ py: 3 }}>
-                      No projects found. Create your first project to get started.
+                      {isProjectsError
+                        ? 'Projects could not be loaded.'
+                        : 'No projects found. Create your first project to get started.'}
                     </Typography>
                   </TableCell>
                 </TableRow>

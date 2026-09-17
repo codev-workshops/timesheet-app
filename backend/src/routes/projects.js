@@ -15,6 +15,15 @@ const PROJECT_SELECT = `
   JOIN clients c ON p.client_id = c.id
 `;
 
+// Strictly parse a positive base-10 integer ID; returns NaN for anything else (e.g. '1abc', '0', '-1')
+function parseId(value) {
+  if (typeof value !== 'string' || !/^\d+$/.test(value)) {
+    return NaN;
+  }
+  const id = Number(value);
+  return id > 0 ? id : NaN;
+}
+
 // Normalize a Joi-parsed date (Date | '' | null | undefined) to 'YYYY-MM-DD' or null
 function toDateString(value) {
   if (value === undefined || value === null || value === '') {
@@ -31,8 +40,8 @@ router.get('/', (req, res) => {
   let query = `${PROJECT_SELECT} WHERE p.user_email = ?`;
   const params = [req.userEmail];
 
-  if (clientId) {
-    const clientIdNum = parseInt(clientId);
+  if (clientId !== undefined) {
+    const clientIdNum = parseId(clientId);
     if (isNaN(clientIdNum)) {
       return res.status(400).json({ error: 'Invalid client ID' });
     }
@@ -54,7 +63,7 @@ router.get('/', (req, res) => {
 
 // Get specific project
 router.get('/:id', (req, res) => {
-  const projectId = parseInt(req.params.id);
+  const projectId = parseId(req.params.id);
 
   if (isNaN(projectId)) {
     return res.status(400).json({ error: 'Invalid project ID' });
@@ -142,7 +151,7 @@ router.post('/', (req, res, next) => {
 // Update project
 router.put('/:id', (req, res, next) => {
   try {
-    const projectId = parseInt(req.params.id);
+    const projectId = parseId(req.params.id);
 
     if (isNaN(projectId)) {
       return res.status(400).json({ error: 'Invalid project ID' });
@@ -259,7 +268,7 @@ router.put('/:id', (req, res, next) => {
 
 // Delete project
 router.delete('/:id', (req, res) => {
-  const projectId = parseInt(req.params.id);
+  const projectId = parseId(req.params.id);
 
   if (isNaN(projectId)) {
     return res.status(400).json({ error: 'Invalid project ID' });
