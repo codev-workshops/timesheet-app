@@ -60,11 +60,11 @@ npm start
 
 ## Authentication
 
-The API uses simple email-based authentication. Include the user's email in the `x-user-email` header for all authenticated requests.
+`POST /api/auth/login` with `{ "email": "user@company.com" }` returns a signed JWT (`token`). Send it as a bearer token on all authenticated requests; tokens expire after `JWT_EXPIRES_IN` (default 24h). Set a strong `JWT_SECRET` (min 32 chars) — the server refuses to start in production without one.
 
 Example:
 ```
-x-user-email: user@company.com
+Authorization: Bearer <token>
 ```
 
 ## Database Schema
