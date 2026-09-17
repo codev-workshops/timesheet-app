@@ -31,8 +31,11 @@ FROM node:20-alpine AS production
 
 WORKDIR /app
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+# Patch OS packages and install dumb-init for proper signal handling
+RUN apk upgrade --no-cache && apk add --no-cache dumb-init
+
+# The runtime does not need npm/npx; remove the bundled copy and its vulnerable transitive deps
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
