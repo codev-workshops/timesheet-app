@@ -131,6 +131,7 @@ const ProjectsPage: React.FC = () => {
   const projects: Project[] = projectsData?.projects || [];
   const clients: Client[] = clientsData?.clients || [];
   const isSaving = createMutation.isPending || updateMutation.isPending;
+  const clientsUnavailable = isClientsError && !clientsData;
 
   const handleOpen = (project?: Project) => {
     if (project) {
@@ -208,7 +209,7 @@ const ProjectsPage: React.FC = () => {
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => handleOpen()}
-          disabled={isClientsError}
+          disabled={clientsUnavailable}
         >
           Add Project
         </Button>
@@ -220,9 +221,15 @@ const ProjectsPage: React.FC = () => {
         </Alert>
       )}
 
-      {isClientsError && (
+      {clientsUnavailable && (
         <Alert severity="error" sx={{ mb: 2 }}>
           Failed to load clients. Projects cannot be created until clients are available.
+        </Alert>
+      )}
+
+      {isClientsError && clientsData && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Could not refresh clients. The client list may be out of date.
         </Alert>
       )}
 
