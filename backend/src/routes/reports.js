@@ -8,6 +8,12 @@ const fs = require('fs');
 
 const router = express.Router();
 
+// Neutralise spreadsheet formula injection (cells starting with = + - @ \t \r)
+function sanitizeCsvCell(value) {
+  if (typeof value !== 'string') return value;
+  return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+}
+
 // All routes require authentication
 router.use(authenticateUser);
 
@@ -121,7 +127,12 @@ router.get('/export/csv/:clientId', (req, res) => {
             ]
           });
           
-          csvWriter.writeRecords(workEntries)
+          const safeEntries = workEntries.map((entry) => ({
+            ...entry,
+            description: sanitizeCsvCell(entry.description)
+          }));
+
+          csvWriter.writeRecords(safeEntries)
             .then(() => {
               // Send file and clean up
               res.download(tempPath, filename, (err) => {

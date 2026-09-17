@@ -3,6 +3,12 @@ export interface User {
   createdAt: string;
 }
 
+export interface LoginResponse {
+  message: string;
+  token: string;
+  user: User;
+}
+
 export interface Client {
   id: number;
   name: string;

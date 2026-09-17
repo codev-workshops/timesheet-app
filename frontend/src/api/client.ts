@@ -1,8 +1,16 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios';
+import { type LoginResponse } from '../types/api';
 
 // Use empty string to make requests relative to the current origin
 // Vite proxy will forward /api requests to the backend
 const API_BASE_URL = '';
+const TOKEN_KEY = 'authToken';
+
+export const tokenStorage = {
+  get: () => localStorage.getItem(TOKEN_KEY),
+  set: (token: string) => localStorage.setItem(TOKEN_KEY, token),
+  clear: () => localStorage.removeItem(TOKEN_KEY),
+};
 
 class ApiClient {
   private client: AxiosInstance;
@@ -16,12 +24,12 @@ class ApiClient {
       },
     });
 
-    // Request interceptor to add email header
+    // Request interceptor to attach the bearer token
     this.client.interceptors.request.use(
       (config) => {
-        const userEmail = localStorage.getItem('userEmail');
-        if (userEmail) {
-          config.headers['x-user-email'] = userEmail;
+        const token = tokenStorage.get();
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
       },
@@ -35,8 +43,8 @@ class ApiClient {
       (response: AxiosResponse) => response,
       (error) => {
         if (error.response?.status === 401) {
-          // Clear stored email on auth error
-          localStorage.removeItem('userEmail');
+          // Clear stored token on auth error
+          tokenStorage.clear();
           window.location.href = '/login';
         }
         return Promise.reject(error);
@@ -45,8 +53,8 @@ class ApiClient {
   }
 
   // Auth endpoints
-  async login(email: string) {
-    const response = await this.client.post('/api/auth/login', { email });
+  async login(email: string): Promise<LoginResponse> {
+    const response = await this.client.post<LoginResponse>('/api/auth/login', { email });
     return response.data;
   }
 

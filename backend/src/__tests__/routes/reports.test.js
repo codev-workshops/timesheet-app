@@ -209,6 +209,33 @@ describe('Report Routes', () => {
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ error: 'Internal server error' });
     });
+
+    test('should neutralise spreadsheet formulas in descriptions', async () => {
+      const writeRecords = jest.fn().mockRejectedValue(new Error('stop'));
+      require('csv-writer').createObjectCsvWriter.mockReturnValueOnce({ writeRecords });
+
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, name: 'Test Client' });
+      });
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, [
+          { hours: 1, description: '=HYPERLINK("http://evil",1)', date: '2024-01-01', created_at: 'x' },
+          { hours: 2, description: '+cmd|calc', date: '2024-01-02', created_at: 'x' },
+          { hours: 3, description: 'plain text', date: '2024-01-03', created_at: 'x' },
+          { hours: 4, description: null, date: '2024-01-04', created_at: 'x' }
+        ]);
+      });
+
+      await request(app).get('/api/reports/export/csv/1');
+
+      const written = writeRecords.mock.calls[0][0].map((r) => r.description);
+      expect(written).toEqual([
+        "'=HYPERLINK(\"http://evil\",1)",
+        "'+cmd|calc",
+        'plain text',
+        null
+      ]);
+    });
   });
 
   describe('GET /api/reports/export/pdf/:clientId', () => {

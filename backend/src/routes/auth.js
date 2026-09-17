@@ -2,6 +2,7 @@ const express = require('express');
 const { getDatabase } = require('../database/init');
 const { emailSchema } = require('../validation/schemas');
 const { authenticateUser } = require('../middleware/auth');
+const { signToken } = require('../config/jwt');
 
 const router = express.Router();
 
@@ -27,6 +28,7 @@ router.post('/login', async (req, res, next) => {
         // User exists
         return res.json({
           message: 'Login successful',
+          token: signToken(row.email),
           user: {
             email: row.email,
             createdAt: row.created_at
@@ -42,6 +44,7 @@ router.post('/login', async (req, res, next) => {
 
           res.status(201).json({
             message: 'User created and logged in successfully',
+            token: signToken(email),
             user: {
               email: email,
               createdAt: new Date().toISOString()

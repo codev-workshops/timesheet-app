@@ -12,6 +12,7 @@ const reportRoutes = require('./routes/reports');
 
 const { initializeDatabase } = require('./database/init');
 const { errorHandler } = require('./middleware/errorHandler');
+const { assertJwtConfig } = require('./config/jwt');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -47,6 +48,13 @@ const limiter = rateLimit({
   max: 100 // limit each IP to 100 requests per windowMs
 });
 app.use(limiter);
+
+// Stricter limit for login to slow down account enumeration / brute force
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20
+});
+app.use('/api/auth/login', loginLimiter);
 
 // Logging
 app.use(morgan('combined'));
@@ -88,6 +96,7 @@ if (process.env.NODE_ENV === 'production') {
 // Initialize database and start server
 async function startServer() {
   try {
+    assertJwtConfig();
     await initializeDatabase();
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);
