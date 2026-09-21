@@ -3,10 +3,45 @@ const {
   workEntrySchema,
   updateWorkEntrySchema,
   updateClientSchema,
-  emailSchema
+  emailSchema,
+  projectSchema,
+  updateProjectSchema
 } = require('../../validation/schemas');
 
 describe('Validation Schemas', () => {
+  describe('projectSchema', () => {
+    test('should validate valid project data', () => {
+      const { error, value } = projectSchema.validate({ name: 'Website', description: 'Redesign', clientId: 1 });
+      expect(error).toBeUndefined();
+      expect(value.clientId).toBe(1);
+    });
+
+    test('should require name and clientId', () => {
+      expect(projectSchema.validate({ clientId: 1 }).error).toBeDefined();
+      expect(projectSchema.validate({ name: 'Website' }).error).toBeDefined();
+    });
+
+    test('should reject non-positive or non-integer clientId', () => {
+      expect(projectSchema.validate({ name: 'Website', clientId: 0 }).error).toBeDefined();
+      expect(projectSchema.validate({ name: 'Website', clientId: 1.5 }).error).toBeDefined();
+    });
+
+    test('should reject name longer than 255 characters', () => {
+      expect(projectSchema.validate({ name: 'a'.repeat(256), clientId: 1 }).error).toBeDefined();
+    });
+  });
+
+  describe('updateProjectSchema', () => {
+    test('should allow partial updates', () => {
+      expect(updateProjectSchema.validate({ name: 'Renamed' }).error).toBeUndefined();
+      expect(updateProjectSchema.validate({ clientId: 2 }).error).toBeUndefined();
+    });
+
+    test('should reject empty update', () => {
+      expect(updateProjectSchema.validate({}).error).toBeDefined();
+    });
+  });
+
   describe('clientSchema', () => {
     test('should validate valid client data', () => {
       const validClient = {

@@ -8,18 +8,36 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticateUser);
 
+const WORK_ENTRY_SELECT = `
+  SELECT we.id, we.client_id, we.project_id, we.hours, we.rate, we.description, we.date,
+         we.created_at, we.updated_at, c.name as client_name, p.name as project_name
+  FROM work_entries we
+  JOIN clients c ON we.client_id = c.id
+  LEFT JOIN projects p ON we.project_id = p.id
+`;
+
+// Verifies the project belongs to the user and the given client; calls back with (err, status, message)
+function verifyProject(db, projectId, clientId, userEmail, callback) {
+  db.get(
+    'SELECT id, client_id FROM projects WHERE id = ? AND user_email = ?',
+    [projectId, userEmail],
+    (err, projectRow) => {
+      if (err) return callback(err);
+      if (!projectRow) return callback(null, 400, 'Project not found');
+      if (clientId !== undefined && projectRow.client_id !== clientId) {
+        return callback(null, 400, 'Project does not belong to the selected client');
+      }
+      callback(null);
+    }
+  );
+}
+
 // Get all work entries for authenticated user (with optional client filter)
 router.get('/', (req, res) => {
-  const { clientId } = req.query;
+  const { clientId, projectId } = req.query;
   const db = getDatabase();
   
-  let query = `
-    SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-           we.created_at, we.updated_at, c.name as client_name
-    FROM work_entries we
-    JOIN clients c ON we.client_id = c.id
-    WHERE we.user_email = ?
-  `;
+  let query = `${WORK_ENTRY_SELECT} WHERE we.user_email = ?`;
   
   const params = [req.userEmail];
   
@@ -30,6 +48,15 @@ router.get('/', (req, res) => {
     }
     query += ' AND we.client_id = ?';
     params.push(clientIdNum);
+  }
+
+  if (projectId) {
+    const projectIdNum = parseInt(projectId);
+    if (isNaN(projectIdNum)) {
+      return res.status(400).json({ error: 'Invalid project ID' });
+    }
+    query += ' AND we.project_id = ?';
+    params.push(projectIdNum);
   }
   
   query += ' ORDER BY we.date DESC, we.created_at DESC';
@@ -55,11 +82,7 @@ router.get('/:id', (req, res) => {
   const db = getDatabase();
   
   db.get(
-    `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-            we.created_at, we.updated_at, c.name as client_name
-     FROM work_entries we
-     JOIN clients c ON we.client_id = c.id
-     WHERE we.id = ? AND we.user_email = ?`,
+    `${WORK_ENTRY_SELECT} WHERE we.id = ? AND we.user_email = ?`,
     [workEntryId, req.userEmail],
     (err, row) => {
       if (err) {
@@ -84,7 +107,7 @@ router.post('/', (req, res, next) => {
       return next(error);
     }
 
-    const { clientId, hours, description, date } = value;
+    const { clientId, projectId, hours, rate, description, date } = value;
     const db = getDatabase();
 
     // Verify client exists (clients are shared among authenticated users)
@@ -101,38 +124,50 @@ router.post('/', (req, res, next) => {
           return res.status(400).json({ error: 'Client not found' });
         }
 
-        // Create work entry
-        db.run(
-          'INSERT INTO work_entries (client_id, user_email, hours, description, date) VALUES (?, ?, ?, ?, ?)',
-          [clientId, req.userEmail, hours, description || null, date],
-          function(err) {
+        if (projectId) {
+          verifyProject(db, projectId, clientId, req.userEmail, (err, status, message) => {
             if (err) {
               console.error('Database error:', err);
-              return res.status(500).json({ error: 'Failed to create work entry' });
+              return res.status(500).json({ error: 'Internal server error' });
             }
+            if (status) {
+              return res.status(status).json({ error: message });
+            }
+            insertEntry();
+          });
+        } else {
+          insertEntry();
+        }
 
-            // Return the created work entry with client name
-            db.get(
-              `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-                      we.created_at, we.updated_at, c.name as client_name
-               FROM work_entries we
-               JOIN clients c ON we.client_id = c.id
-               WHERE we.id = ? AND we.user_email = ?`,
-              [this.lastID, req.userEmail],
-              (err, row) => {
-                if (err) {
-                  console.error('Database error:', err);
-                  return res.status(500).json({ error: 'Work entry created but failed to retrieve' });
-                }
-
-                res.status(201).json({
-                  message: 'Work entry created successfully',
-                  workEntry: row
-                });
+        function insertEntry() {
+          db.run(
+            'INSERT INTO work_entries (client_id, project_id, user_email, hours, rate, description, date) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [clientId, projectId || null, req.userEmail, hours, rate ?? null, description || null, date],
+            function(err) {
+              if (err) {
+                console.error('Database error:', err);
+                return res.status(500).json({ error: 'Failed to create work entry' });
               }
-            );
-          }
-        );
+
+              // Return the created work entry with client and project names
+              db.get(
+                `${WORK_ENTRY_SELECT} WHERE we.id = ? AND we.user_email = ?`,
+                [this.lastID, req.userEmail],
+                (err, row) => {
+                  if (err) {
+                    console.error('Database error:', err);
+                    return res.status(500).json({ error: 'Work entry created but failed to retrieve' });
+                  }
+
+                  res.status(201).json({
+                    message: 'Work entry created successfully',
+                    workEntry: row
+                  });
+                }
+              );
+            }
+          );
+        }
       }
     );
   } catch (error) {
@@ -185,11 +220,27 @@ router.put('/:id', (req, res, next) => {
                 return res.status(400).json({ error: 'Client not found' });
               }
 
-              performUpdate();
+              verifyProjectThenUpdate();
             }
           );
         } else {
-          performUpdate();
+          verifyProjectThenUpdate();
+        }
+
+        function verifyProjectThenUpdate() {
+          if (!value.projectId) {
+            return performUpdate();
+          }
+          verifyProject(db, value.projectId, value.clientId, req.userEmail, (err, status, message) => {
+            if (err) {
+              console.error('Database error:', err);
+              return res.status(500).json({ error: 'Internal server error' });
+            }
+            if (status) {
+              return res.status(status).json({ error: message });
+            }
+            performUpdate();
+          });
         }
 
         function performUpdate() {
@@ -202,9 +253,19 @@ router.put('/:id', (req, res, next) => {
             values.push(value.clientId);
           }
 
+          if (value.projectId !== undefined) {
+            updates.push('project_id = ?');
+            values.push(value.projectId);
+          }
+
           if (value.hours !== undefined) {
             updates.push('hours = ?');
             values.push(value.hours);
+          }
+
+          if (value.rate !== undefined) {
+            updates.push('rate = ?');
+            values.push(value.rate);
           }
 
           if (value.description !== undefined) {
@@ -228,13 +289,9 @@ router.put('/:id', (req, res, next) => {
               return res.status(500).json({ error: 'Failed to update work entry' });
             }
 
-            // Return updated work entry with client name
+            // Return updated work entry with client and project names
             db.get(
-              `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-                      we.created_at, we.updated_at, c.name as client_name
-               FROM work_entries we
-               JOIN clients c ON we.client_id = c.id
-               WHERE we.id = ? AND we.user_email = ?`,
+              `${WORK_ENTRY_SELECT} WHERE we.id = ? AND we.user_email = ?`,
               [workEntryId, req.userEmail],
               (err, row) => {
                 if (err) {

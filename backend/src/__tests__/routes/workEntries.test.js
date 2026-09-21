@@ -152,6 +152,102 @@ describe('Work Entry Routes', () => {
       expect(response.body.message).toBe('Work entry created successfully');
     });
 
+    test('should persist project_id and rate and return project name', async () => {
+      const newEntry = { clientId: 1, projectId: 7, hours: 2, rate: 150, date: '2024-01-15' };
+      const savedEntry = { id: 1, client_id: 1, project_id: 7, hours: 2, rate: 150, date: '2024-01-15',
+        client_name: 'Client A', project_name: 'Website' };
+
+      mockDb.get.mockImplementation((query, params, callback) => {
+        if (query.includes('FROM clients')) {
+          callback(null, { id: 1 });
+        } else if (query.includes('FROM projects')) {
+          expect(params).toEqual([7, 'test@example.com']);
+          callback(null, { id: 7, client_id: 1 });
+        } else {
+          expect(query).toContain('LEFT JOIN projects p ON we.project_id = p.id');
+          expect(query).toContain('we.project_id');
+          expect(query).toContain('we.rate');
+          callback(null, savedEntry);
+        }
+      });
+
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        expect(query).toContain('INSERT INTO work_entries (client_id, project_id, user_email, hours, rate, description, date)');
+        expect(params).toEqual([1, 7, 'test@example.com', 2, 150, null, expect.any(Date)]);
+        this.lastID = 1;
+        callback.call(this, null);
+      });
+
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send(newEntry);
+
+      expect(response.status).toBe(201);
+      expect(response.body.workEntry).toEqual(savedEntry);
+    });
+
+    test('should store null project_id and rate when omitted', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1 });
+      });
+
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        expect(params[1]).toBeNull();
+        expect(params[4]).toBeNull();
+        this.lastID = 1;
+        callback.call(this, null);
+      });
+
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 5, date: '2024-01-15' });
+
+      expect(response.status).toBe(201);
+    });
+
+    test('should return 400 if project not found for user', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        if (query.includes('FROM clients')) {
+          callback(null, { id: 1 });
+        } else {
+          callback(null, null);
+        }
+      });
+
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, projectId: 99, hours: 5, date: '2024-01-15' });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Project not found' });
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('should return 400 if project belongs to a different client', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        if (query.includes('FROM clients')) {
+          callback(null, { id: 1 });
+        } else {
+          callback(null, { id: 7, client_id: 2 });
+        }
+      });
+
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, projectId: 7, hours: 5, date: '2024-01-15' });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Project does not belong to the selected client' });
+    });
+
+    test('should return 400 for negative rate', async () => {
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 5, rate: -10, date: '2024-01-15' });
+
+      expect(response.status).toBe(400);
+    });
+
     test('should return 400 if client not found', async () => {
       mockDb.get.mockImplementation((query, params, callback) => {
         callback(null, null); // Client doesn't exist
@@ -259,6 +355,48 @@ describe('Work Entry Routes', () => {
         .send({ clientId: 2 });
 
       expect(response.status).toBe(200);
+    });
+
+    test('should update project_id and rate', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        if (query.includes('FROM projects')) {
+          callback(null, { id: 3, client_id: 1 });
+        } else {
+          callback(null, { id: 1, project_id: 3, rate: 99.5, project_name: 'Migration' });
+        }
+      });
+
+      mockDb.run.mockImplementation((query, params, callback) => {
+        expect(query).toContain('project_id = ?');
+        expect(query).toContain('rate = ?');
+        expect(params).toEqual([3, 99.5, 1, 'test@example.com']);
+        callback(null);
+      });
+
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ projectId: 3, rate: 99.5 });
+
+      expect(response.status).toBe(200);
+      expect(response.body.workEntry.project_name).toBe('Migration');
+    });
+
+    test('should return 400 when updating to a project the user does not own', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        if (query.includes('FROM projects')) {
+          callback(null, null);
+        } else {
+          callback(null, { id: 1 });
+        }
+      });
+
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ projectId: 3 });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Project not found' });
+      expect(mockDb.run).not.toHaveBeenCalled();
     });
 
     test('should return 404 if work entry not found', async () => {

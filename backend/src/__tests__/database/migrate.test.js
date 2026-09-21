@@ -1,5 +1,5 @@
 const sqlite3 = require('sqlite3').verbose();
-const { migrateSchema, run, get, all } = require('../../database/migrate');
+const { migrateSchema, run, get, all, SCHEMA_VERSION } = require('../../database/migrate');
 
 jest.unmock('sqlite3');
 
@@ -74,7 +74,8 @@ describe('migrateSchema', () => {
     await run(db, `INSERT INTO work_entries (client_id, user_email, hours, date) VALUES (?, 'alice@example.com', 8, '2023-01-01')`, [clientId]);
     const workId = (await get(db, `SELECT id FROM work_entries`)).id;
     const { user_email: _creator, ...originalClient } = await get(db, 'SELECT * FROM clients');
-    const originalWork = await get(db, 'SELECT * FROM work_entries');
+    const legacyWork = await get(db, 'SELECT * FROM work_entries');
+    const originalWork = { ...legacyWork, project_id: null, rate: null };
 
     await migrateSchema(db);
 
@@ -104,6 +105,55 @@ describe('migrateSchema', () => {
     const workFks = await all(db, `PRAGMA foreign_key_list(work_entries)`);
     const clientFk = workFks.find(fk => fk.from === 'client_id');
     expect(clientFk.on_delete).toBe('RESTRICT');
+    const projectFk = workFks.find(fk => fk.from === 'project_id');
+    expect(projectFk.table).toBe('projects');
+    expect(projectFk.on_delete).toBe('RESTRICT');
+    expect((await get(db, 'PRAGMA user_version')).user_version).toBe(SCHEMA_VERSION);
+  });
+
+  test('adds project_id and rate to a current-shape database without a rebuild', async () => {
+    await run(db, `CREATE TABLE users (
+      email TEXT PRIMARY KEY,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await run(db, `CREATE TABLE clients (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT,
+      department TEXT,
+      email TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await run(db, `CREATE TABLE work_entries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      client_id INTEGER NOT NULL,
+      user_email TEXT NOT NULL,
+      hours DECIMAL(5,2) NOT NULL,
+      description TEXT,
+      date DATE NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE RESTRICT,
+      FOREIGN KEY (user_email) REFERENCES users (email) ON DELETE CASCADE
+    )`);
+    await run(db, `INSERT INTO users (email) VALUES ('fay@example.com')`);
+    await run(db, `INSERT INTO clients (name) VALUES ('Client F')`);
+    await run(db, `INSERT INTO work_entries (client_id, user_email, hours, date) VALUES (1, 'fay@example.com', 2, '2024-01-01')`);
+
+    await migrateSchema(db);
+
+    const columns = (await all(db, 'PRAGMA table_info(work_entries)')).map(c => c.name);
+    expect(columns).toEqual(expect.arrayContaining(['project_id', 'rate']));
+    expect(await get(db, `SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'projects'`)).toBeDefined();
+    const indexes = (await all(db, `SELECT name FROM sqlite_master WHERE type = 'index'`)).map(i => i.name);
+    expect(indexes).toEqual(expect.arrayContaining(['idx_work_entries_project_id', 'idx_projects_client_id', 'idx_projects_user_email']));
+
+    await run(db, `INSERT INTO projects (name, client_id, user_email) VALUES ('Proj', 1, 'fay@example.com')`);
+    await run(db, `UPDATE work_entries SET project_id = 1, rate = 120.5 WHERE id = 1`);
+    await expect(run(db, 'DELETE FROM projects WHERE id = 1')).rejects.toThrow(/FOREIGN KEY/);
+    await expect(run(db, 'DELETE FROM clients WHERE id = 1')).rejects.toThrow(/FOREIGN KEY/);
+    expect((await get(db, 'PRAGMA user_version')).user_version).toBe(SCHEMA_VERSION);
   });
 
   test('migrates a legacy schema that is missing department and email columns', async () => {
