@@ -1,4 +1,10 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios';
+import type {
+  CreateProjectRequest,
+  UpdateProjectRequest,
+  CreateWorkEntryRequest,
+  UpdateWorkEntryRequest,
+} from '../types/api';
 
 // Use empty string to make requests relative to the current origin
 // Vite proxy will forward /api requests to the backend
@@ -86,9 +92,39 @@ class ApiClient {
     return response.data;
   }
 
-  // Work entry endpoints
-  async getWorkEntries(clientId?: number) {
+  // Project endpoints
+  async getProjects(clientId?: number) {
     const params = clientId ? { clientId } : {};
+    const response = await this.client.get('/api/projects', { params });
+    return response.data;
+  }
+
+  async getProject(id: number) {
+    const response = await this.client.get(`/api/projects/${id}`);
+    return response.data;
+  }
+
+  async createProject(projectData: CreateProjectRequest) {
+    const response = await this.client.post('/api/projects', projectData);
+    return response.data;
+  }
+
+  async updateProject(id: number, projectData: UpdateProjectRequest) {
+    const response = await this.client.put(`/api/projects/${id}`, projectData);
+    return response.data;
+  }
+
+  async deleteProject(id: number) {
+    const response = await this.client.delete(`/api/projects/${id}`);
+    return response.data;
+  }
+
+  // Work entry endpoints
+  async getWorkEntries(clientId?: number, projectId?: number) {
+    const params = {
+      ...(clientId ? { clientId } : {}),
+      ...(projectId ? { projectId } : {}),
+    };
     const response = await this.client.get('/api/work-entries', { params });
     return response.data;
   }
@@ -98,12 +134,12 @@ class ApiClient {
     return response.data;
   }
 
-  async createWorkEntry(entryData: { clientId: number; hours: number; description?: string; date: string }) {
+  async createWorkEntry(entryData: CreateWorkEntryRequest) {
     const response = await this.client.post('/api/work-entries', entryData);
     return response.data;
   }
 
-  async updateWorkEntry(id: number, entryData: { clientId?: number; hours?: number; description?: string; date?: string }) {
+  async updateWorkEntry(id: number, entryData: UpdateWorkEntryRequest) {
     const response = await this.client.put(`/api/work-entries/${id}`, entryData);
     return response.data;
   }

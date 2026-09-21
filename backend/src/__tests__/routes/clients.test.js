@@ -277,12 +277,21 @@ describe('Client Routes', () => {
   });
 
   describe('DELETE /api/clients/:id', () => {
-    test('should delete existing client', async () => {
+    const mockExistsWithCounts = (workEntryCount, projectCount) => {
       mockDb.get.mockImplementation((query, params, callback) => {
-        callback(null, { id: 1 });
+        if (query.includes('COUNT(*)')) {
+          callback(null, { work_entry_count: workEntryCount, project_count: projectCount });
+        } else {
+          callback(null, { id: 1 });
+        }
       });
+    };
+
+    test('should delete existing client with no work entries', async () => {
+      mockExistsWithCounts(0, 0);
 
       mockDb.run.mockImplementation((query, params, callback) => {
+        expect(query).toBe('DELETE FROM clients WHERE id = ?');
         callback(null);
       });
 
@@ -290,6 +299,42 @@ describe('Client Routes', () => {
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ message: 'Client deleted successfully' });
+      expect(mockDb.run).toHaveBeenCalledTimes(1);
+    });
+
+    test('should return 409 and not delete when client has work entries', async () => {
+      mockExistsWithCounts(2, 0);
+
+      const response = await request(app).delete('/api/clients/1');
+
+      expect(response.status).toBe(409);
+      expect(response.body).toEqual({ error: 'Client has work entries and cannot be deleted' });
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('should return 409 and not delete when client has projects', async () => {
+      mockExistsWithCounts(0, 1);
+
+      const response = await request(app).delete('/api/clients/1');
+
+      expect(response.status).toBe(409);
+      expect(response.body).toEqual({ error: 'Client has projects and cannot be deleted' });
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('should handle database error when counting references', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        if (query.includes('COUNT(*)')) {
+          callback(new Error('Count failed'));
+        } else {
+          callback(null, { id: 1 });
+        }
+      });
+
+      const response = await request(app).delete('/api/clients/1');
+
+      expect(response.status).toBe(500);
+      expect(mockDb.run).not.toHaveBeenCalled();
     });
 
     test('should return 404 if client not found', async () => {
@@ -311,9 +356,7 @@ describe('Client Routes', () => {
     });
 
     test('should handle database delete error', async () => {
-      mockDb.get.mockImplementation((query, params, callback) => {
-        callback(null, { id: 1 });
-      });
+      mockExistsWithCounts(0, 0);
 
       mockDb.run.mockImplementation((query, params, callback) => {
         callback(new Error('Delete failed'));
@@ -325,10 +368,8 @@ describe('Client Routes', () => {
       expect(response.body).toEqual({ error: 'Failed to delete client' });
     });
 
-    test('should return 409 if client is referenced by work entries', async () => {
-      mockDb.get.mockImplementation((query, params, callback) => {
-        callback(null, { id: 1 });
-      });
+    test('should return 409 if the database enforces the RESTRICT foreign key', async () => {
+      mockExistsWithCounts(0, 0);
 
       mockDb.run.mockImplementation((query, params, callback) => {
         const err = new Error('FOREIGN KEY constraint failed');

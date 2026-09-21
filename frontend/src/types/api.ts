@@ -13,15 +13,29 @@ export interface Client {
   updated_at: string;
 }
 
+export interface Project {
+  id: number;
+  name: string;
+  description: string | null;
+  client_id: number;
+  user_email: string;
+  client_name?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface WorkEntry {
   id: number;
   client_id: number;
+  project_id: number | null;
   hours: number;
+  rate: number | null;
   description: string | null;
   date: string;
   created_at: string;
   updated_at: string;
   client_name?: string;
+  project_name?: string | null;
 }
 
 export interface WorkEntryWithClient extends WorkEntry {
@@ -49,16 +63,32 @@ export interface UpdateClientRequest {
   email?: string;
 }
 
+export interface CreateProjectRequest {
+  name: string;
+  description?: string;
+  clientId: number;
+}
+
+export interface UpdateProjectRequest {
+  name?: string;
+  description?: string;
+  clientId?: number;
+}
+
 export interface CreateWorkEntryRequest {
   clientId: number;
+  projectId?: number | null;
   hours: number;
+  rate?: number | null;
   description?: string;
   date: string;
 }
 
 export interface UpdateWorkEntryRequest {
   clientId?: number;
+  projectId?: number | null;
   hours?: number;
+  rate?: number | null;
   description?: string;
   date?: string;
 }

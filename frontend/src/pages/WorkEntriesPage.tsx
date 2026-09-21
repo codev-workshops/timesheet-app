@@ -35,17 +35,26 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import apiClient from '../api/client';
 import { useAuth } from '../hooks/useAuth';
-import { type WorkEntry } from '../types/api';
+import {
+  type Project,
+  type WorkEntry,
+  type CreateWorkEntryRequest,
+  type UpdateWorkEntryRequest,
+} from '../types/api';
+
+const makeEmptyForm = () => ({
+  clientId: 0,
+  projectId: 0,
+  hours: '',
+  rate: '',
+  description: '',
+  date: new Date(),
+});
 
 const WorkEntriesPage: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<WorkEntry | null>(null);
-  const [formData, setFormData] = useState({
-    clientId: 0,
-    hours: '',
-    description: '',
-    date: new Date(),
-  });
+  const [formData, setFormData] = useState(makeEmptyForm);
   const [error, setError] = useState('');
 
   const queryClient = useQueryClient();
@@ -62,9 +71,13 @@ const WorkEntriesPage: React.FC = () => {
     queryFn: () => apiClient.getClients(),
   });
 
+  const { data: projectsData } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => apiClient.getProjects(),
+  });
+
   const createMutation = useMutation({
-    mutationFn: (entryData: { clientId: number; hours: number; description?: string; date: string }) =>
-      apiClient.createWorkEntry(entryData),
+    mutationFn: (entryData: CreateWorkEntryRequest) => apiClient.createWorkEntry(entryData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workEntries'] });
       queryClient.invalidateQueries({ queryKey: ['clientReport', user?.email] });
@@ -77,7 +90,7 @@ const WorkEntriesPage: React.FC = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { clientId?: number; hours?: number; description?: string; date?: string } }) =>
+    mutationFn: ({ id, data }: { id: number; data: UpdateWorkEntryRequest }) =>
       apiClient.updateWorkEntry(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workEntries'] });
@@ -104,24 +117,23 @@ const WorkEntriesPage: React.FC = () => {
 
   const workEntries = workEntriesData?.workEntries || [];
   const clients = clientsData?.clients || [];
+  const projects: Project[] = projectsData?.projects || [];
+  const clientProjects = projects.filter((project) => project.client_id === formData.clientId);
 
   const handleOpen = (entry?: WorkEntry) => {
     if (entry) {
       setEditingEntry(entry);
       setFormData({
         clientId: entry.client_id,
+        projectId: entry.project_id ?? 0,
         hours: entry.hours.toString(),
+        rate: entry.rate != null ? entry.rate.toString() : '',
         description: entry.description || '',
         date: new Date(entry.date),
       });
     } else {
       setEditingEntry(null);
-      setFormData({
-        clientId: 0,
-        hours: '',
-        description: '',
-        date: new Date(),
-      });
+      setFormData(makeEmptyForm());
     }
     setError('');
     setOpen(true);
@@ -130,12 +142,7 @@ const WorkEntriesPage: React.FC = () => {
   const handleClose = () => {
     setOpen(false);
     setEditingEntry(null);
-    setFormData({
-      clientId: 0,
-      hours: '',
-      description: '',
-      date: new Date(),
-    });
+    setFormData(makeEmptyForm());
     setError('');
   };
 
@@ -154,14 +161,25 @@ const WorkEntriesPage: React.FC = () => {
       return;
     }
 
+    let rate: number | null = null;
+    if (formData.rate !== '') {
+      rate = parseFloat(formData.rate);
+      if (Number.isNaN(rate) || rate <= 0) {
+        setError('Rate must be a positive number');
+        return;
+      }
+    }
+
     if (!formData.date) {
       setError('Please select a date');
       return;
     }
 
-    const entryData = {
+    const entryData: CreateWorkEntryRequest = {
       clientId: formData.clientId,
+      projectId: formData.projectId || null,
       hours,
+      rate,
       description: formData.description || undefined,
       date: formData.date.toISOString().split('T')[0],
     };
@@ -222,8 +240,10 @@ const WorkEntriesPage: React.FC = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell>Client</TableCell>
+                    <TableCell>Project</TableCell>
                     <TableCell>Date</TableCell>
                     <TableCell>Hours</TableCell>
+                    <TableCell>Rate</TableCell>
                     <TableCell>Description</TableCell>
                     <TableCell align="right">Actions</TableCell>
                   </TableRow>
@@ -238,6 +258,13 @@ const WorkEntriesPage: React.FC = () => {
                           </Typography>
                         </TableCell>
                         <TableCell>
+                          {entry.project_name ? (
+                            <Chip label={entry.project_name} size="small" />
+                          ) : (
+                            <Chip label="No project" size="small" variant="outlined" />
+                          )}
+                        </TableCell>
+                        <TableCell>
                           <Typography variant="body2">
                             {new Date(entry.date).toLocaleDateString()}
                           </Typography>
@@ -248,6 +275,13 @@ const WorkEntriesPage: React.FC = () => {
                             color="primary" 
                             variant="outlined" 
                           />
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">
+                            {entry.rate != null
+                              ? `$${Number(entry.rate).toFixed(2)} (${(Number(entry.rate) * Number(entry.hours)).toFixed(2)})`
+                              : '-'}
+                          </Typography>
                         </TableCell>
                         <TableCell>
                           {entry.description ? (
@@ -278,7 +312,7 @@ const WorkEntriesPage: React.FC = () => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={5} align="center">
+                      <TableCell colSpan={7} align="center">
                         <Typography color="text.secondary" sx={{ py: 3 }}>
                           No work entries found. Add your first work entry to get started.
                         </Typography>
@@ -301,12 +335,32 @@ const WorkEntriesPage: React.FC = () => {
                 <InputLabel>Client</InputLabel>
                 <Select
                   value={formData.clientId}
-                  onChange={(e) => setFormData({ ...formData, clientId: Number(e.target.value) })}
+                  onChange={(e) => setFormData({ ...formData, clientId: Number(e.target.value), projectId: 0 })}
                   disabled={createMutation.isPending || updateMutation.isPending}
                 >
                   {clients.map((client: { id: number; name: string }) => (
                     <MenuItem key={client.id} value={client.id}>
                       {client.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl fullWidth margin="dense">
+                <InputLabel id="work-entry-project-label">Project</InputLabel>
+                <Select
+                  labelId="work-entry-project-label"
+                  label="Project"
+                  value={formData.projectId}
+                  onChange={(e) => setFormData({ ...formData, projectId: Number(e.target.value) })}
+                  disabled={createMutation.isPending || updateMutation.isPending || !formData.clientId}
+                >
+                  <MenuItem value={0}>
+                    <em>No project</em>
+                  </MenuItem>
+                  {clientProjects.map((project) => (
+                    <MenuItem key={project.id} value={project.id}>
+                      {project.name}
                     </MenuItem>
                   ))}
                 </Select>
@@ -321,6 +375,17 @@ const WorkEntriesPage: React.FC = () => {
                 inputProps={{ min: 0.01, max: 24, step: 0.01 }}
                 value={formData.hours}
                 onChange={(e) => setFormData({ ...formData, hours: e.target.value })}
+                disabled={createMutation.isPending || updateMutation.isPending}
+              />
+
+              <TextField
+                margin="dense"
+                label="Hourly Rate (optional)"
+                type="number"
+                fullWidth
+                inputProps={{ min: 0.01, step: 0.01 }}
+                value={formData.rate}
+                onChange={(e) => setFormData({ ...formData, rate: e.target.value })}
                 disabled={createMutation.isPending || updateMutation.isPending}
               />
 

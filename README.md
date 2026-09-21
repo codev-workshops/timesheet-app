@@ -169,10 +169,17 @@ Frontend will be running at `http://localhost:5173`
 - `POST /api/clients` - Create new client
 - `GET /api/clients/:id` - Get specific client
 - `PUT /api/clients/:id` - Update client
-- `DELETE /api/clients/:id` - Delete client
+- `DELETE /api/clients/:id` - Delete client (409 if the client still has work entries or projects)
+
+### Projects
+- `GET /api/projects` - Get all projects for the current user (optional ?clientId filter)
+- `POST /api/projects` - Create new project (`name`, `description?`, `clientId`)
+- `GET /api/projects/:id` - Get specific project
+- `PUT /api/projects/:id` - Update project
+- `DELETE /api/projects/:id` - Delete project (409 if work entries reference it)
 
 ### Work Entries
-- `GET /api/work-entries` - Get all work entries (optional ?clientId filter)
+- `GET /api/work-entries` - Get all work entries (optional ?clientId / ?projectId filter)
 - `POST /api/work-entries` - Create new work entry
 - `GET /api/work-entries/:id` - Get specific work entry
 - `PUT /api/work-entries/:id` - Update work entry
@@ -184,6 +191,19 @@ Frontend will be running at `http://localhost:5173`
 - `GET /api/reports/export/pdf/:clientId` - Export report as PDF
 
 All authenticated endpoints require `Authorization: Bearer <token>` header.
+
+## Database Schema
+
+- `users` (`email` PK)
+- `clients` (`id`, `name`, `description`, `department`, `email`)
+- `projects` (`id`, `name`, `description`, `client_id` -> clients RESTRICT, `user_email` -> users CASCADE)
+- `work_entries` (`id`, `client_id` -> clients RESTRICT, `project_id` nullable -> projects RESTRICT,
+  `user_email` -> users CASCADE, `hours`, `rate` nullable billable hourly rate, `description`, `date`)
+
+Deleting a client or project that still has work entries is blocked (HTTP 409). The schema is
+versioned with `PRAGMA user_version` and migrated on startup by `backend/src/database/migrate.js`
+(shared by the in-memory dev/test database and the file-based Docker database); see
+`backend/README.md` for details.
 
 ## Security Features
 

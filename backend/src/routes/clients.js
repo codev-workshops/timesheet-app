@@ -234,20 +234,41 @@ router.delete('/:id', (req, res) => {
         return res.status(404).json({ error: 'Client not found' });
       }
       
-      // Delete client (RESTRICT prevents deletion if any work entries reference it)
-      db.run(
-        'DELETE FROM clients WHERE id = ?',
-        [clientId],
-        function(err) {
+      // Application-level RESTRICT: FK enforcement may be off for the in-memory DB
+      db.get(
+        `SELECT
+           (SELECT COUNT(*) FROM work_entries WHERE client_id = ?) as work_entry_count,
+           (SELECT COUNT(*) FROM projects WHERE client_id = ?) as project_count`,
+        [clientId, clientId],
+        (err, countRow) => {
           if (err) {
             console.error('Database error:', err);
-            if (err.code === 'SQLITE_CONSTRAINT' || (err.message && /FOREIGN KEY/i.test(err.message))) {
-              return res.status(409).json({ error: 'Client has work entries and cannot be deleted' });
-            }
-            return res.status(500).json({ error: 'Failed to delete client' });
+            return res.status(500).json({ error: 'Internal server error' });
           }
-          
-          res.json({ message: 'Client deleted successfully' });
+
+          if (countRow && countRow.work_entry_count > 0) {
+            return res.status(409).json({ error: 'Client has work entries and cannot be deleted' });
+          }
+
+          if (countRow && countRow.project_count > 0) {
+            return res.status(409).json({ error: 'Client has projects and cannot be deleted' });
+          }
+
+          db.run(
+            'DELETE FROM clients WHERE id = ?',
+            [clientId],
+            function(err) {
+              if (err) {
+                console.error('Database error:', err);
+                if (err.code === 'SQLITE_CONSTRAINT' || (err.message && /FOREIGN KEY/i.test(err.message))) {
+                  return res.status(409).json({ error: 'Client has work entries and cannot be deleted' });
+                }
+                return res.status(500).json({ error: 'Failed to delete client' });
+              }
+
+              res.json({ message: 'Client deleted successfully' });
+            }
+          );
         }
       );
     }
