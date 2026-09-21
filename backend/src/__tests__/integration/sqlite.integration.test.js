@@ -155,6 +155,22 @@ describe('Real SQLite integration', () => {
       expect(ids.size).toBe(total);
     });
 
+    test('an entry created via POST sorts with seeded text dates and appears on page 1', async () => {
+      const created = await request(app)
+        .post('/api/work-entries')
+        .set('x-user-email', USER)
+        .send({ clientId: seed.clientIds[0], hours: 1.5, description: 'newest', date: '2099-01-01' });
+      expect(created.status).toBe(201);
+      const stored = await get(db, 'SELECT date, typeof(date) AS t FROM work_entries WHERE id = ?', [
+        created.body.workEntry.id
+      ]);
+      expect(stored).toEqual({ date: '2099-01-01', t: 'text' });
+
+      const res = await request(app).get('/api/work-entries?limit=5').set('x-user-email', USER);
+      expect(res.body.workEntries[0].id).toBe(created.body.workEntry.id);
+      await run(db, 'DELETE FROM work_entries WHERE id = ?', [created.body.workEntry.id]);
+    });
+
     test('offset beyond the end returns an empty page with the real total', async () => {
       const total = (await get(db, 'SELECT COUNT(*) AS c FROM work_entries WHERE user_email = ?', [USER])).c;
       const res = await request(app).get(`/api/work-entries?offset=${total + 10}`).set('x-user-email', USER);

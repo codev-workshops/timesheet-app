@@ -8,6 +8,12 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticateUser);
 
+// Joi.date() yields a Date; sqlite3 would bind it as epoch ms, so store the
+// same YYYY-MM-DD text the schema/seed use to keep ORDER BY date consistent.
+function toDateString(value) {
+  return value instanceof Date ? value.toISOString().slice(0, 10) : value;
+}
+
 const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 500;
 
@@ -141,7 +147,7 @@ router.post('/', (req, res, next) => {
         // Create work entry
         db.run(
           'INSERT INTO work_entries (client_id, user_email, hours, description, date) VALUES (?, ?, ?, ?, ?)',
-          [clientId, req.userEmail, hours, description || null, date],
+          [clientId, req.userEmail, hours, description || null, toDateString(date)],
           function(err) {
             if (err) {
               console.error('Database error:', err);
@@ -251,7 +257,7 @@ router.put('/:id', (req, res, next) => {
 
           if (value.date !== undefined) {
             updates.push('date = ?');
-            values.push(value.date);
+            values.push(toDateString(value.date));
           }
 
           updates.push('updated_at = CURRENT_TIMESTAMP');
