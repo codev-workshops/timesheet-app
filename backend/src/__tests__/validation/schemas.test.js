@@ -239,6 +239,24 @@ describe('Validation Schemas', () => {
       const { error } = workEntrySchema.validate(entry);
       expect(error).toBeDefined();
     });
+
+    test('should keep the calendar date stable regardless of server timezone', () => {
+      const originalTz = process.env.TZ;
+
+      try {
+        for (const tz of ['UTC', 'America/New_York', 'Australia/Sydney']) {
+          process.env.TZ = tz;
+          const { value } = workEntrySchema.validate({
+            clientId: 1,
+            hours: 5,
+            date: '2024-01-15'
+          });
+          expect(value.date).toBe('2024-01-15');
+        }
+      } finally {
+        process.env.TZ = originalTz;
+      }
+    });
   });
 
   describe('updateWorkEntrySchema', () => {
