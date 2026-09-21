@@ -205,6 +205,58 @@ describe('Validation Schemas', () => {
       const { error } = workEntrySchema.validate(entry);
       expect(error).toBeDefined();
     });
+
+    test('should keep date as the original YYYY-MM-DD string', () => {
+      const entry = {
+        clientId: 1,
+        hours: 5,
+        date: '2024-01-15'
+      };
+
+      const { error, value } = workEntrySchema.validate(entry);
+      expect(error).toBeUndefined();
+      expect(value.date).toBe('2024-01-15');
+    });
+
+    test('should reject date with a time component', () => {
+      const entry = {
+        clientId: 1,
+        hours: 5,
+        date: '2024-01-15T00:00:00.000Z'
+      };
+
+      const { error } = workEntrySchema.validate(entry);
+      expect(error).toBeDefined();
+    });
+
+    test('should reject impossible calendar date', () => {
+      const entry = {
+        clientId: 1,
+        hours: 5,
+        date: '2024-02-30'
+      };
+
+      const { error } = workEntrySchema.validate(entry);
+      expect(error).toBeDefined();
+    });
+
+    test('should keep the calendar date stable regardless of server timezone', () => {
+      const originalTz = process.env.TZ;
+
+      try {
+        for (const tz of ['UTC', 'America/New_York', 'Australia/Sydney']) {
+          process.env.TZ = tz;
+          const { value } = workEntrySchema.validate({
+            clientId: 1,
+            hours: 5,
+            date: '2024-01-15'
+          });
+          expect(value.date).toBe('2024-01-15');
+        }
+      } finally {
+        process.env.TZ = originalTz;
+      }
+    });
   });
 
   describe('updateWorkEntrySchema', () => {

@@ -30,6 +30,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../api/client';
 import { type ClientReport } from '../types/api';
+import { formatEntryDate, formatLocalDate } from '../utils/date';
 
 const ReportsPage: React.FC = () => {
   const [selectedClientId, setSelectedClientId] = useState<number>(0);
@@ -58,7 +59,7 @@ const ReportsPage: React.FC = () => {
       const a = document.createElement('a');
       a.href = url;
       const client = clients.find((c: { id: number; name: string }) => c.id === selectedClientId);
-      a.download = `${client?.name?.replace(/[^a-zA-Z0-9]/g, '_')}_report_${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `${client?.name?.replace(/[^a-zA-Z0-9]/g, '_')}_report_${formatLocalDate(new Date())}.csv`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -78,7 +79,7 @@ const ReportsPage: React.FC = () => {
       const a = document.createElement('a');
       a.href = url;
       const client = clients.find((c: { id: number; name: string }) => c.id === selectedClientId);
-      a.download = `${client?.name?.replace(/[^a-zA-Z0-9]/g, '_')}_report_${new Date().toISOString().split('T')[0]}.pdf`;
+      a.download = `${client?.name?.replace(/[^a-zA-Z0-9]/g, '_')}_report_${formatLocalDate(new Date())}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -232,7 +233,7 @@ const ReportsPage: React.FC = () => {
                           <TableRow key={entry.id}>
                             <TableCell>
                               <Typography variant="body2">
-                                {new Date(entry.date).toLocaleDateString()}
+                                {formatEntryDate(entry.date)}
                               </Typography>
                             </TableCell>
                             <TableCell>
