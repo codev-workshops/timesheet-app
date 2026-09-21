@@ -25,7 +25,10 @@ function row(summary) {
   const rate = m.http_reqs || {};
   const failed = m.http_req_failed || {};
   const bytes = m.payload_bytes || {};
+  const received = m.data_received || {};
+  const iterationCount = (m.iterations || {}).count;
   return {
+    wire: received.count && iterationCount ? received.count / iterationCount : undefined,
     p50: dur.med,
     p95: dur['p(95)'],
     p99: dur['p(99)'],
@@ -56,14 +59,14 @@ function labelMd(label, data) {
       ? 'Dashboard script mode: `legacy` (GET /api/clients + GET /api/work-entries, all rows).'
       : 'Dashboard script mode: `summary` (GET /api/reports/summary).',
     '',
-    '| Endpoint | p50 | p95 | p99 | req/s | iterations | error rate | avg payload | thresholds failed |',
-    '|---|---|---|---|---|---|---|---|---|',
+    '| Endpoint | p50 | p95 | p99 | req/s | iterations | error rate | avg payload (decoded) | avg bytes on wire / iteration | thresholds failed |',
+    '|---|---|---|---|---|---|---|---|---|---|',
   ];
   for (const [key, name] of Object.entries(SCRIPTS)) {
     if (!data[key]) continue;
     const r = row(data[key]);
     lines.push(
-      `| ${name} | ${ms(r.p50)} | ${ms(r.p95)} | ${ms(r.p99)} | ${num(r.rps)} | ${r.iterations} | ${pct(r.errorRate)} | ${kb(r.payload)} | ${r.thresholdsFailed} |`
+      `| ${name} | ${ms(r.p50)} | ${ms(r.p95)} | ${ms(r.p99)} | ${num(r.rps)} | ${r.iterations} | ${pct(r.errorRate)} | ${kb(r.payload)} | ${kb(r.wire)} | ${r.thresholdsFailed} |`
     );
   }
   lines.push('', 'Raw per-script k6 output: `perf-reports/' + label + '/*.txt`, JSON: `perf-reports/' + label + '.json`.', '');
@@ -99,6 +102,7 @@ function comparisonMd(base, after) {
     lines.push(`| requests/sec | ${num(b.rps)} | ${num(a.rps)} | ${improvement(b.rps, a.rps, false)} |`);
     lines.push(`| error rate | ${pct(b.errorRate)} | ${pct(a.errorRate)} | ${improvement(b.errorRate, a.errorRate)} |`);
     lines.push(`| avg payload (decoded) | ${kb(b.payload)} | ${kb(a.payload)} | ${improvement(b.payload, a.payload)} |`);
+    lines.push(`| avg bytes on wire / iteration | ${kb(b.wire)} | ${kb(a.wire)} | ${improvement(b.wire, a.wire)} |`);
     lines.push('');
   }
   return lines.join('\n');

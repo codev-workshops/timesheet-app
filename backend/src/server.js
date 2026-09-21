@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 
@@ -14,6 +15,9 @@ const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Response compression (gzip/br negotiated via Accept-Encoding)
+app.use(compression());
 
 // Security middleware
 app.use(helmet());

@@ -10,6 +10,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TablePagination,
   IconButton,
   Dialog,
   DialogTitle,
@@ -34,7 +35,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import apiClient from '../api/client';
-import { type WorkEntry } from '../types/api';
+import { type WorkEntry, type WorkEntriesResponse } from '../types/api';
 
 const WorkEntriesPage: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -46,13 +47,20 @@ const WorkEntriesPage: React.FC = () => {
     date: new Date(),
   });
   const [error, setError] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
 
   const queryClient = useQueryClient();
 
-  const { data: workEntriesData, isLoading: entriesLoading } = useQuery({
-    queryKey: ['workEntries'],
-    queryFn: () => apiClient.getWorkEntries(),
+  const { data: workEntriesData, isLoading: entriesLoading } = useQuery<WorkEntriesResponse>({
+    queryKey: ['workEntries', { limit: rowsPerPage, offset: page * rowsPerPage }],
+    queryFn: () => apiClient.getWorkEntries(undefined, { limit: rowsPerPage, offset: page * rowsPerPage }),
   });
+
+  const invalidateEntries = () => {
+    queryClient.invalidateQueries({ queryKey: ['workEntries'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
+  };
 
   const { data: clientsData, isLoading: clientsLoading } = useQuery({
     queryKey: ['clients'],
@@ -63,7 +71,7 @@ const WorkEntriesPage: React.FC = () => {
     mutationFn: (entryData: { clientId: number; hours: number; description?: string; date: string }) =>
       apiClient.createWorkEntry(entryData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workEntries'] });
+      invalidateEntries();
       handleClose();
     },
     onError: (err: unknown) => {
@@ -76,7 +84,7 @@ const WorkEntriesPage: React.FC = () => {
     mutationFn: ({ id, data }: { id: number; data: { clientId?: number; hours?: number; description?: string; date?: string } }) =>
       apiClient.updateWorkEntry(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workEntries'] });
+      invalidateEntries();
       handleClose();
     },
     onError: (err: unknown) => {
@@ -88,7 +96,7 @@ const WorkEntriesPage: React.FC = () => {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiClient.deleteWorkEntry(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workEntries'] });
+      invalidateEntries();
     },
     onError: (err: unknown) => {
       const error = err as { response?: { data?: { error?: string } } };
@@ -97,6 +105,7 @@ const WorkEntriesPage: React.FC = () => {
   });
 
   const workEntries = workEntriesData?.workEntries || [];
+  const totalEntries = workEntriesData?.pagination?.total ?? workEntries.length;
   const clients = clientsData?.clients || [];
 
   const handleOpen = (entry?: WorkEntry) => {
@@ -282,6 +291,18 @@ const WorkEntriesPage: React.FC = () => {
                 </TableBody>
               </Table>
             </TableContainer>
+            <TablePagination
+              component="div"
+              count={totalEntries}
+              page={page}
+              onPageChange={(_event, newPage) => setPage(newPage)}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={(event) => {
+                setRowsPerPage(parseInt(event.target.value, 10));
+                setPage(0);
+              }}
+              rowsPerPageOptions={[25, 50, 100]}
+            />
           </Paper>
         )}
 
