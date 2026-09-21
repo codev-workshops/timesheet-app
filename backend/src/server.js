@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 
@@ -15,6 +16,9 @@ const { errorHandler } = require('./middleware/errorHandler');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Response compression (gzip/br negotiated via Accept-Encoding)
+app.use(compression());
+
 // Security middleware
 app.use(helmet());
 app.use(cors({
@@ -25,7 +29,7 @@ app.use(cors({
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 100 // limit each IP to 100 requests per windowMs
 });
 app.use(limiter);
 
@@ -59,6 +63,10 @@ app.use('*', (req, res) => {
 async function startServer() {
   try {
     await initializeDatabase();
+    if (process.env.SEED_PERF === '1') {
+      const { seedPerfData } = require('../scripts/seed');
+      await seedPerfData();
+    }
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
       console.log(`Health check: http://localhost:${PORT}/health`);

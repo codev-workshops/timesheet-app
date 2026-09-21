@@ -87,8 +87,11 @@ class ApiClient {
   }
 
   // Work entry endpoints
-  async getWorkEntries(clientId?: number) {
-    const params = clientId ? { clientId } : {};
+  async getWorkEntries(clientId?: number, pagination?: { limit?: number; offset?: number }) {
+    const params: Record<string, number> = {};
+    if (clientId) params.clientId = clientId;
+    if (pagination?.limit !== undefined) params.limit = pagination.limit;
+    if (pagination?.offset !== undefined) params.offset = pagination.offset;
     const response = await this.client.get('/api/work-entries', { params });
     return response.data;
   }
@@ -114,6 +117,11 @@ class ApiClient {
   }
 
   // Report endpoints
+  async getDashboardSummary() {
+    const response = await this.client.get('/api/reports/summary');
+    return response.data;
+  }
+
   async getClientReport(clientId: number) {
     const response = await this.client.get(`/api/reports/client/${clientId}`);
     return response.data;

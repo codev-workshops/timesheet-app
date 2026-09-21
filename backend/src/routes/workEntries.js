@@ -8,39 +8,82 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticateUser);
 
-// Get all work entries for authenticated user (with optional client filter)
+// Joi.date() yields a Date; sqlite3 would bind it as epoch ms, so store the
+// same YYYY-MM-DD text the schema/seed use to keep ORDER BY date consistent.
+function toDateString(value) {
+  return value instanceof Date ? value.toISOString().slice(0, 10) : value;
+}
+
+const DEFAULT_PAGE_SIZE = 50;
+const MAX_PAGE_SIZE = 500;
+
+function parsePagination(query) {
+  let limit = DEFAULT_PAGE_SIZE;
+  let offset = 0;
+
+  if (query.limit !== undefined) {
+    limit = parseInt(query.limit, 10);
+    if (isNaN(limit) || limit < 1) return { error: 'Invalid limit' };
+    limit = Math.min(limit, MAX_PAGE_SIZE);
+  }
+
+  if (query.offset !== undefined) {
+    offset = parseInt(query.offset, 10);
+    if (isNaN(offset) || offset < 0) return { error: 'Invalid offset' };
+  }
+
+  return { limit, offset };
+}
+
+// Get work entries for authenticated user (paginated, with optional client filter)
 router.get('/', (req, res) => {
   const { clientId } = req.query;
   const db = getDatabase();
-  
-  let query = `
-    SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-           we.created_at, we.updated_at, c.name as client_name
-    FROM work_entries we
-    JOIN clients c ON we.client_id = c.id
-    WHERE we.user_email = ?
-  `;
-  
-  const params = [req.userEmail];
-  
+
+  const pagination = parsePagination(req.query);
+  if (pagination.error) {
+    return res.status(400).json({ error: pagination.error });
+  }
+  const { limit, offset } = pagination;
+
+  let whereClause = ' WHERE we.user_email = ?';
+  const filterParams = [req.userEmail];
+
   if (clientId) {
     const clientIdNum = parseInt(clientId);
     if (isNaN(clientIdNum)) {
       return res.status(400).json({ error: 'Invalid client ID' });
     }
-    query += ' AND we.client_id = ?';
-    params.push(clientIdNum);
+    whereClause += ' AND we.client_id = ?';
+    filterParams.push(clientIdNum);
   }
-  
-  query += ' ORDER BY we.date DESC, we.created_at DESC';
-  
-  db.all(query, params, (err, rows) => {
+
+  const countQuery = `SELECT COUNT(*) AS total FROM work_entries we${whereClause}`;
+  const listQuery = `
+    SELECT we.id, we.client_id, we.hours, we.description, we.date, 
+           we.created_at, we.updated_at, c.name as client_name
+    FROM work_entries we
+    JOIN clients c ON we.client_id = c.id${whereClause}
+    ORDER BY we.date DESC, we.created_at DESC
+    LIMIT ? OFFSET ?`;
+
+  db.get(countQuery, filterParams, (err, countRow) => {
     if (err) {
       console.error('Database error:', err);
       return res.status(500).json({ error: 'Internal server error' });
     }
-    
-    res.json({ workEntries: rows });
+
+    db.all(listQuery, [...filterParams, limit, offset], (err, rows) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+
+      res.json({
+        workEntries: rows,
+        pagination: { total: countRow ? countRow.total : 0, limit, offset }
+      });
+    });
   });
 });
 
@@ -104,7 +147,7 @@ router.post('/', (req, res, next) => {
         // Create work entry
         db.run(
           'INSERT INTO work_entries (client_id, user_email, hours, description, date) VALUES (?, ?, ?, ?, ?)',
-          [clientId, req.userEmail, hours, description || null, date],
+          [clientId, req.userEmail, hours, description || null, toDateString(date)],
           function(err) {
             if (err) {
               console.error('Database error:', err);
@@ -214,7 +257,7 @@ router.put('/:id', (req, res, next) => {
 
           if (value.date !== undefined) {
             updates.push('date = ?');
-            values.push(value.date);
+            values.push(toDateString(value.date));
           }
 
           updates.push('updated_at = CURRENT_TIMESTAMP');
