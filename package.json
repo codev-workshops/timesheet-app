@@ -1,0 +1,10 @@
+{
+  "name": "timesheet-app",
+  "private": true,
+  "scripts": {
+    "perf:server": "cd backend && SEED_PERF=1 RATE_LIMIT_MAX=1000000 node src/server.js",
+    "perf:baseline": "k6/run-all.sh baseline",
+    "perf:after": "DASHBOARD_MODE=summary k6/run-all.sh after",
+    "perf:report": "node k6/report.js"
+  }
+}

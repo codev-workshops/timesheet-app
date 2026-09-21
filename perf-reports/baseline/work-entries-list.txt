@@ -1,0 +1,169 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+     execution: local
+        script: /home/ubuntu/repos/timesheet-app/k6/work-entries-list.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 50 max VUs, 1m10s max duration (incl. graceful stop):
+              * default: Up to 50 looping VUs for 40s over 3 stages (gracefulRampDown: 30s, gracefulStop: 30s)
+
+
+running (0m01.0s), 01/50 VUs, 3 complete and 0 interrupted iterations
+default   [   2% ] 01/50 VUs  01.0s/40.0s
+
+running (0m02.0s), 02/50 VUs, 8 complete and 0 interrupted iterations
+default   [   5% ] 02/50 VUs  02.0s/40.0s
+
+running (0m03.0s), 03/50 VUs, 14 complete and 0 interrupted iterations
+default   [   7% ] 03/50 VUs  03.0s/40.0s
+
+running (0m04.0s), 04/50 VUs, 18 complete and 0 interrupted iterations
+default   [  10% ] 04/50 VUs  04.0s/40.0s
+
+running (0m05.0s), 05/50 VUs, 24 complete and 0 interrupted iterations
+default   [  12% ] 05/50 VUs  05.0s/40.0s
+
+running (0m06.0s), 06/50 VUs, 29 complete and 0 interrupted iterations
+default   [  15% ] 06/50 VUs  06.0s/40.0s
+
+running (0m07.0s), 07/50 VUs, 35 complete and 0 interrupted iterations
+default   [  17% ] 07/50 VUs  07.0s/40.0s
+
+running (0m08.0s), 08/50 VUs, 39 complete and 0 interrupted iterations
+default   [  20% ] 08/50 VUs  08.0s/40.0s
+
+running (0m09.0s), 09/50 VUs, 46 complete and 0 interrupted iterations
+default   [  22% ] 09/50 VUs  09.0s/40.0s
+
+running (0m10.0s), 09/50 VUs, 51 complete and 0 interrupted iterations
+default   [  25% ] 09/50 VUs  10.0s/40.0s
+
+running (0m11.0s), 11/50 VUs, 56 complete and 0 interrupted iterations
+default   [  27% ] 11/50 VUs  11.0s/40.0s
+
+running (0m12.0s), 13/50 VUs, 59 complete and 0 interrupted iterations
+default   [  30% ] 13/50 VUs  12.0s/40.0s
+
+running (0m13.0s), 15/50 VUs, 68 complete and 0 interrupted iterations
+default   [  32% ] 15/50 VUs  13.0s/40.0s
+
+running (0m14.0s), 17/50 VUs, 68 complete and 0 interrupted iterations
+default   [  35% ] 17/50 VUs  14.0s/40.0s
+
+running (0m15.0s), 19/50 VUs, 68 complete and 0 interrupted iterations
+default   [  38% ] 19/50 VUs  15.0s/40.0s
+
+running (0m16.0s), 21/50 VUs, 83 complete and 0 interrupted iterations
+default   [  40% ] 21/50 VUs  16.0s/40.0s
+
+running (0m17.0s), 23/50 VUs, 85 complete and 0 interrupted iterations
+default   [  42% ] 23/50 VUs  17.0s/40.0s
+
+running (0m18.0s), 25/50 VUs, 86 complete and 0 interrupted iterations
+default   [  45% ] 25/50 VUs  18.0s/40.0s
+
+running (0m19.0s), 27/50 VUs, 98 complete and 0 interrupted iterations
+default   [  47% ] 27/50 VUs  19.0s/40.0s
+
+running (0m20.0s), 29/50 VUs, 107 complete and 0 interrupted iterations
+default   [  50% ] 29/50 VUs  20.0s/40.0s
+
+running (0m21.0s), 31/50 VUs, 110 complete and 0 interrupted iterations
+default   [  52% ] 31/50 VUs  21.0s/40.0s
+
+running (0m22.0s), 33/50 VUs, 113 complete and 0 interrupted iterations
+default   [  55% ] 33/50 VUs  22.0s/40.0s
+
+running (0m23.0s), 35/50 VUs, 119 complete and 0 interrupted iterations
+default   [  57% ] 35/50 VUs  23.0s/40.0s
+
+running (0m24.0s), 37/50 VUs, 124 complete and 0 interrupted iterations
+default   [  60% ] 37/50 VUs  24.0s/40.0s
+
+running (0m25.0s), 39/50 VUs, 130 complete and 0 interrupted iterations
+default   [  62% ] 39/50 VUs  25.0s/40.0s
+
+running (0m26.0s), 41/50 VUs, 133 complete and 0 interrupted iterations
+default   [  65% ] 41/50 VUs  26.0s/40.0s
+
+running (0m27.0s), 43/50 VUs, 136 complete and 0 interrupted iterations
+default   [  67% ] 43/50 VUs  27.0s/40.0s
+
+running (0m28.0s), 45/50 VUs, 143 complete and 0 interrupted iterations
+default   [  70% ] 45/50 VUs  28.0s/40.0s
+
+running (0m29.0s), 47/50 VUs, 153 complete and 0 interrupted iterations
+default   [  72% ] 47/50 VUs  29.0s/40.0s
+
+running (0m30.0s), 49/50 VUs, 160 complete and 0 interrupted iterations
+default   [  75% ] 49/50 VUs  30.0s/40.0s
+
+running (0m31.0s), 50/50 VUs, 162 complete and 0 interrupted iterations
+default   [  77% ] 50/50 VUs  31.0s/40.0s
+
+running (0m32.0s), 50/50 VUs, 167 complete and 0 interrupted iterations
+default   [  80% ] 50/50 VUs  32.0s/40.0s
+
+running (0m33.0s), 50/50 VUs, 169 complete and 0 interrupted iterations
+default   [  82% ] 50/50 VUs  33.0s/40.0s
+
+running (0m34.0s), 50/50 VUs, 175 complete and 0 interrupted iterations
+default   [  85% ] 50/50 VUs  34.0s/40.0s
+
+running (0m35.0s), 50/50 VUs, 176 complete and 0 interrupted iterations
+default   [  87% ] 50/50 VUs  35.0s/40.0s
+
+running (0m36.0s), 47/50 VUs, 184 complete and 0 interrupted iterations
+default   [  90% ] 47/50 VUs  36.0s/40.0s
+
+running (0m37.0s), 40/50 VUs, 197 complete and 0 interrupted iterations
+default   [  92% ] 40/50 VUs  37.0s/40.0s
+
+running (0m38.0s), 36/50 VUs, 201 complete and 0 interrupted iterations
+default   [  95% ] 36/50 VUs  38.0s/40.0s
+
+running (0m39.0s), 32/50 VUs, 205 complete and 0 interrupted iterations
+default   [  97% ] 32/50 VUs  39.0s/40.0s
+
+running (0m40.0s), 28/50 VUs, 209 complete and 0 interrupted iterations
+default   [ 100% ] 28/50 VUs  40.0s/40.0s
+
+running (0m41.0s), 23/50 VUs, 214 complete and 0 interrupted iterations
+default ↓ [ 100% ] 28/50 VUs  40s
+
+running (0m42.0s), 17/50 VUs, 220 complete and 0 interrupted iterations
+default ↓ [ 100% ] 28/50 VUs  40s
+
+running (0m43.0s), 07/50 VUs, 230 complete and 0 interrupted iterations
+default ↓ [ 100% ] 28/50 VUs  40s
+
+     ✓ status 200
+     ✓ has workEntries
+
+     checks.........................: 100.00% 474 out of 474
+     data_received..................: 2.5 GB  57 MB/s
+     data_sent......................: 36 kB   814 B/s
+     http_req_blocked...............: avg=116.64µs min=2.38µs   med=4.24µs   max=17.88ms  p(90)=175.45µs p(95)=185.52µs p(99)=328.56µs
+     http_req_connecting............: avg=101.33µs min=0s       med=0s       max=17.82ms  p(90)=119.61µs p(95)=123.25µs p(99)=264.73µs
+   ✗ http_req_duration..............: avg=4.76s    min=168.52ms med=4.42s    max=16.71s   p(90)=8.55s    p(95)=13.93s   p(99)=16.08s  
+       { expected_response:true }...: avg=4.76s    min=168.52ms med=4.42s    max=16.71s   p(90)=8.55s    p(95)=13.93s   p(99)=16.08s  
+   ✓ http_req_failed................: 0.00%   0 out of 237
+     http_req_receiving.............: avg=636.19ms min=2.47ms   med=104.99ms max=3.49s    p(90)=1.99s    p(95)=2.32s    p(99)=3.14s   
+     http_req_sending...............: avg=21.45µs  min=7.04µs   med=14.7µs   max=76.95µs  p(90)=48.42µs  p(95)=53.48µs  p(99)=70.38µs 
+     http_req_tls_handshaking.......: avg=0s       min=0s       med=0s       max=0s       p(90)=0s       p(95)=0s       p(99)=0s      
+     http_req_waiting...............: avg=4.12s    min=165.67ms med=3.73s    max=16.35s   p(90)=6.62s    p(95)=12.96s   p(99)=15.69s  
+     http_reqs......................: 237     5.393373/s
+     iteration_duration.............: avg=4.84s    min=235.55ms med=4.49s    max=16.77s   p(90)=8.63s    p(95)=14s      p(99)=16.15s  
+     iterations.....................: 237     5.393373/s
+     payload_bytes..................: avg=10498182 min=10498182 med=10498182 max=10498182 p(90)=10498182 p(95)=10498182 p(99)=10498182
+     vus............................: 7       min=1          max=50
+     vus_max........................: 50      min=50         max=50
+
+
+running (0m43.9s), 00/50 VUs, 237 complete and 0 interrupted iterations
+default ✓ [ 100% ] 00/50 VUs  40s
