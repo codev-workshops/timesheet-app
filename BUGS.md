@@ -185,6 +185,22 @@ but it violates the repo rule.
 
 ---
 
+## 8. Clearing the date picker silently keeps the previous date
+
+**Severity:** Low (reported by @asiri-source during review of PR #46)
+
+**Steps to reproduce:** open the work-entry dialog, clear the year (or any) segment of the date picker so the
+picker emits `null`, then save.
+
+**Expected:** a validation error, or the form refuses to submit until a date is chosen.
+
+**Actual:** `onChange={(date) => date && setFormData(...)}` ignores the `null`, so `formData.date` keeps
+its previous value and the entry is saved with a stale date and no warning.
+
+**Affected files:** `frontend/src/pages/WorkEntriesPage.tsx`.
+
+---
+
 ## Not bugs (confirmed expected)
 
 - Data disappears when the backend restarts — the SQLite database is in-memory by design.
