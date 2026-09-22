@@ -25,6 +25,29 @@ npm run test:ci
 npm run test:coverage:html
 ```
 
+## Retry Strategy (flaky / network-dependent tests)
+
+| Layer | Mechanism | Default |
+|---|---|---|
+| CI safety net | `setup.js` calls `jest.retryTimes()` for every test when `CI` is set | 1 retry in CI, 0 locally (`TEST_CI_RETRIES` overrides) |
+| Known-flaky suites | `flaky('name', () => { ... })` from `helpers/retry.js` | 2 retries (`TEST_RETRIES` overrides) |
+| Network calls inside a test | `withNetworkRetry(() => fetchSomething())` | 3 retries with exponential backoff, only for transient errors (`ECONNRESET`, `ETIMEDOUT`, 429/502/503/504...) (`TEST_NETWORK_RETRIES` overrides) |
+
+```js
+const { flaky, withNetworkRetry } = require('../helpers/retry');
+
+flaky('PDF export', () => {
+  it('streams the file', async () => {
+    const res = await withNetworkRetry(() => request(app).get('/api/reports/pdf'));
+    expect(res.status).toBe(200);
+  });
+});
+```
+
+Retries are logged (`LOGGING RETRY ERRORS` / `RETRY n`) so genuinely flaky tests
+stay visible and can be fixed rather than hidden. Prefer fixing the root cause;
+use `flaky()` only as a documented, scoped mitigation.
+
 ## Test Structure
 
 ```

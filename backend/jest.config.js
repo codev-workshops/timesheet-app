@@ -5,6 +5,7 @@ module.exports = {
   collectCoverageFrom: [
     'src/**/*.js',
     '!src/server.js', // Exclude server startup file
+    '!src/__tests__/**',
     '!**/node_modules/**'
   ],
   coverageReporters: ['text', 'lcov', 'html'],
