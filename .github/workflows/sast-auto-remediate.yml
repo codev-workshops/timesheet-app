@@ -41,8 +41,10 @@ jobs:
           for dir in backend frontend; do
             echo "::group::npm audit — ${dir}"
             (cd "$dir" && npm audit --json > "../scan-results/npm-audit-${dir}.json" 2>/dev/null) || true
-            # Ensure the file is valid JSON even if npm produced nothing
-            jq -e . "scan-results/npm-audit-${dir}.json" >/dev/null 2>&1 || echo '{}' > "scan-results/npm-audit-${dir}.json"
+            if ! jq -e '.metadata.vulnerabilities' "scan-results/npm-audit-${dir}.json" >/dev/null 2>&1; then
+              echo '{"scan_error":true}' > "scan-results/npm-audit-${dir}.json"
+              echo "::warning::npm audit in ${dir} did not produce a valid report"
+            fi
             echo "::endgroup::"
           done
 
@@ -81,6 +83,14 @@ jobs:
           IMAGE_SCANNED: ${{ steps.docker_build.outcome == 'success' }}
         run: |
           [ -s scan-results/trivy.json ] || echo '{"Results":[]}' > scan-results/trivy.json
+
+          SCAN_ERROR=false
+          if jq -e '.scan_error == true' scan-results/npm-audit-backend.json >/dev/null 2>&1; then
+            SCAN_ERROR=true
+          fi
+          if jq -e '.scan_error == true' scan-results/npm-audit-frontend.json >/dev/null 2>&1; then
+            SCAN_ERROR=true
+          fi
 
           NPM_BE_HIGH=$(jq -r '.metadata.vulnerabilities.high // 0' scan-results/npm-audit-backend.json)
           NPM_BE_CRIT=$(jq -r '.metadata.vulnerabilities.critical // 0' scan-results/npm-audit-backend.json)
@@ -127,8 +137,13 @@ jobs:
             echo "**Top Trivy findings**"
             echo "${TRIVY_TOP:-- none}"
           } > scan-results/summary.md
+          if [ "$SCAN_ERROR" = "true" ]; then
+            echo "" >> scan-results/summary.md
+            echo "**Scan status:** npm audit incomplete — results are UNKNOWN, not clean" >> scan-results/summary.md
+          fi
 
           echo "has_findings=${HAS_FINDINGS}" >> "$GITHUB_OUTPUT"
+          echo "scan_error=${SCAN_ERROR}" >> "$GITHUB_OUTPUT"
           echo "total=${TOTAL}" >> "$GITHUB_OUTPUT"
           echo "npm_high=$((NPM_BE_HIGH + NPM_FE_HIGH))" >> "$GITHUB_OUTPUT"
           echo "npm_critical=$((NPM_BE_CRIT + NPM_FE_CRIT))" >> "$GITHUB_OUTPUT"
@@ -171,9 +186,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           TOTAL: ${{ steps.findings.outputs.total }}
+          SCAN_ERROR: ${{ steps.findings.outputs.scan_error }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          if [ "$TOTAL" -eq 0 ]; then
+          if [ "$SCAN_ERROR" = "true" ]; then
+            STATUS="UNKNOWN — npm audit did not complete; cannot confirm clean"
+          elif [ "$TOTAL" -eq 0 ]; then
             STATUS="PASS — 0 HIGH/CRITICAL findings remain"
           else
             STATUS="FAIL — ${TOTAL} HIGH/CRITICAL finding(s) remain"
@@ -189,13 +207,23 @@ jobs:
           } > comment.md
           gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" -F body=@comment.md
           echo "Verification: ${STATUS}" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$SCAN_ERROR" = "true" ]; then
+            exit 1
+          fi
+
+      - name: Fail on scan error
+        if: steps.findings.outputs.scan_error == 'true' && steps.guard.outputs.already_attempted == 'false'
+        run: |
+          echo "::error::npm audit did not produce a valid report; scan results are UNKNOWN"
+          exit 1
 
       # ---------------------------------------------------------------------
       # First run with findings: post the findings summary (with marker) and
       # trigger a Devin session to remediate on a leaf branch off BASE_BRANCH.
       # ---------------------------------------------------------------------
       - name: Post findings summary comment
-        if: steps.findings.outputs.has_findings == 'true' && steps.guard.outputs.already_attempted == 'false'
+        id: findings_comment
+        if: steps.findings.outputs.has_findings == 'true' && steps.findings.outputs.scan_error == 'false' && steps.guard.outputs.already_attempted == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -209,10 +237,11 @@ jobs:
             echo ""
             echo "A Devin session is being created for a **one-time remediation attempt**. The fix will land on a leaf branch off \`${BASE_BRANCH}\` with a PR targeting \`${BASE_BRANCH}\`."
           } > comment.md
-          gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" -F body=@comment.md
+          COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" -F body=@comment.md --jq '.id')
+          echo "comment_id=${COMMENT_ID}" >> "$GITHUB_OUTPUT"
 
       - name: Invoke Devin v3 API to remediate
-        if: steps.findings.outputs.has_findings == 'true' && steps.guard.outputs.already_attempted == 'false'
+        if: steps.findings.outputs.has_findings == 'true' && steps.findings.outputs.scan_error == 'false' && steps.guard.outputs.already_attempted == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
           DEVIN_API_KEY: ${{ secrets.DEVIN_API_KEY }}
@@ -222,6 +251,7 @@ jobs:
           PR_BRANCH: ${{ github.event.pull_request.head.ref }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           REPO: ${{ github.repository }}
+          FINDINGS_COMMENT_ID: ${{ steps.findings_comment.outputs.comment_id }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           FINDINGS=$(cat scan-results/summary.md)
@@ -306,6 +336,7 @@ jobs:
           else
             echo "::error::Failed to create Devin session (HTTP ${HTTP_CODE})"
             echo "$HTTP_BODY"
+            gh api -X DELETE "repos/${REPO}/issues/comments/${FINDINGS_COMMENT_ID}" || true
             exit 1
           fi
 

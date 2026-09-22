@@ -101,6 +101,9 @@ short as possible. A residual race remains if a cancelled run has already passed
 the cost is at worst a duplicate Devin session (never an infinite loop, because of control 1).
 Similarly, a comment deleted by a human re-opens the one-attempt gate — this is intentional and
 gives maintainers a manual "retry" lever.
+If the Devin API call fails, the findings comment is deleted so the next run can retry; a scan that
+cannot complete (npm audit produced no valid report) is reported as UNKNOWN and fails the job rather
+than counting as zero findings.
 
 ## Sequence diagram
 
