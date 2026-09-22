@@ -56,7 +56,7 @@ jobs:
 
       - name: Trivy image scan (HIGH,CRITICAL)
         if: steps.docker_build.outcome == 'success'
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: timesheet-app:pr-${{ github.event.pull_request.number }}
           format: json
@@ -67,7 +67,7 @@ jobs:
 
       - name: Trivy filesystem scan fallback (HIGH,CRITICAL)
         if: steps.docker_build.outcome != 'success'
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           scan-type: fs
           scan-ref: .
