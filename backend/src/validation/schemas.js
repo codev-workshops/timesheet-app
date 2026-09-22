@@ -47,10 +47,18 @@ const emailSchema = Joi.object({
   email: Joi.string().email().required()
 });
 
+// Credentials for registration and login. Emails are normalised to lower case so the
+// users primary key cannot be duplicated by changing capitalisation.
+const credentialsSchema = Joi.object({
+  email: Joi.string().trim().lowercase().email().max(255).required(),
+  password: Joi.string().min(12).max(128).required()
+});
+
 module.exports = {
   clientSchema,
   workEntrySchema,
   updateWorkEntrySchema,
   updateClientSchema,
-  emailSchema
+  emailSchema,
+  credentialsSchema
 };

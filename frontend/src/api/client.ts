@@ -1,8 +1,15 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios';
+import { type AuthResponse } from '../types/api';
 
 // Use empty string to make requests relative to the current origin
 // Vite proxy will forward /api requests to the backend
 const API_BASE_URL = '';
+
+const TOKEN_STORAGE_KEY = 'authToken';
+
+export const getToken = (): string | null => localStorage.getItem(TOKEN_STORAGE_KEY);
+export const setToken = (token: string): void => localStorage.setItem(TOKEN_STORAGE_KEY, token);
+export const clearToken = (): void => localStorage.removeItem(TOKEN_STORAGE_KEY);
 
 class ApiClient {
   private client: AxiosInstance;
@@ -16,12 +23,12 @@ class ApiClient {
       },
     });
 
-    // Request interceptor to add email header
+    // Request interceptor to attach the bearer token issued by the backend
     this.client.interceptors.request.use(
       (config) => {
-        const userEmail = localStorage.getItem('userEmail');
-        if (userEmail) {
-          config.headers['x-user-email'] = userEmail;
+        const token = getToken();
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
       },
@@ -35,8 +42,8 @@ class ApiClient {
       (response: AxiosResponse) => response,
       (error) => {
         if (error.response?.status === 401) {
-          // Clear stored email on auth error
-          localStorage.removeItem('userEmail');
+          // Clear the stored token on auth error
+          clearToken();
           window.location.href = '/login';
         }
         return Promise.reject(error);
@@ -45,8 +52,13 @@ class ApiClient {
   }
 
   // Auth endpoints
-  async login(email: string) {
-    const response = await this.client.post('/api/auth/login', { email });
+  async login(email: string, password: string): Promise<AuthResponse> {
+    const response = await this.client.post<AuthResponse>('/api/auth/login', { email, password });
+    return response.data;
+  }
+
+  async register(email: string, password: string): Promise<AuthResponse> {
+    const response = await this.client.post<AuthResponse>('/api/auth/register', { email, password });
     return response.data;
   }
 

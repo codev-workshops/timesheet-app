@@ -1,44 +1,30 @@
-const { getDatabase } = require('../database/init');
+const jwt = require('jsonwebtoken');
+const { getJwtSecret, jwtAlgorithm } = require('../config/auth');
 
-// Simple email-based authentication middleware
+// Bearer-token authentication. The caller's identity comes from a signed JWT issued by
+// /api/auth/login, so it cannot be asserted by the client. Users are never created here.
 function authenticateUser(req, res, next) {
-  const userEmail = req.headers['x-user-email'];
-  
-  if (!userEmail) {
-    return res.status(401).json({ error: 'User email required in x-user-email header' });
+  const authHeader = req.headers.authorization || '';
+  const [scheme, token] = authHeader.split(' ');
+
+  if (!token || scheme.toLowerCase() !== 'bearer') {
+    return res.status(401).json({ error: 'Authentication required' });
   }
 
-  // Validate email format
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(userEmail)) {
-    return res.status(400).json({ error: 'Invalid email format' });
+  let payload;
+  try {
+    // Pinning the algorithm prevents algorithm-confusion attacks (e.g. alg: none).
+    payload = jwt.verify(token, getJwtSecret(), { algorithms: [jwtAlgorithm] });
+  } catch (err) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
   }
 
-  const db = getDatabase();
-  
-  // Check if user exists, create if not
-  db.get('SELECT email FROM users WHERE email = ?', [userEmail], (err, row) => {
-    if (err) {
-      console.error('Database error:', err);
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-    
-    if (!row) {
-      // Create new user
-      db.run('INSERT INTO users (email) VALUES (?)', [userEmail], (err) => {
-        if (err) {
-          console.error('Error creating user:', err);
-          return res.status(500).json({ error: 'Failed to create user' });
-        }
-        
-        req.userEmail = userEmail;
-        next();
-      });
-    } else {
-      req.userEmail = userEmail;
-      next();
-    }
-  });
+  if (!payload || typeof payload.sub !== 'string' || !payload.sub) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+
+  req.userEmail = payload.sub;
+  next();
 }
 
 module.exports = {

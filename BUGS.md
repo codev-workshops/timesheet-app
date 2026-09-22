@@ -114,30 +114,37 @@ append `Z` before parsing on the client. Not changed in this PR (out of scope fo
 
 ---
 
-## 4. Authentication is a client-supplied header — any user can read/write any other user's data
+## 4. Authentication is a client-supplied header — any user can read/write any other user's data — FIXED
 
 **Severity:** High (security)
 
-**Steps to reproduce**
+**Steps to reproduce (before the fix)**
 ```
 curl localhost:3001/api/work-entries -H 'x-user-email: someone-else@example.com'
 ```
 
 **Expected:** requests are authenticated with a server-issued credential.
 
-**Actual:** the backend trusts whatever `x-user-email` header the client sends and auto-creates the user
-(`backend/src/middleware/auth.js`). The "login" screen just stores the email in `localStorage`. `JWT_SECRET`
-in `.env.example` is never used. User isolation in the DB is therefore only as strong as the header.
+**Actual:** the backend trusted whatever `x-user-email` header the client sent and auto-created the user
+(`backend/src/middleware/auth.js`). The "login" screen just stored the email in `localStorage`. `JWT_SECRET`
+in `.env.example` was never used. User isolation in the DB was therefore only as strong as the header.
 
-**Affected files:** `backend/src/middleware/auth.js`, `frontend/src/contexts/AuthContext.tsx`,
-`frontend/src/api/client.ts`.
+**Fix:** accounts now have a bcrypt-hashed password. `POST /api/auth/register` and `POST /api/auth/login`
+verify credentials and return a signed JWT; `authenticateUser` derives the identity from
+`Authorization: Bearer <token>` with the algorithm pinned to HS256, and never creates users. Regression
+tests assert that a request carrying only `x-user-email` is rejected with 401.
 
-**Note:** this may be intentional for a workshop app; documented because it is surprising relative to the
-"login" UX and the unused `JWT_SECRET`.
+**Affected files:** `backend/src/middleware/auth.js`, `backend/src/routes/auth.js`,
+`backend/src/config/auth.js`, `backend/src/database/init.js`, `frontend/src/contexts/AuthContext.tsx`,
+`frontend/src/api/client.ts`, `frontend/src/pages/LoginPage.tsx`.
+
+**Migration:** the `users` table gained a `NOT NULL password_hash` column. Existing deployments with a
+file-backed database must re-initialise it; every user has to register again, since no passwords existed
+before.
 
 ---
 
-## 5. Post-create / post-update lookups in work-entries are not scoped by `user_email`
+## 5. Post-create / post-update lookups in work-entries are not scoped by `user_email` — FIXED
 
 **Severity:** Low (defence-in-depth)
 
@@ -146,11 +153,13 @@ the row with `WHERE we.id = ?` (no `AND we.user_email = ?`) after writing it.
 
 **Expected:** every query scoped by `user_email` per `AGENTS.md`.
 
-**Actual:** the immediate re-read is by `id` only. Not exploitable today because the write itself is scoped,
-but it violates the repo rule.
+**Actual:** the immediate re-read was by `id` only. Not exploitable, because the write itself is scoped,
+but it violated the repo rule.
 
-**Affected files:** `backend/src/routes/workEntries.js` (~lines 115–121 and the equivalent block after
-`UPDATE`).
+**Fix:** all four post-write re-reads now include `AND user_email = ?`.
+
+**Affected files:** `backend/src/routes/workEntries.js`, `backend/src/routes/clients.js` (the create and
+update handlers in both).
 
 ---
 
@@ -204,6 +213,7 @@ its previous value and the entry is saved with a stale date and no warning.
 ## Not bugs (confirmed expected)
 
 - Data disappears when the backend restarts — the SQLite database is in-memory by design.
-- Login accepts any syntactically valid email with no password — by design for the workshop.
+- ~~Login accepts any syntactically valid email with no password — by design for the workshop.~~ No longer
+  true: see bug 4. Login now requires a password of at least 12 characters and returns a signed JWT.
 - Hours are limited to `0 < hours ≤ 24` on both client and server; values outside return a 400 with a clear
   message.

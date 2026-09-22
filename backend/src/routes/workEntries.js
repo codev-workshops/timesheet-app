@@ -117,8 +117,8 @@ router.post('/', (req, res, next) => {
                       we.created_at, we.updated_at, c.name as client_name
                FROM work_entries we
                JOIN clients c ON we.client_id = c.id
-               WHERE we.id = ?`,
-              [this.lastID],
+               WHERE we.id = ? AND we.user_email = ?`,
+              [this.lastID, req.userEmail],
               (err, row) => {
                 if (err) {
                   console.error('Database error:', err);
@@ -234,8 +234,8 @@ router.put('/:id', (req, res, next) => {
                       we.created_at, we.updated_at, c.name as client_name
                FROM work_entries we
                JOIN clients c ON we.client_id = c.id
-               WHERE we.id = ?`,
-              [workEntryId],
+               WHERE we.id = ? AND we.user_email = ?`,
+              [workEntryId, req.userEmail],
               (err, row) => {
                 if (err) {
                   console.error('Database error:', err);

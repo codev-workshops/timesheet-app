@@ -65,10 +65,12 @@ export interface UpdateWorkEntryRequest {
 
 export interface LoginRequest {
   email: string;
+  password: string;
 }
 
-export interface LoginResponse {
+export interface AuthResponse {
   message: string;
+  token: string;
   user: User;
 }
 

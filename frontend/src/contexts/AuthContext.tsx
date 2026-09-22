@@ -1,6 +1,6 @@
 import React, { useState, useEffect, type ReactNode } from 'react';
 import { type User } from '../types/api';
-import apiClient from '../api/client';
+import apiClient, { getToken, setToken, clearToken } from '../api/client';
 import { AuthContext, type AuthContextType } from './AuthContextValue';
 
 interface AuthProviderProps {
@@ -13,15 +13,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const storedEmail = localStorage.getItem('userEmail');
-      
-      if (storedEmail) {
+      if (getToken()) {
         try {
           const response = await apiClient.getCurrentUser();
           setUser(response.user);
         } catch (error) {
           console.error('Auth check failed:', error);
-          localStorage.removeItem('userEmail');
+          clearToken();
         }
       }
       setIsLoading(false);
@@ -30,25 +28,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkAuth();
   }, []);
 
-  const login = async (email: string) => {
-    try {
-      const response = await apiClient.login(email);
-      setUser(response.user);
-      localStorage.setItem('userEmail', email);
-    } catch (error) {
-      console.error('Login failed:', error);
-      throw error;
-    }
+  const login = async (email: string, password: string) => {
+    const response = await apiClient.login(email, password);
+    setToken(response.token);
+    setUser(response.user);
+  };
+
+  const register = async (email: string, password: string) => {
+    const response = await apiClient.register(email, password);
+    setToken(response.token);
+    setUser(response.user);
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('userEmail');
+    clearToken();
   };
 
   const value: AuthContextType = {
     user,
     login,
+    register,
     logout,
     isLoading,
     isAuthenticated: !!user,
