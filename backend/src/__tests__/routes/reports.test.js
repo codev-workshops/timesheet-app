@@ -151,12 +151,13 @@ describe('Report Routes', () => {
       });
 
       mockDb.all.mockImplementation((query, params, callback) => {
-        expect(params).toEqual([1, 'test@example.com']);
         callback(null, []);
       });
 
-      await request(app).get('/api/reports/client/1');
+      const response = await request(app).get('/api/reports/client/1');
 
+      expect(response.status).toBe(200);
+      expect(mockDb.all).toHaveBeenCalledTimes(1);
       expect(mockDb.all).toHaveBeenCalledWith(
         expect.stringContaining('WHERE client_id = ? AND user_email = ?'),
         [1, 'test@example.com'],
@@ -245,22 +246,39 @@ describe('Report Routes', () => {
   describe('Data Isolation', () => {
     test('should only return data for authenticated user', async () => {
       mockDb.get.mockImplementation((query, params, callback) => {
-        expect(params).toContain('test@example.com');
         callback(null, { id: 1, name: 'Test Client' });
       });
 
       mockDb.all.mockImplementation((query, params, callback) => {
-        expect(params).toContain('test@example.com');
         callback(null, []);
       });
 
-      await request(app).get('/api/reports/client/1');
+      const response = await request(app).get('/api/reports/client/1');
 
+      expect(response.status).toBe(200);
+      expect(mockDb.get).toHaveBeenCalledTimes(1);
       expect(mockDb.get).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.arrayContaining(['test@example.com']),
+        expect.stringContaining('WHERE id = ? AND user_email = ?'),
+        [1, 'test@example.com'],
         expect.any(Function)
       );
+      expect(mockDb.all).toHaveBeenCalledTimes(1);
+      expect(mockDb.all).toHaveBeenCalledWith(
+        expect.stringContaining('AND user_email = ?'),
+        [1, 'test@example.com'],
+        expect.any(Function)
+      );
+    });
+
+    test('should return 404 (not another user\'s data) when client belongs to someone else', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, params[1] === 'other@example.com' ? { id: 1, name: 'Other' } : null);
+      });
+
+      const response = await request(app).get('/api/reports/client/1');
+
+      expect(response.status).toBe(404);
+      expect(mockDb.all).not.toHaveBeenCalled();
     });
   });
 
@@ -299,9 +317,38 @@ describe('Report Routes', () => {
 
       expect(response.body.totalHours).toBe(12);
     });
+
+    test('should expose floating-point drift when summing 0.1 + 0.2 style hours', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, name: 'Test Client' });
+      });
+
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, [{ hours: 0.1 }, { hours: 0.2 }, { hours: 0.3 }]);
+      });
+
+      const response = await request(app).get('/api/reports/client/1');
+
+      expect(response.body.totalHours).toBeCloseTo(0.6, 10);
+      expect(Number(response.body.totalHours.toFixed(2))).toBe(0.6);
+    });
+
+    test('should parse string hours (as returned by DECIMAL columns) before summing', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, name: 'Test Client' });
+      });
+
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, [{ hours: '1.5' }, { hours: '2.25' }]);
+      });
+
+      const response = await request(app).get('/api/reports/client/1');
+
+      expect(response.body.totalHours).toBe(3.75);
+    });
   });
 
-  describe('CSV Export Success Path', () => {
+  describe('CSV Export Error Paths (csv-writer/fs mocked; success path covered in reportsExport.test.js)', () => {
     test('should handle CSV write error', async () => {
       const mockClient = { id: 1, name: 'Test Client' };
       const mockWorkEntries = [
@@ -404,7 +451,7 @@ describe('Report Routes', () => {
   });
 
 
-  describe('PDF Export Success Path', () => {
+  describe('PDF Export Error Paths (pdfkit mocked; success path covered in reportsExport.test.js)', () => {
     test('should handle database error when fetching work entries for PDF', async () => {
       mockDb.get.mockImplementation((query, params, callback) => {
         callback(null, { id: 1, name: 'Test Client' });

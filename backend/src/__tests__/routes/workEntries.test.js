@@ -56,13 +56,16 @@ describe('Work Entry Routes', () => {
     });
 
     test('should filter by client ID when provided', async () => {
+      const filtered = [{ id: 7, client_id: 1, hours: 2, date: '2024-01-01', client_name: 'Client A' }];
       mockDb.all.mockImplementation((query, params, callback) => {
-        expect(params).toEqual(['test@example.com', 1]);
-        callback(null, []);
+        callback(null, filtered);
       });
 
-      await request(app).get('/api/work-entries?clientId=1');
+      const response = await request(app).get('/api/work-entries?clientId=1');
 
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ workEntries: filtered });
+      expect(mockDb.all).toHaveBeenCalledTimes(1);
       expect(mockDb.all).toHaveBeenCalledWith(
         expect.stringContaining('AND we.client_id = ?'),
         ['test@example.com', 1],
@@ -75,6 +78,32 @@ describe('Work Entry Routes', () => {
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({ error: 'Invalid client ID' });
+    });
+
+    test('should not add client filter when clientId is empty', async () => {
+      mockDb.all.mockImplementation((query, params, callback) => callback(null, []));
+
+      const response = await request(app).get('/api/work-entries?clientId=');
+
+      expect(response.status).toBe(200);
+      expect(mockDb.all).toHaveBeenCalledWith(
+        expect.not.stringContaining('AND we.client_id = ?'),
+        ['test@example.com'],
+        expect.any(Function)
+      );
+    });
+
+    test('documents parseInt leniency: clientId=12abc is treated as 12', async () => {
+      mockDb.all.mockImplementation((query, params, callback) => callback(null, []));
+
+      const response = await request(app).get('/api/work-entries?clientId=12abc');
+
+      expect(response.status).toBe(200);
+      expect(mockDb.all).toHaveBeenCalledWith(
+        expect.stringContaining('AND we.client_id = ?'),
+        ['test@example.com', 12],
+        expect.any(Function)
+      );
     });
 
     test('should handle database error', async () => {
@@ -119,6 +148,117 @@ describe('Work Entry Routes', () => {
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({ error: 'Invalid work entry ID' });
+    });
+
+    test('documents parseInt leniency: /work-entries/12abc queries id 12', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, null));
+
+      const response = await request(app).get('/api/work-entries/12abc');
+
+      expect(response.status).toBe(404);
+      expect(mockDb.get).toHaveBeenCalledWith(
+        expect.any(String),
+        [12, 'test@example.com'],
+        expect.any(Function)
+      );
+    });
+
+    test('should scope single-entry lookup to the authenticated user', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, null));
+
+      await request(app).get('/api/work-entries/1');
+
+      expect(mockDb.get).toHaveBeenCalledWith(
+        expect.stringContaining('we.user_email = ?'),
+        [1, 'test@example.com'],
+        expect.any(Function)
+      );
+    });
+  });
+
+  describe('Cross-user isolation for mutations', () => {
+    test('PUT should 404 and never run UPDATE when entry belongs to another user', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, null));
+
+      const response = await request(app).put('/api/work-entries/1').send({ hours: 2 });
+
+      expect(response.status).toBe(404);
+      expect(mockDb.get).toHaveBeenCalledWith(
+        expect.stringContaining('user_email = ?'),
+        expect.arrayContaining(['test@example.com']),
+        expect.any(Function)
+      );
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('DELETE should 404 and never run DELETE when entry belongs to another user', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, null));
+
+      const response = await request(app).delete('/api/work-entries/1');
+
+      expect(response.status).toBe(404);
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('DELETE should include user_email in the DELETE statement', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, { id: 1 }));
+      mockDb.run.mockImplementation((query, params, callback) => callback(null));
+
+      const response = await request(app).delete('/api/work-entries/1');
+
+      expect(response.status).toBe(200);
+      expect(mockDb.run).toHaveBeenCalledWith(
+        expect.stringContaining('user_email = ?'),
+        [1, 'test@example.com'],
+        expect.any(Function)
+      );
+    });
+  });
+
+  describe('POST /api/work-entries boundary values', () => {
+    const setupCreate = () => {
+      mockDb.get.mockImplementationOnce((q, p, cb) => cb(null, { id: 1 }));
+      mockDb.run.mockImplementation(function (q, p, cb) {
+        this.lastID = 10;
+        cb.call(this, null);
+      });
+      mockDb.get.mockImplementationOnce((q, p, cb) => cb(null, { id: 10 }));
+    };
+
+    test('accepts hours exactly 24', async () => {
+      setupCreate();
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 24, date: '2024-01-01' });
+      expect(response.status).toBe(201);
+    });
+
+    test('rejects hours of 0', async () => {
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 0, date: '2024-01-01' });
+      expect(response.status).toBe(400);
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('rounds hours to two decimals before insert (precision(2))', async () => {
+      setupCreate();
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 1.256, date: '2024-01-01' });
+      expect(response.status).toBe(201);
+      const insertParams = mockDb.run.mock.calls[0][1];
+      expect(insertParams[2]).toBe(1.26);
+    });
+
+    test('rejects hours with more than two decimals when convert is disabled', () => {
+      const { workEntrySchema } = require('../../validation/schemas');
+      const { error } = workEntrySchema.validate(
+        { clientId: 1, hours: 1.005, date: '2024-01-01' },
+        { convert: false }
+      );
+      expect(error).toBeDefined();
+      expect(error.details[0].path).toEqual(['hours']);
     });
   });
 

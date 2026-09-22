@@ -276,6 +276,174 @@ describe('Client Routes', () => {
     });
   });
 
+  describe('POST /api/clients - department and email fields', () => {
+    const setupInsert = (created) => {
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        this.lastID = 5;
+        callback.call(this, null);
+      });
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, created));
+    };
+
+    test('persists department and email when provided', async () => {
+      const payload = { name: 'Acme', department: 'Finance', email: 'ap@acme.com' };
+      const created = { id: 5, description: null, ...payload };
+      setupInsert(created);
+
+      const response = await request(app).post('/api/clients').send(payload);
+
+      expect(response.status).toBe(201);
+      expect(response.body.client).toEqual(created);
+      expect(mockDb.run).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO clients (name, description, department, email, user_email)'),
+        ['Acme', null, 'Finance', 'ap@acme.com', 'test@example.com'],
+        expect.any(Function)
+      );
+    });
+
+    test('stores empty department/email as NULL', async () => {
+      setupInsert({ id: 5, name: 'Acme' });
+
+      const response = await request(app)
+        .post('/api/clients')
+        .send({ name: 'Acme', department: '', email: '' });
+
+      expect(response.status).toBe(201);
+      expect(mockDb.run.mock.calls[0][1]).toEqual(['Acme', null, null, null, 'test@example.com']);
+    });
+
+    test('rejects malformed client email with 400 and does not insert', async () => {
+      const response = await request(app)
+        .post('/api/clients')
+        .send({ name: 'Acme', email: 'not-an-email' });
+
+      expect(response.status).toBe(400);
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('rejects department longer than 255 characters', async () => {
+      const response = await request(app)
+        .post('/api/clients')
+        .send({ name: 'Acme', department: 'd'.repeat(256) });
+
+      expect(response.status).toBe(400);
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('PUT /api/clients/:id - department and email fields', () => {
+    beforeEach(() => {
+      mockDb.get
+        .mockImplementationOnce((query, params, callback) => callback(null, { id: 1 }))
+        .mockImplementationOnce((query, params, callback) =>
+          callback(null, { id: 1, name: 'Acme', department: 'Ops', email: 'ops@acme.com' })
+        );
+      mockDb.run.mockImplementation((query, params, callback) => callback(null));
+    });
+
+    test('updates department and email only', async () => {
+      const response = await request(app)
+        .put('/api/clients/1')
+        .send({ department: 'Ops', email: 'ops@acme.com' });
+
+      expect(response.status).toBe(200);
+      expect(mockDb.run).toHaveBeenCalledWith(
+        'UPDATE clients SET department = ?, email = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_email = ?',
+        ['Ops', 'ops@acme.com', 1, 'test@example.com'],
+        expect.any(Function)
+      );
+    });
+
+    test('clears department and email when empty strings are sent', async () => {
+      const response = await request(app)
+        .put('/api/clients/1')
+        .send({ department: '', email: '' });
+
+      expect(response.status).toBe(200);
+      expect(mockDb.run.mock.calls[0][1]).toEqual([null, null, 1, 'test@example.com']);
+    });
+  });
+
+  describe('DELETE /api/clients (bulk delete for user)', () => {
+    test('deletes all clients for the authenticated user and reports count', async () => {
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        this.changes = 3;
+        callback.call(this, null);
+      });
+
+      const response = await request(app).delete('/api/clients');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ message: 'All clients deleted successfully', deletedCount: 3 });
+      expect(mockDb.run).toHaveBeenCalledTimes(1);
+      expect(mockDb.run).toHaveBeenCalledWith(
+        'DELETE FROM clients WHERE user_email = ?',
+        ['test@example.com'],
+        expect.any(Function)
+      );
+    });
+
+    test('returns deletedCount 0 when the user has no clients', async () => {
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        this.changes = 0;
+        callback.call(this, null);
+      });
+
+      const response = await request(app).delete('/api/clients');
+
+      expect(response.status).toBe(200);
+      expect(response.body.deletedCount).toBe(0);
+    });
+
+    test('returns 500 when the bulk delete fails', async () => {
+      mockDb.run.mockImplementation((query, params, callback) => callback(new Error('boom')));
+
+      const response = await request(app).delete('/api/clients');
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Failed to delete clients' });
+    });
+  });
+
+  describe('Cross-user isolation for mutations', () => {
+    test('PUT on another user\'s client returns 404 and issues no UPDATE', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, null));
+
+      const response = await request(app).put('/api/clients/1').send({ name: 'Hijack' });
+
+      expect(response.status).toBe(404);
+      expect(mockDb.get).toHaveBeenCalledWith(
+        'SELECT id FROM clients WHERE id = ? AND user_email = ?',
+        [1, 'test@example.com'],
+        expect.any(Function)
+      );
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('DELETE on another user\'s client returns 404 and issues no DELETE', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, null));
+
+      const response = await request(app).delete('/api/clients/1');
+
+      expect(response.status).toBe(404);
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('single DELETE statement is scoped by id AND user_email (cascade handled by FK)', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, { id: 1 }));
+      mockDb.run.mockImplementation((query, params, callback) => callback(null));
+
+      await request(app).delete('/api/clients/1');
+
+      expect(mockDb.run).toHaveBeenCalledTimes(1);
+      expect(mockDb.run).toHaveBeenCalledWith(
+        'DELETE FROM clients WHERE id = ? AND user_email = ?',
+        [1, 'test@example.com'],
+        expect.any(Function)
+      );
+    });
+  });
+
   describe('DELETE /api/clients/:id', () => {
     test('should delete existing client', async () => {
       mockDb.get.mockImplementation((query, params, callback) => {
