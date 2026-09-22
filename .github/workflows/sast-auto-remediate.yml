@@ -1,0 +1,322 @@
+name: SAST Auto-Remediate (npm audit + Trivy + Devin)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  BASE_BRANCH: feature/praveen-sast-demo
+  # Loop-prevention marker: any PR comment containing this string means a
+  # remediation attempt has already been made on this PR (max 1 attempt).
+  MARKER: "Devin SAST Auto-Remediate"
+
+jobs:
+  scan-and-remediate:
+    name: Scan (npm audit + Trivy) and trigger Devin
+    # Loop prevention: never scan-and-remediate PRs authored by Devin itself.
+    if: github.event.pull_request.user.login != 'devin-ai-integration[bot]'
+    concurrency:
+      group: sast-auto-remediate-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run npm audit (backend + frontend)
+        run: |
+          mkdir -p scan-results
+          for dir in backend frontend; do
+            echo "::group::npm audit — ${dir}"
+            (cd "$dir" && npm audit --json > "../scan-results/npm-audit-${dir}.json" 2>/dev/null) || true
+            # Ensure the file is valid JSON even if npm produced nothing
+            jq -e . "scan-results/npm-audit-${dir}.json" >/dev/null 2>&1 || echo '{}' > "scan-results/npm-audit-${dir}.json"
+            echo "::endgroup::"
+          done
+
+      - name: Build Docker image
+        id: docker_build
+        continue-on-error: true
+        run: |
+          docker build -f docker/Dockerfile -t timesheet-app:pr-${{ github.event.pull_request.number }} .
+
+      - name: Trivy image scan (HIGH,CRITICAL)
+        if: steps.docker_build.outcome == 'success'
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: timesheet-app:pr-${{ github.event.pull_request.number }}
+          format: json
+          output: scan-results/trivy.json
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "0"
+
+      - name: Trivy filesystem scan fallback (HIGH,CRITICAL)
+        if: steps.docker_build.outcome != 'success'
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: json
+          output: scan-results/trivy.json
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "0"
+
+      - name: Evaluate findings
+        id: findings
+        env:
+          IMAGE_SCANNED: ${{ steps.docker_build.outcome == 'success' }}
+        run: |
+          [ -s scan-results/trivy.json ] || echo '{"Results":[]}' > scan-results/trivy.json
+
+          NPM_BE_HIGH=$(jq -r '.metadata.vulnerabilities.high // 0' scan-results/npm-audit-backend.json)
+          NPM_BE_CRIT=$(jq -r '.metadata.vulnerabilities.critical // 0' scan-results/npm-audit-backend.json)
+          NPM_FE_HIGH=$(jq -r '.metadata.vulnerabilities.high // 0' scan-results/npm-audit-frontend.json)
+          NPM_FE_CRIT=$(jq -r '.metadata.vulnerabilities.critical // 0' scan-results/npm-audit-frontend.json)
+          TRIVY_HIGH=$(jq -r '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' scan-results/trivy.json)
+          TRIVY_CRIT=$(jq -r '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' scan-results/trivy.json)
+
+          TOTAL=$((NPM_BE_HIGH + NPM_BE_CRIT + NPM_FE_HIGH + NPM_FE_CRIT + TRIVY_HIGH + TRIVY_CRIT))
+          HAS_FINDINGS=false
+          [ "$TOTAL" -gt 0 ] && HAS_FINDINGS=true
+
+          # Top npm audit findings (name, severity, fixAvailable) — HIGH/CRITICAL only
+          npm_top() {
+            jq -r '(.vulnerabilities // {}) | to_entries[]
+              | select(.value.severity=="high" or .value.severity=="critical")
+              | "- `\(.key)` (\(.value.severity)) — range: \(.value.range) — fix available: \(.value.fixAvailable | if type=="object" then "\(.name)@\(.version)" else tostring end)"' "$1" | head -n 10
+          }
+          TRIVY_TOP=$(jq -r '[.Results[]? as $r | $r.Vulnerabilities[]? | select(.Severity=="HIGH" or .Severity=="CRITICAL")
+              | "- \(.VulnerabilityID) (\(.Severity)) — \(.PkgName) \(.InstalledVersion) → fixed: \(.FixedVersion // "n/a") [\($r.Target)]"]
+              | unique | .[:15] | .[]' scan-results/trivy.json)
+
+          TRIVY_MODE="image (docker/Dockerfile)"
+          [ "$IMAGE_SCANNED" = "true" ] || TRIVY_MODE="filesystem fallback (image build failed)"
+
+          {
+            echo "### npm audit"
+            echo "| Package dir | HIGH | CRITICAL |"
+            echo "|---|---|---|"
+            echo "| backend/ | ${NPM_BE_HIGH} | ${NPM_BE_CRIT} |"
+            echo "| frontend/ | ${NPM_FE_HIGH} | ${NPM_FE_CRIT} |"
+            echo ""
+            echo "**Top npm audit findings — backend/**"
+            npm_top scan-results/npm-audit-backend.json || true
+            echo ""
+            echo "**Top npm audit findings — frontend/**"
+            npm_top scan-results/npm-audit-frontend.json || true
+            echo ""
+            echo "### Trivy (${TRIVY_MODE})"
+            echo "| HIGH | CRITICAL |"
+            echo "|---|---|"
+            echo "| ${TRIVY_HIGH} | ${TRIVY_CRIT} |"
+            echo ""
+            echo "**Top Trivy findings**"
+            echo "${TRIVY_TOP:-- none}"
+          } > scan-results/summary.md
+
+          echo "has_findings=${HAS_FINDINGS}" >> "$GITHUB_OUTPUT"
+          echo "total=${TOTAL}" >> "$GITHUB_OUTPUT"
+          echo "npm_high=$((NPM_BE_HIGH + NPM_FE_HIGH))" >> "$GITHUB_OUTPUT"
+          echo "npm_critical=$((NPM_BE_CRIT + NPM_FE_CRIT))" >> "$GITHUB_OUTPUT"
+          echo "trivy_high=${TRIVY_HIGH}" >> "$GITHUB_OUTPUT"
+          echo "trivy_critical=${TRIVY_CRIT}" >> "$GITHUB_OUTPUT"
+
+          echo "has_findings=${HAS_FINDINGS} total=${TOTAL}"
+          cat scan-results/summary.md
+          { echo "## SAST Auto-Remediate scan — PR #${{ github.event.pull_request.number }}"; echo ""; cat scan-results/summary.md; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check for prior remediation attempt (loop prevention)
+        id: guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_STATE: ${{ github.event.pull_request.state }}
+        run: |
+          if [ "$PR_STATE" != "open" ]; then
+            echo "PR is not open. Skipping."
+            echo "already_attempted=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          PRIOR=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" --paginate \
+            --jq "[.[] | select(.body | contains(\"${MARKER}\"))] | length")
+          if [ "$PRIOR" -gt 0 ]; then
+            echo "Found ${PRIOR} prior '${MARKER}' comment(s). This run is a verification re-scan only."
+            echo "already_attempted=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "already_attempted=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ---------------------------------------------------------------------
+      # Verification re-scan: this run happens after a remediation attempt has
+      # already been triggered on this PR (e.g. on `synchronize` when fixes
+      # land). Report current HIGH/CRITICAL status as pass/fail and stop.
+      # ---------------------------------------------------------------------
+      - name: Post verification re-scan result
+        if: steps.guard.outputs.already_attempted == 'true' && github.event.pull_request.state == 'open'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          TOTAL: ${{ steps.findings.outputs.total }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$TOTAL" -eq 0 ]; then
+            STATUS="PASS — 0 HIGH/CRITICAL findings remain"
+          else
+            STATUS="FAIL — ${TOTAL} HIGH/CRITICAL finding(s) remain"
+          fi
+          {
+            echo "## Devin SAST Auto-Remediate — Verification Re-scan"
+            echo ""
+            echo "**Result: ${STATUS}** (commit \`${HEAD_SHA}\`)"
+            echo ""
+            echo "This is the verification re-scan run after the one-time remediation attempt; no new Devin session is created."
+            echo ""
+            cat scan-results/summary.md
+          } > comment.md
+          gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" -F body=@comment.md
+          echo "Verification: ${STATUS}" >> "$GITHUB_STEP_SUMMARY"
+
+      # ---------------------------------------------------------------------
+      # First run with findings: post the findings summary (with marker) and
+      # trigger a Devin session to remediate on a leaf branch off BASE_BRANCH.
+      # ---------------------------------------------------------------------
+      - name: Post findings summary comment
+        if: steps.findings.outputs.has_findings == 'true' && steps.guard.outputs.already_attempted == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          {
+            echo "## ${MARKER} — HIGH/CRITICAL findings detected"
+            echo ""
+            echo "npm audit: **${{ steps.findings.outputs.npm_high }} HIGH / ${{ steps.findings.outputs.npm_critical }} CRITICAL** · Trivy: **${{ steps.findings.outputs.trivy_high }} HIGH / ${{ steps.findings.outputs.trivy_critical }} CRITICAL**"
+            echo ""
+            cat scan-results/summary.md
+            echo ""
+            echo "A Devin session is being created for a **one-time remediation attempt**. The fix will land on a leaf branch off \`${BASE_BRANCH}\` with a PR targeting \`${BASE_BRANCH}\`."
+          } > comment.md
+          gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" -F body=@comment.md
+
+      - name: Invoke Devin v3 API to remediate
+        if: steps.findings.outputs.has_findings == 'true' && steps.guard.outputs.already_attempted == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEVIN_API_KEY: ${{ secrets.DEVIN_API_KEY }}
+          DEVIN_ORG_ID: ${{ secrets.DEVIN_ORG_ID }}
+          CREATE_AS_USER_ID: ${{ secrets.DEVIN_CREATE_AS_USER_ID }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          FINDINGS=$(cat scan-results/summary.md)
+
+          PROMPT=$(cat <<PROMPT_END
+          An automated SAST scan (npm audit + Trivy) found HIGH/CRITICAL vulnerabilities on PR #${PR_NUMBER} (${PR_URL}) in repository ${REPO} (PR head branch '${PR_BRANCH}').
+          Scan run: ${RUN_URL}
+
+          This is a one-time automated remediation attempt.
+
+          BRANCHING REQUIREMENTS (CRITICAL — follow exactly):
+          1. Clone ${REPO} and check out the base branch '${BASE_BRANCH}'. Do NOT work from 'main'.
+          2. Create a NEW leaf branch off '${BASE_BRANCH}' (not off 'main'), e.g. 'devin/<timestamp>-sast-fix-pr-${PR_NUMBER}'.
+          3. Commit your fixes on that leaf branch using conventional commit messages (e.g. "fix(deps): remediate HIGH/CRITICAL npm audit and Trivy findings for PR #${PR_NUMBER}").
+          4. Open a pull request whose BASE/TARGET branch is '${BASE_BRANCH}' — NOT 'main'. Double-check the PR target before finishing.
+          5. Do NOT push to '${PR_BRANCH}' or to 'main'.
+
+          REMEDIATION REQUIREMENTS:
+          - Remediate ALL HIGH and CRITICAL findings listed below.
+          - npm audit findings: bump the vulnerable dependencies in backend/package.json and/or frontend/package.json (and lockfiles) to fixed versions; prefer non-breaking upgrades, use npm overrides for transitive deps only when a direct bump is not possible. Run 'npm audit --json' in both backend/ and frontend/ and confirm HIGH and CRITICAL counts are 0.
+          - Trivy findings: update the base images and OS/library packages in docker/Dockerfile (e.g. newer node:20-alpine digest/tag, 'apk upgrade --no-cache' where appropriate) and any vulnerable application dependencies. Rebuild the image with 'docker build -f docker/Dockerfile .' and re-run 'trivy image --severity HIGH,CRITICAL' (or 'trivy fs .' if the image cannot be built) to confirm 0 HIGH/CRITICAL findings.
+          - Keep functionality intact: run 'cd backend && npm test', 'cd frontend && npm run lint' and 'cd frontend && npm run build' and make sure they pass.
+          - Only change what is needed to fix the vulnerabilities — no unrelated refactors.
+          - In the PR description, list each finding and how it was fixed, and include the before/after HIGH/CRITICAL counts.
+
+          FINDINGS TO FIX:
+          ${FINDINGS}
+          PROMPT_END
+          )
+
+          ESCAPED_PROMPT=$(echo "$PROMPT" | jq -Rs .)
+
+          REQUEST_BODY=$(jq -n \
+            --argjson prompt "$ESCAPED_PROMPT" \
+            --arg title "Remediate npm audit + Trivy HIGH/CRITICAL findings for PR #${PR_NUMBER} (target ${BASE_BRANCH})" \
+            --arg repo "$REPO" \
+            --arg user_id "${CREATE_AS_USER_ID}" \
+            '{
+              prompt: $prompt,
+              title: $title,
+              repos: [$repo],
+              create_as_user_id: $user_id,
+              tags: ["sast-fix", "npm-audit", "trivy", "security", "automated"]
+            }')
+
+          HTTP_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
+            -H "Authorization: Bearer ${DEVIN_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "$REQUEST_BODY" \
+            "https://api.devin.ai/v3/organizations/${DEVIN_ORG_ID}/sessions")
+
+          HTTP_BODY=$(echo "$HTTP_RESPONSE" | sed '/^HTTP_STATUS:/d')
+          HTTP_CODE=$(echo "$HTTP_RESPONSE" | grep '^HTTP_STATUS:' | cut -d: -f2)
+
+          if [ "$HTTP_CODE" -eq 200 ]; then
+            SESSION_URL=$(echo "$HTTP_BODY" | jq -r '.url')
+            SESSION_ID=$(echo "$HTTP_BODY" | jq -r '.session_id')
+            echo "Devin session created: ${SESSION_URL}"
+            echo "Session ID: ${SESSION_ID}"
+
+            {
+              echo "## ${MARKER} Triggered"
+              echo ""
+              echo "npm audit / Trivy flagged HIGH/CRITICAL findings on PR #${PR_NUMBER}."
+              echo "A Devin session has been created for a one-time remediation attempt (leaf branch off \`${BASE_BRANCH}\`, PR targeting \`${BASE_BRANCH}\`)."
+              echo ""
+              echo "**Session:** ${SESSION_URL}"
+            } >> "$GITHUB_STEP_SUMMARY"
+
+            COMMENT=$(cat <<EOF
+          ## ${MARKER} — Remediation In Progress
+
+          A Devin session has been automatically created for a **one-time remediation attempt** of the HIGH/CRITICAL npm audit and Trivy findings above.
+
+          **Devin Session:** ${SESSION_URL}
+
+          Devin will create a leaf branch off \`${BASE_BRANCH}\` and open a PR targeting \`${BASE_BRANCH}\` (not \`main\`). Subsequent runs of this workflow on this PR act as the verification re-scan and report current HIGH/CRITICAL status.
+          EOF
+            )
+
+            gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" -f body="$COMMENT"
+          else
+            echo "::error::Failed to create Devin session (HTTP ${HTTP_CODE})"
+            echo "$HTTP_BODY"
+            exit 1
+          fi
+
+      - name: No HIGH/CRITICAL findings
+        if: steps.findings.outputs.has_findings == 'false' && steps.guard.outputs.already_attempted == 'false'
+        run: echo "No HIGH/CRITICAL findings from npm audit or Trivy. Nothing to remediate." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload scan results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sast-scan-results-pr-${{ github.event.pull_request.number }}
+          path: scan-results/
+          if-no-files-found: ignore
