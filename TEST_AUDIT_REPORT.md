@@ -6,7 +6,37 @@ Baseline: 80% coverage on statements / branches / functions / lines (project Qua
 
 ---
 
-## Executive Summary
+## Post-Implementation Status (Recommendations 1–5 applied)
+
+The sections below this one are the **original audit** of `main` and are kept unchanged as the baseline. Recommendations 1–5 were then implemented on this branch; re-measured results:
+
+| Suite | Command | Suites / Tests | Stmts | Branch | Funcs | Lines | Configured threshold | vs 80% |
+|---|---|---|---:|---:|---:|---:|---|---|
+| Backend (Jest) | `cd backend && npm run test:coverage` | 12 / 229 passed | 98.69 | 98.98 | 100 | 98.69 | 80 global + 80 per directory (`routes/`, `database/`, `middleware/`, `validation/`) | **PASS** |
+| Frontend (Vitest) | `cd frontend && npm run test:coverage` | 9 / 46 passed | 91.25 | 89.44 | 86.32 | 91.98 | 80 on all four metrics | **PASS** |
+
+Every backend source file is now ≥ 94% on every metric (lowest: `routes/reports.js` branches 94.44%); `production.js`, `init.js`, `auth.js`, `errorHandler.js`, `schemas.js` are at 100%. Frontend per-file: `api/client.ts` 96%, `ClientsPage` 90%, `WorkEntriesPage` 92%, `ReportsPage` 81–93%, `DashboardPage` 77% stmts (global gate still passes). Both coverage gates now fail the build if coverage regresses below 80%.
+
+**Overall verdict after implementation: PASS** against the 80% baseline, globally and per-file on the backend, and globally on the frontend.
+
+What was changed (all under `__tests__`/config; no production code modified):
+
+| Rec. | Change |
+|---|---|
+| 1 | `backend/jest.config.js`: `coverageThreshold` raised from 60/65/60/60 to 80 on all metrics, plus 80% thresholds per source directory. `frontend/vite.config.ts`: Vitest coverage (v8) with 80% thresholds. |
+| 2 | New `backend/src/__tests__/routes/reportsExport.test.js` runs the real `csv-writer`/`fs`/`pdfkit` code: asserts `Content-Type`, `Content-Disposition`, CSV header + rows, `NULL` description → empty cell, temp-file cleanup, `%PDF-`…`%%EOF` body, single-page and paginated (80-entry, `y > 700` branch) PDFs, and the empty-report PDF. The misnamed "CSV/PDF Export Success Path" blocks in `reports.test.js` were renamed to error-path blocks. |
+| 3 | Buried `mockDb` callback assertions in `reports.test.js` (Data Isolation, filters) and `workEntries.test.js` (clientId filter) replaced with post-request `expect(mockDb.all).toHaveBeenCalledWith(expect.stringContaining('user_email = ?'), [...], expect.any(Function))`. Tautological `expect(db).toBeDefined()` in `init.test.js` replaced with interface + connection-log assertions. |
+| 4 | `clients.test.js`: `department`/`email` persistence, empty-string → `NULL`, email/length validation, PUT clearing, bulk `DELETE /api/clients` (count, zero, DB error, user scope), cross-user PUT/DELETE isolation. `workEntries.test.js`: clientId filter success + query shape, empty/partial-numeric `parseInt` IDs, hours 0.01/24 boundaries, `precision(2)` rounding, cross-user scoping of GET/PUT/DELETE. New `validation/boundaries.test.js`: hours 0/0.01/24/24.01, precision, name 1/255, description 1000/1001, department/email 255, far-past/future dates, non-ISO dates, documented gap that `2024-02-30` is accepted (rolled to `03-01`), auth-regex vs Joi email divergence. New `integration/authIntegration.test.js`: real auth middleware + real routers (only sqlite mocked) — 401 without header, 400 malformed email, auto-provisioning, `x-user-email` → `user_email` scoping, real Joi 400s. `init.test.js`: close-without-connection and concurrent-close branches. New `config/production.test.js`: shape-only (no secret values asserted or logged) + asserts `server.js` does not import it. `reports.test.js`: floating-point summation and cross-user isolation. |
+| 5 | Frontend suite: Vitest + jsdom + Testing Library (`frontend/src/test/{setup.ts,utils.tsx}`), scripts `npm test` / `npm run test:coverage`. Tests: `apiClient` (interceptors: `x-user-email` header, 401 → clear storage + `/login`; every endpoint mapping), `AuthContext` (restore/stale-session/login/logout/error), `LoginPage`, `Layout` (nav, logout, mobile drawer), `ClientsPage` (CRUD, validation, bulk delete), `WorkEntriesPage` (CRUD, client/hours validation, confirm dialog), `ReportsPage` (selection, totals, CSV blob download filename, PDF error), `App` routing (redirect to login, stored session → dashboard). |
+| 6 | **Not done (deferred, needs product decision):** `backend/src/config/production.js` still contains hardcoded credential literals; moving them to environment variables is recommended separately. |
+
+Security Audit CI note: `npm audit` on `frontend/` reports the same 20 advisories (14 high) before and after adding the test dev-dependencies — none were introduced by this change; they are pre-existing and out of scope here.
+
+Raw post-implementation coverage tables are in Appendix B.
+
+---
+
+## Executive Summary (original audit of `main`)
 
 - The backend Jest suite runs green: **8/8 suites, 161/161 tests passed** (`cd backend && npm run test:coverage`).
 - **Global backend coverage is above the 80% baseline** on all four metrics: statements 86.98%, branches 88.38%, functions 88.23%, lines 87.14%. The configured `coverageThreshold` in `backend/jest.config.js` (60/65/60/60) is well below both the measured numbers and the 80% baseline and should be raised.
@@ -191,4 +221,49 @@ Tests:       161 passed, 161 total
 Snapshots:   0 total
 Time:        1.174 s
 Ran all test suites.
+```
+
+---
+
+## Appendix B: Post-Implementation Coverage Output
+
+Backend — `cd backend && npm run test:coverage` (Test Suites: 12 passed, Tests: 229 passed; all 80% thresholds met):
+
+```
+------------------|---------|----------|---------|---------|-------------------
+File              | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+------------------|---------|----------|---------|---------|-------------------
+All files         |   98.69 |    98.98 |     100 |   98.69 |
+ config           |     100 |      100 |     100 |     100 |
+  production.js   |     100 |      100 |     100 |     100 |
+ database         |     100 |      100 |     100 |     100 |
+  init.js         |     100 |      100 |     100 |     100 |
+ middleware       |     100 |      100 |     100 |     100 |
+  auth.js         |     100 |      100 |     100 |     100 |
+  errorHandler.js |     100 |      100 |     100 |     100 |
+ routes           |   98.39 |    98.78 |     100 |   98.38 |
+  auth.js         |     100 |      100 |     100 |     100 |
+  clients.js      |   98.14 |      100 |     100 |   98.14 | 96,185
+  reports.js      |   98.11 |    94.44 |     100 |   98.07 | 129,134
+  workEntries.js  |   98.41 |      100 |     100 |   98.41 | 139,256
+ validation       |     100 |      100 |     100 |     100 |
+  schemas.js      |     100 |      100 |     100 |     100 |
+------------------|---------|----------|---------|---------|-------------------
+```
+
+Frontend — `cd frontend && npm run test:coverage` (Test Files: 9 passed, Tests: 46 passed; all 80% thresholds met). HTML report: `frontend/coverage/index.html` (gitignored). The Vitest text reporter omits fully-covered files; per `coverage/lcov.info`, `App.tsx`, `components/Layout.tsx`, `contexts/AuthContext.tsx`, `contexts/AuthContextValue.ts`, `hooks/useAuth.ts` and `pages/LoginPage.tsx` are at 100% lines/functions/branches.
+
+```
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   91.25 |    89.44 |   86.32 |   91.98 |
+ src/api           |      96 |      100 |    90.9 |      96 |
+  client.ts        |      96 |      100 |    90.9 |      96 | 29,35
+ src/pages         |   88.23 |    88.52 |   82.92 |   89.22 |
+  ClientsPage.tsx  |   90.14 |    83.78 |   82.14 |   90.14 | 72-79,86,192,323
+  DashboardPage.tsx|   77.27 |      100 |   61.53 |   76.19 | 53-60,121,157-165
+  ReportsPage.tsx  |   80.76 |    93.33 |   91.66 |    85.1 | 67-68,77-81
+  WorkEntriesPage.tsx |   92 |    88.88 |   88.46 |      92 | 152-153,198,324
+-------------------|---------|----------|---------|---------|-------------------
 ```

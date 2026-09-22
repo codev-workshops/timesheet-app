@@ -39,10 +39,12 @@ describe('Database Initialization', () => {
   });
 
   describe('getDatabase', () => {
-    test('should create and return database instance', () => {
+    test('should open an in-memory sqlite database exactly once and return it', () => {
       const db = getDatabase();
-      
-      expect(db).toBeDefined();
+
+      expect(typeof db.run).toBe('function');
+      expect(typeof db.serialize).toBe('function');
+      expect(typeof db.close).toBe('function');
       expect(consoleLogSpy).toHaveBeenCalledWith('Connected to SQLite in-memory database');
     });
 
@@ -133,14 +135,57 @@ describe('Database Initialization', () => {
       expect(consoleErrorSpy).toHaveBeenCalledWith('Error closing database:', expect.any(Error));
     });
 
-    test('should handle multiple close calls safely', () => {
+    test('should handle multiple close calls safely', async () => {
       const db = getDatabase();
       // Reset close mock to default behavior (no error)
       db.close.mockImplementation((callback) => callback(null));
-      closeDatabase();
-      closeDatabase(); // Second call should not throw
+      const closeCallsBefore = db.close.mock.calls.length;
+      await closeDatabase();
+      await closeDatabase(); // Second call should not throw
 
+      expect(db.close.mock.calls.length - closeCallsBefore).toBe(1);
       expect(consoleErrorSpy).not.toHaveBeenCalled();
+    });
+
+    test('should resolve immediately when no connection was ever opened', async () => {
+      jest.resetModules();
+      const fresh = require('../../database/init');
+
+      await expect(fresh.closeDatabase()).resolves.toBeUndefined();
+      expect(consoleLogSpy).not.toHaveBeenCalledWith('Database connection closed');
+    });
+
+    test('concurrent close while closing waits for the first close to finish', async () => {
+      jest.resetModules();
+      let finishClose;
+      const close = jest.fn((callback) => {
+        finishClose = () => callback(null);
+      });
+      jest.doMock('sqlite3', () => ({
+        verbose: () => ({
+          Database: jest.fn((path, callback) => {
+            callback(null);
+            return { serialize: jest.fn(), run: jest.fn(), close };
+          })
+        })
+      }));
+      const fresh = require('../../database/init');
+      const db = fresh.getDatabase();
+
+      const first = fresh.closeDatabase();
+      const second = fresh.closeDatabase();
+      expect(db.close).toHaveBeenCalledTimes(1);
+
+      let secondSettled = false;
+      second.then(() => { secondSettled = true; });
+      await new Promise((r) => setTimeout(r, 30));
+      expect(secondSettled).toBe(false);
+
+      finishClose();
+      await first;
+      await second;
+      expect(secondSettled).toBe(true);
+      expect(db.close).toHaveBeenCalledTimes(1);
     });
   });
 
