@@ -301,7 +301,13 @@ jobs:
             -H "Authorization: Bearer ${DEVIN_API_KEY}" \
             -H "Content-Type: application/json" \
             -d "$REQUEST_BODY" \
-            "https://api.devin.ai/v3/organizations/${DEVIN_ORG_ID}/sessions")
+            "https://api.devin.ai/v3/organizations/${DEVIN_ORG_ID}/sessions") || CURL_RC=$?
+
+          if [ "${CURL_RC:-0}" -ne 0 ]; then
+            echo "::error::curl failed to reach the Devin API (exit ${CURL_RC})"
+            gh api -X DELETE "repos/${REPO}/issues/comments/${FINDINGS_COMMENT_ID}" || true
+            exit 1
+          fi
 
           HTTP_BODY=$(echo "$HTTP_RESPONSE" | sed '/^HTTP_STATUS:/d')
           HTTP_CODE=$(echo "$HTTP_RESPONSE" | grep '^HTTP_STATUS:' | cut -d: -f2)
