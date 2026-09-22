@@ -17,10 +17,16 @@ function errorHandler(err, req, res, next) {
     });
   }
 
-  // Default error
-  res.status(err.status || 500).json({
-    error: err.message || 'Internal server error'
-  });
+  const status = err.status || 500;
+
+  // Deliberate client errors (4xx) carry a safe, intentional message. Anything 5xx is an
+  // unexpected failure whose message may contain file paths or library internals, so it is
+  // logged above and replaced with a generic response.
+  if (status >= 400 && status < 500 && err.message) {
+    return res.status(status).json({ error: err.message });
+  }
+
+  res.status(status).json({ error: 'Internal server error' });
 }
 
 module.exports = {

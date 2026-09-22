@@ -60,17 +60,32 @@ npm start
 
 ## Authentication
 
-The API uses simple email-based authentication. Include the user's email in the `x-user-email` header for all authenticated requests.
+The API uses password authentication with signed JWTs. Register or log in to obtain a token, then send it
+as a bearer token on every authenticated request.
 
-Example:
+```bash
+# Register (password must be at least 12 characters)
+curl -X POST localhost:3001/api/auth/register \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"user@company.com","password":"correct-horse-battery"}'
+
+# Log in to obtain a token
+curl -X POST localhost:3001/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"user@company.com","password":"correct-horse-battery"}'
+
+# Use the token
+curl localhost:3001/api/work-entries -H 'Authorization: Bearer <token>'
 ```
-x-user-email: user@company.com
-```
+
+`JWT_SECRET` (at least 32 characters) must be set in the environment; the server refuses to start without
+it. Tokens expire after `JWT_EXPIRES_IN` (default `24h`).
 
 ## Database Schema
 
 ### Users
 - `email` (TEXT, PRIMARY KEY)
+- `password_hash` (TEXT, NOT NULL) — bcrypt hash, cost factor `BCRYPT_ROUNDS` (default 12)
 - `created_at` (DATETIME)
 
 ### Clients

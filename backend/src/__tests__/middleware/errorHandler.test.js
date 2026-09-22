@@ -110,8 +110,20 @@ describe('Error Handler Middleware', () => {
 
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({
-        error: 'Something went wrong'
+        error: 'Internal server error'
       });
+    });
+
+    test('should not leak internal error messages on 5xx responses', () => {
+      const internalError = new Error("ENOENT: no such file or directory, open '/app/backend/temp/report.csv'");
+
+      errorHandler(internalError, req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        error: 'Internal server error'
+      });
+      expect(JSON.stringify(res.json.mock.calls)).not.toContain('ENOENT');
     });
 
     test('should use default message if none provided', () => {

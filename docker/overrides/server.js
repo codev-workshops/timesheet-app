@@ -12,32 +12,49 @@ const reportRoutes = require('./routes/reports');
 
 const { initializeDatabase } = require('./database/init');
 const { errorHandler } = require('./middleware/errorHandler');
+const { assertAuthConfig } = require('./config/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Security middleware with CSP configured for React SPA
-// Note: HSTS and upgrade-insecure-requests disabled since we serve HTTP without SSL
+// Security middleware with CSP configured for React SPA.
+// styleSrc keeps 'unsafe-inline' because Emotion/MUI inject inline <style> tags at runtime;
+// scriptSrc does NOT, so an injected <script> cannot execute. HSTS is opt-in via ENABLE_HSTS
+// so it is only sent once the deployment actually terminates TLS.
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "blob:"],
       connectSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      frameAncestors: ["'none'"],
     },
-    useDefaults: false,
+    useDefaults: true,
   },
-  crossOriginResourcePolicy: { policy: "cross-origin" },
-  crossOriginOpenerPolicy: { policy: "unsafe-none" },
-  strictTransportSecurity: false,
+  crossOriginResourcePolicy: { policy: "same-origin" },
+  crossOriginOpenerPolicy: { policy: "same-origin" },
+  strictTransportSecurity: process.env.ENABLE_HSTS === 'true'
+    ? { maxAge: 31536000, includeSubDomains: true }
+    : false,
 }));
 
-// CORS configuration - in production, same origin so allow all
+// CORS: the SPA is served from this same origin in production, so no cross-origin
+// access is required. Additional origins must be opted in explicitly via ALLOWED_ORIGINS.
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' ? true : (process.env.FRONTEND_URL || 'http://localhost:5173'),
+  origin: allowedOrigins.length > 0
+    ? allowedOrigins
+    : (process.env.NODE_ENV === 'production' ? false : 'http://localhost:5173'),
   credentials: true
 }));
 
@@ -47,6 +64,14 @@ const limiter = rateLimit({
   max: 100 // limit each IP to 100 requests per windowMs
 });
 app.use(limiter);
+
+// Credential endpoints get a much tighter budget to blunt password guessing.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  skipSuccessfulRequests: true,
+  message: { error: 'Too many authentication attempts, please try again later' }
+});
 
 // Logging
 app.use(morgan('combined'));
@@ -61,6 +86,8 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/work-entries', workEntryRoutes);
@@ -88,6 +115,8 @@ if (process.env.NODE_ENV === 'production') {
 // Initialize database and start server
 async function startServer() {
   try {
+    // Fail fast rather than start with unusable authentication.
+    assertAuthConfig();
     await initializeDatabase();
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);

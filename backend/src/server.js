@@ -11,6 +11,7 @@ const reportRoutes = require('./routes/reports');
 
 const { initializeDatabase } = require('./database/init');
 const { errorHandler } = require('./middleware/errorHandler');
+const { assertAuthConfig } = require('./config/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -29,6 +30,14 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+// Credential endpoints get a much tighter budget to blunt password guessing.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  skipSuccessfulRequests: true,
+  message: { error: 'Too many authentication attempts, please try again later' }
+});
+
 // Logging
 app.use(morgan('combined'));
 
@@ -42,6 +51,8 @@ app.get('/health', (req, res) => {
 });
 
 // Routes
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/work-entries', workEntryRoutes);
@@ -58,6 +69,8 @@ app.use('*', (req, res) => {
 // Initialize database and start server
 async function startServer() {
   try {
+    // Fail fast rather than start with unusable authentication.
+    assertAuthConfig();
     await initializeDatabase();
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
