@@ -73,10 +73,17 @@ jobs:
           HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           set -euo pipefail
-          MESSAGE="${HEAD_COMMIT_MESSAGE:-$(git log -1 --pretty=%B)}"
-          AUTHOR="${HEAD_COMMIT_AUTHOR:-$(git log -1 --pretty=%an)}"
+          # Commit-level checks only apply to push events: a scheduled or manual run has no
+          # triggering commit, and the branch tip is expected to be a Devin fix after remediation.
+          if [ "$EVENT_NAME" = "push" ]; then
+            MESSAGE="${HEAD_COMMIT_MESSAGE:-$(git log -1 --pretty=%B)}"
+            AUTHOR="${HEAD_COMMIT_AUTHOR:-$(git log -1 --pretty=%an)}"
+          else
+            MESSAGE=""
+            AUTHOR=""
+          fi
 
-          echo "event=${EVENT_NAME} actor=${ACTOR} author=${AUTHOR}"
+          echo "event=${EVENT_NAME} actor=${ACTOR} author=${AUTHOR:-n/a}"
 
           skip() {
             echo "::notice::Provenance guard: skipping run ($1)"
