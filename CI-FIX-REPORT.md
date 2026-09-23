@@ -144,6 +144,13 @@ What changed:
   `${{ secrets.AWS_SECRET_ACCESS_KEY }}`, `${{ secrets.SLACK_BOT_TOKEN }}`,
   `${{ secrets.GITHUB_PAT }}`, `${{ secrets.STRIPE_SECRET_KEY }}`.
 
+## Out of scope: `security-audit` job (npm audit)
+
+The `security-audit` job still fails: it gates on high/critical advisories from
+`npm audit`. This is pre-existing — `main`'s lockfile reports 14 high advisories
+(react-router, vite, rollup, postcss, minimatch, …); this branch reports 13. Fixing it
+requires dependency upgrades unrelated to the four CI failures addressed here.
+
 ## Required follow-up: rotate exposed credentials
 
 The previously committed values (AWS access key `AKIA5J7K…`, an `xoxb-` Slack bot token, a
