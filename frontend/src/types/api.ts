@@ -18,6 +18,7 @@ export interface WorkEntry {
   client_id: number;
   hours: number;
   description: string | null;
+  category?: string | null;
   date: string;
   created_at: string;
   updated_at: string;

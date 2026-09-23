@@ -2,6 +2,7 @@ const express = require('express');
 const { getDatabase } = require('../database/init');
 const { authenticateUser } = require('../middleware/auth');
 const { workEntrySchema, updateWorkEntrySchema } = require('../validation/schemas');
+const { categorizeEntry } = require('../services/categorization');
 
 const router = express.Router();
 
@@ -14,7 +15,7 @@ router.get('/', (req, res) => {
   const db = getDatabase();
   
   let query = `
-    SELECT we.id, we.client_id, we.hours, we.description, we.date, 
+    SELECT we.id, we.client_id, we.hours, we.description, we.category, we.date, 
            we.created_at, we.updated_at, c.name as client_name
     FROM work_entries we
     JOIN clients c ON we.client_id = c.id
@@ -55,7 +56,7 @@ router.get('/:id', (req, res) => {
   const db = getDatabase();
   
   db.get(
-    `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
+    `SELECT we.id, we.client_id, we.hours, we.description, we.category, we.date, 
             we.created_at, we.updated_at, c.name as client_name
      FROM work_entries we
      JOIN clients c ON we.client_id = c.id
@@ -76,6 +77,80 @@ router.get('/:id', (req, res) => {
   );
 });
 
+// Categorize a work entry using the LLM categorization service
+router.post('/:id/categorize', (req, res) => {
+  const workEntryId = parseInt(req.params.id);
+
+  if (isNaN(workEntryId)) {
+    return res.status(400).json({ error: 'Invalid work entry ID' });
+  }
+
+  const db = getDatabase();
+
+  db.get(
+    `SELECT we.id, we.client_id, we.hours, we.description, we.category, we.date,
+            we.created_at, we.updated_at, c.name as client_name, c.department as client_department
+     FROM work_entries we
+     JOIN clients c ON we.client_id = c.id
+     WHERE we.id = ? AND we.user_email = ?`,
+    [workEntryId, req.userEmail],
+    async (err, row) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+
+      if (!row) {
+        return res.status(404).json({ error: 'Work entry not found' });
+      }
+
+      let category;
+      try {
+        category = await categorizeEntry({
+          description: row.description,
+          clientName: row.client_name,
+          department: row.client_department
+        });
+      } catch (categorizationError) {
+        console.error('Categorization error:', categorizationError);
+        const status = categorizationError.status || 502;
+        return res.status(status).json({ error: categorizationError.message || 'Failed to categorize work entry' });
+      }
+
+      db.run(
+        'UPDATE work_entries SET category = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_email = ?',
+        [category, workEntryId, req.userEmail],
+        function(err) {
+          if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ error: 'Failed to save category' });
+          }
+
+          db.get(
+            `SELECT we.id, we.client_id, we.hours, we.description, we.category, we.date,
+                    we.created_at, we.updated_at, c.name as client_name
+             FROM work_entries we
+             JOIN clients c ON we.client_id = c.id
+             WHERE we.id = ? AND we.user_email = ?`,
+            [workEntryId, req.userEmail],
+            (err, updatedRow) => {
+              if (err) {
+                console.error('Database error:', err);
+                return res.status(500).json({ error: 'Category saved but failed to retrieve work entry' });
+              }
+
+              res.json({
+                message: 'Work entry categorized successfully',
+                workEntry: updatedRow
+              });
+            }
+          );
+        }
+      );
+    }
+  );
+});
+
 // Create new work entry
 router.post('/', (req, res, next) => {
   try {
@@ -84,7 +159,7 @@ router.post('/', (req, res, next) => {
       return next(error);
     }
 
-    const { clientId, hours, description, date } = value;
+    const { clientId, hours, description, category, date } = value;
     const db = getDatabase();
 
     // Verify client exists and belongs to user
@@ -103,8 +178,8 @@ router.post('/', (req, res, next) => {
 
         // Create work entry
         db.run(
-          'INSERT INTO work_entries (client_id, user_email, hours, description, date) VALUES (?, ?, ?, ?, ?)',
-          [clientId, req.userEmail, hours, description || null, date],
+          'INSERT INTO work_entries (client_id, user_email, hours, description, category, date) VALUES (?, ?, ?, ?, ?, ?)',
+          [clientId, req.userEmail, hours, description || null, category || null, date],
           function(err) {
             if (err) {
               console.error('Database error:', err);
@@ -113,7 +188,7 @@ router.post('/', (req, res, next) => {
 
             // Return the created work entry with client name
             db.get(
-              `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
+              `SELECT we.id, we.client_id, we.hours, we.description, we.category, we.date, 
                       we.created_at, we.updated_at, c.name as client_name
                FROM work_entries we
                JOIN clients c ON we.client_id = c.id
@@ -212,6 +287,11 @@ router.put('/:id', (req, res, next) => {
             values.push(value.description || null);
           }
 
+          if (value.category !== undefined) {
+            updates.push('category = ?');
+            values.push(value.category || null);
+          }
+
           if (value.date !== undefined) {
             updates.push('date = ?');
             values.push(value.date);
@@ -230,7 +310,7 @@ router.put('/:id', (req, res, next) => {
 
             // Return updated work entry with client name
             db.get(
-              `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
+              `SELECT we.id, we.client_id, we.hours, we.description, we.category, we.date, 
                       we.created_at, we.updated_at, c.name as client_name
                FROM work_entries we
                JOIN clients c ON we.client_id = c.id

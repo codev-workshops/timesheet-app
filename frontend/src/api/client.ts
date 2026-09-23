@@ -108,6 +108,11 @@ class ApiClient {
     return response.data;
   }
 
+  async categorizeWorkEntry(id: number) {
+    const response = await this.client.post(`/api/work-entries/${id}/categorize`);
+    return response.data;
+  }
+
   async deleteWorkEntry(id: number) {
     const response = await this.client.delete(`/api/work-entries/${id}`);
     return response.data;

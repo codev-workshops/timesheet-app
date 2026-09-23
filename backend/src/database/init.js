@@ -58,6 +58,7 @@ async function initializeDatabase() {
           user_email TEXT NOT NULL,
           hours DECIMAL(5,2) NOT NULL,
           description TEXT,
+          category TEXT,
           date DATE NOT NULL,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,

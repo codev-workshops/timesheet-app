@@ -28,6 +28,7 @@ import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
+  AutoAwesome as CategorizeIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -93,6 +94,17 @@ const WorkEntriesPage: React.FC = () => {
     onError: (err: unknown) => {
       const error = err as { response?: { data?: { error?: string } } };
       setError(error.response?.data?.error || 'Failed to delete work entry');
+    },
+  });
+
+  const categorizeMutation = useMutation({
+    mutationFn: (id: number) => apiClient.categorizeWorkEntry(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workEntries'] });
+    },
+    onError: (err: unknown) => {
+      const error = err as { response?: { data?: { error?: string } } };
+      setError(error.response?.data?.error || 'Failed to categorize work entry');
     },
   });
 
@@ -219,6 +231,7 @@ const WorkEntriesPage: React.FC = () => {
                     <TableCell>Date</TableCell>
                     <TableCell>Hours</TableCell>
                     <TableCell>Description</TableCell>
+                    <TableCell>Category</TableCell>
                     <TableCell align="right">Actions</TableCell>
                   </TableRow>
                 </TableHead>
@@ -252,7 +265,28 @@ const WorkEntriesPage: React.FC = () => {
                             <Chip label="No description" size="small" variant="outlined" />
                           )}
                         </TableCell>
+                        <TableCell>
+                          {entry.category ? (
+                            <Chip label={entry.category} color="secondary" size="small" />
+                          ) : (
+                            <Chip label="Uncategorized" size="small" variant="outlined" />
+                          )}
+                        </TableCell>
                         <TableCell align="right">
+                          <IconButton
+                            onClick={() => categorizeMutation.mutate(entry.id)}
+                            color="secondary"
+                            size="small"
+                            title="Categorize"
+                            aria-label="Categorize"
+                            disabled={categorizeMutation.isPending && categorizeMutation.variables === entry.id}
+                          >
+                            {categorizeMutation.isPending && categorizeMutation.variables === entry.id ? (
+                              <CircularProgress size={20} />
+                            ) : (
+                              <CategorizeIcon />
+                            )}
+                          </IconButton>
                           <IconButton
                             onClick={() => handleOpen(entry)}
                             color="primary"
@@ -272,7 +306,7 @@ const WorkEntriesPage: React.FC = () => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={5} align="center">
+                      <TableCell colSpan={6} align="center">
                         <Typography color="text.secondary" sx={{ py: 3 }}>
                           No work entries found. Add your first work entry to get started.
                         </Typography>
