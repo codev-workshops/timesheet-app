@@ -71,6 +71,9 @@ Fingerprints are stable across runs and are the key for the retry budget.
 
    Devin is instructed to add that trailer to every commit, and the workflow's
    own state commit carries one too, so neither can re-trigger the pipeline.
+   The author/trailer checks apply to `push` events only; `schedule` and
+   `workflow_dispatch` runs check just the actor, so a nightly run still
+   re-validates a branch whose tip is a Devin fix.
 
 2. **Attempt counter** (`dispatch` job) — `.devin/remediation-state.json`
    on `feature/asiri-sast` stores
