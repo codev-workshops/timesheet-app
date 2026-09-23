@@ -56,7 +56,7 @@ flowchart TD
   N -->|"has_findings == false"| Z["Done"]
   N -->|"has_findings == true"| G["Gate: attempt counter (.devin/remediation-state.json)"]
   G -->|"attempts >= 2"| H["Escalate: GitHub Issue labelled needs-human-review, assigned to SAST_HUMAN_REVIEWER"]
-  G -->|"attempts < 2"| C["POST Devin API (one session per finding)"]
+  G -->|"attempts < 2"| C["POST Devin API (one session per affected location)"]
   C --> F["Devin fixes on same branch feature/asiri-sast with Devin-Session-Id trailer"]
   C --> W["Commit incremented attempt state to branch"]
   F --> R["Re-scan validation: npm audit + Trivy, diff vs baseline"]

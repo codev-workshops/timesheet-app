@@ -148,7 +148,7 @@ jobs:
         id: normalize
         run: |
           set -euo pipefail
-          # npm audit: fingerprint = "npm:<package>@<installed-range>:<advisory-id>"
+          # npm audit: fingerprint = "npm:<package>@<installed-range>:<advisory-id>" (direct advisories only)
           # trivy:     fingerprint = "trivy:<CVE-ID>:<package>"
           jq -n \
             --slurpfile be reports/npm-audit-backend.json \
@@ -159,6 +159,8 @@ jobs:
               | select(($v.severity | ascii_downcase) as $s | $s == "critical" or $s == "high")
               | ($v.via | map(select(type == "object"))) as $advs
               | ($advs[0] // {}) as $adv
+              # entries with no direct advisory are transitive echoes of another finding; skip them
+              | select(($adv.url // "") != "")
               | {
                   source: "npm-audit",
                   severity: ($v.severity | ascii_upcase),
@@ -181,7 +183,7 @@ jobs:
                   fixed: (.FixedVersion // ""),
                   id: .VulnerabilityID,
                   title: (.Title // ""),
-                  location: $target,
+                  location: (if ($target | test("Node\\.js")) then "backend/package.json" else $target end),
                   fix_available: ((.FixedVersion // "") != ""),
                   fingerprint: ("trivy:" + .VulnerabilityID + ":" + .PkgName)
                 };
@@ -213,7 +215,7 @@ jobs:
           retention-days: 30
 
   # ---------------------------------------------------------------------------
-  # 3. Gate + dispatch: attempt-counter breaker, then one Devin session per finding
+  # 3. Gate + dispatch: attempt-counter breaker, then one Devin session per affected location
   # ---------------------------------------------------------------------------
   dispatch:
     name: Gate + dispatch Devin
@@ -290,7 +292,7 @@ jobs:
             )
 
             EXISTING=$(gh issue list --repo "$REPO" --state open --label "$LABEL" --search "\"${FP}\" in:title" --json number,title \
-              --jq --arg t "$TITLE" '.[] | select(.title == $t) | .number' | head -n1)
+              | jq -r --arg t "$TITLE" '.[] | select(.title == $t) | .number' | head -n1)
 
             if [ -n "$EXISTING" ]; then
               gh issue comment "$EXISTING" --repo "$REPO" --body "Still unresolved as of ${RUN_URL}."
@@ -321,36 +323,38 @@ jobs:
           DISPATCHED=0
           NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-          while IFS= read -r finding; do
-            FP=$(jq -r .fingerprint <<<"$finding")
-            ATTEMPT=$(( $(jq -r .attempts <<<"$finding") + 1 ))
+          # One session per affected location (backend/package.json, frontend/package.json,
+          # each Trivy target) rather than per finding: dependency bumps in one lockfile
+          # conflict if done in parallel, and it keeps the session count bounded.
+          jq -c 'group_by(.location) | .[] | {location: .[0].location, findings: .}' reports/to-dispatch.json > reports/dispatch-groups.jsonl
+
+          while IFS= read -r group; do
+            LOCATION=$(jq -r .location <<<"$group")
+            COUNT=$(jq '.findings | length' <<<"$group")
+            FPS=$(jq -r '.findings[].fingerprint' <<<"$group")
+            MAX_ATTEMPT=$(( $(jq '[.findings[].attempts] | max' <<<"$group") + 1 ))
+            FINDINGS_MD=$(jq -r '.findings[] | "- [\(.severity)] \(.id) — \(.package)@\(.installed) (fixed: \(.fixed // "n/a")) — \(.title)\n  fingerprint: \(.fingerprint) (this will be attempt \(.attempts + 1) of '"$MAX_ATTEMPTS"')"' <<<"$group")
 
             PROMPT=$(cat <<PROMPT_END
           Automated SAST remediation for repository ${REPO} (workflow run: ${RUN_URL}).
 
-          Finding (attempt ${ATTEMPT} of ${MAX_ATTEMPTS}):
-          - Fingerprint: ${FP}
-          - Source: $(jq -r .source <<<"$finding")
-          - Severity: $(jq -r .severity <<<"$finding")
-          - ID: $(jq -r .id <<<"$finding")
-          - Package: $(jq -r .package <<<"$finding")@$(jq -r .installed <<<"$finding")
-          - Fixed version (if known): $(jq -r '.fixed // "n/a"' <<<"$finding")
-          - Location: $(jq -r .location <<<"$finding")
-          - Title: $(jq -r .title <<<"$finding")
+          Location: ${LOCATION}
+          ${COUNT} CRITICAL/HIGH finding(s) to remediate:
+          ${FINDINGS_MD}
 
           Instructions:
           1. Clone ${REPO} and check out the EXISTING branch '${REMEDIATION_BRANCH}'. Do NOT create a new branch and do NOT touch the default branch.
-          2. Fix ONLY this finding with the minimal change (e.g. bump the affected package to a patched version in the relevant package.json/package-lock.json, or bump the base image in docker/Dockerfile for OS-level CVEs). Do not refactor unrelated code.
-          3. Verify: run 'npm audit --audit-level=high' in the affected directory and, for Docker findings, rebuild and run 'trivy image --severity HIGH,CRITICAL'. Run 'npm test' in backend/ and 'npm run build' in frontend/ to make sure nothing breaks.
-          4. Update the attempt counter: in '${STATE_FILE}' set .attempts["${FP}"] = {"count": ${ATTEMPT}, "last_attempt": "<ISO timestamp>", "last_session": "<your session id>"} (create the file with {"attempts":{}} if missing). Commit this together with the fix.
-          5. Every commit MUST end with the trailer line 'Devin-Session-Id: <your session id>' so the SAST Auto-Remediate provenance guard skips your commits. Suggested message: "fix(security): remediate ${FP}".
+          2. Fix ONLY the findings listed above with minimal changes (bump affected packages to patched versions in the relevant package.json/package-lock.json; for Docker/OS-level CVEs bump the base image or packages in docker/Dockerfile). Do not refactor unrelated code. If a finding cannot be fixed without a breaking major upgrade, leave it and explain why in the commit message.
+          3. Verify: run 'npm audit --audit-level=high' in the affected directory and, for Docker findings, rebuild the image ('docker build -f docker/Dockerfile .') and run 'trivy image --severity HIGH,CRITICAL'. Run 'npm test' in backend/ and 'npm run build' in frontend/ to make sure nothing breaks.
+          4. Update the attempt counter: in '${STATE_FILE}' for EACH fingerprint above set .attempts["<fingerprint>"] = {"count": <attempt number shown above>, "last_attempt": "<ISO timestamp>", "last_session": "<your session id>"} (create the file with {"attempts":{}} if missing). Commit this together with the fix.
+          5. Every commit MUST end with the trailer line 'Devin-Session-Id: <your session id>' so the SAST Auto-Remediate provenance guard skips your commits. Suggested message: "fix(security): remediate CRITICAL/HIGH findings in ${LOCATION}".
           6. Push directly to '${REMEDIATION_BRANCH}'. Do NOT open a pull request.
           PROMPT_END
           )
 
             REQUEST_BODY=$(jq -n \
               --arg prompt "$PROMPT" \
-              --arg title "SAST auto-remediate ${FP} (attempt ${ATTEMPT})" \
+              --arg title "SAST auto-remediate ${LOCATION} (${COUNT} findings, attempt ${MAX_ATTEMPT})" \
               --arg repo "$REPO" \
               --arg user_id "${CREATE_AS_USER_ID}" \
               '{ prompt: $prompt, title: $title, repos: [$repo],
@@ -369,18 +373,20 @@ jobs:
             if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
               SESSION_URL=$(jq -r '.url // empty' <<<"$HTTP_BODY")
               SESSION_ID=$(jq -r '.session_id // .id // empty' <<<"$HTTP_BODY")
-              echo "Dispatched ${FP} -> ${SESSION_URL}"
-              echo "- ${FP}: [session](${SESSION_URL}) (attempt ${ATTEMPT}/${MAX_ATTEMPTS})" >> "$GITHUB_STEP_SUMMARY"
+              echo "Dispatched ${LOCATION} (${COUNT} findings) -> ${SESSION_URL}"
+              echo "- ${LOCATION}: ${COUNT} finding(s) -> [session](${SESSION_URL})" >> "$GITHUB_STEP_SUMMARY"
               # Record the attempt in the workflow's own state copy so that a session
               # which never lands a commit still consumes retry budget.
-              jq --arg fp "$FP" --argjson n "$ATTEMPT" --arg ts "$NOW" --arg sid "$SESSION_ID" \
-                '.attempts[$fp] = {count: $n, last_attempt: $ts, last_session: $sid}' \
-                "$STATE_FILE" > state.tmp && mv state.tmp "$STATE_FILE"
+              while IFS= read -r FP; do
+                jq --arg fp "$FP" --arg ts "$NOW" --arg sid "$SESSION_ID" \
+                  '.attempts[$fp] = {count: ((.attempts[$fp].count // 0) + 1), last_attempt: $ts, last_session: $sid}' \
+                  "$STATE_FILE" > state.tmp && mv state.tmp "$STATE_FILE"
+              done <<<"$FPS"
               DISPATCHED=$((DISPATCHED + 1))
             else
-              echo "::error::Devin API returned HTTP ${HTTP_CODE} for ${FP}: ${HTTP_BODY}"
+              echo "::error::Devin API returned HTTP ${HTTP_CODE} for ${LOCATION}: ${HTTP_BODY}"
             fi
-          done < <(jq -c '.[]' reports/to-dispatch.json)
+          done < reports/dispatch-groups.jsonl
 
           echo "dispatched_count=${DISPATCHED}" >> "$GITHUB_OUTPUT"
 
@@ -470,10 +476,11 @@ jobs:
         run: |
           set -euo pipefail
           jq -n --slurpfile be reports/npm-audit-backend.json --slurpfile fe reports/npm-audit-frontend.json --slurpfile tv reports/trivy-report.json '
-            [ (($be[0].vulnerabilities // {}) | to_entries[] | .value | select((.severity|ascii_downcase) as $s | $s=="critical" or $s=="high")
-                | "npm:" + .name + "@" + (.range // "unknown") + ":" + ((.via | map(select(type=="object"))[0].url // "") | split("/") | last // "na")),
-              (($fe[0].vulnerabilities // {}) | to_entries[] | .value | select((.severity|ascii_downcase) as $s | $s=="critical" or $s=="high")
-                | "npm:" + .name + "@" + (.range // "unknown") + ":" + ((.via | map(select(type=="object"))[0].url // "") | split("/") | last // "na")),
+            def npm_fps($r): ($r[0].vulnerabilities // {}) | to_entries[] | .value
+                | select((.severity|ascii_downcase) as $s | $s=="critical" or $s=="high")
+                | ((.via | map(select(type=="object"))[0].url // "")) as $url | select($url != "")
+                | "npm:" + .name + "@" + (.range // "unknown") + ":" + ($url | split("/") | last);
+            [ npm_fps($be), npm_fps($fe),
               (($tv[0].Results // [])[] | (.Vulnerabilities // [])[] | "trivy:" + .VulnerabilityID + ":" + .PkgName)
             ] | unique' > reports/current-fingerprints.json
 

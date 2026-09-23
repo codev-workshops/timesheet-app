@@ -3,7 +3,7 @@
 Workflow: `.github/workflows/sast-auto-remediate.yml` (`SAST Auto-Remediate`).
 
 The pipeline scans the repository for CRITICAL/HIGH dependency and container
-vulnerabilities, dispatches one Devin session per finding, has Devin commit the
+vulnerabilities, dispatches one Devin session per affected location, has Devin commit the
 fix to the **same branch**, and re-scans to verify. Two circuit breakers stop it
 from looping or retrying forever.
 
@@ -15,7 +15,7 @@ push(main) / nightly cron / workflow_dispatch
   -> scan: npm audit --json (backend, frontend) + Trivy image scan
   -> normalize + fingerprint CRITICAL/HIGH findings
   -> gate: attempt counter (max 2 per fingerprint)
-  -> POST Devin API, one session per finding
+  -> POST Devin API, one session per affected location
   -> Devin pushes fix + state update to feature/asiri-sast with Devin-Session-Id trailer
   -> re-scan validation (npm audit + Trivy again, diff against baseline)
 ```
@@ -108,15 +108,18 @@ Authorization: Bearer ${DEVIN_API_KEY}
   "create_as_user_id": "...", "tags": ["sast-auto-remediate", ...] }
 ```
 
-One session is created per remaining CRITICAL/HIGH finding. The prompt contains
-the fingerprint, source, severity, advisory/CVE id, package@version, fixed
-version, and location, plus these instructions:
+Remaining CRITICAL/HIGH findings are grouped by location (`backend/package.json`,
+`frontend/package.json`, each Trivy OS target; Trivy `Node.js` hits map to
+`backend/package.json` since that is what the image ships) and one session is
+created per group, so parallel sessions never edit the same lockfile. The prompt
+lists every finding in the group (fingerprint, source, severity, advisory/CVE
+id, package@version, fixed version, location) plus these instructions:
 
 - check out the **existing** `feature/asiri-sast` branch — no new branch, no
   default-branch changes, no PR;
 - minimal fix only, verified with `npm audit`, Trivy, `npm test` (backend) and
   `npm run build` (frontend);
-- update `.devin/remediation-state.json` for the fingerprint;
+- update `.devin/remediation-state.json` for each fingerprint in the group;
 - end every commit with `Devin-Session-Id: <session id>`.
 
 ### Required secrets
