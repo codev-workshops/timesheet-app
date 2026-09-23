@@ -77,10 +77,24 @@ Fingerprints are stable across runs and are the key for the retry budget.
    `{"attempts": {"<fingerprint>": {"count": n, "last_attempt": ..., "last_session": ...}}}`.
    A fingerprint with `count >= 2` is **not** dispatched; it is logged as
    `needs-human-review` (workflow warning + `needs-human-review.json` in the
-   `sast-gate` artifact). The workflow increments the counter when a session
+   `sast-gate` artifact) and escalated to a human (see below). The workflow increments the counter when a session
    is created and commits the state file back to the branch, so a session that
    never lands a fix still consumes budget. Devin is also asked to update the
    same entry alongside its fix.
+
+## Escalation path
+
+When a finding is still present after both automated attempts, the `dispatch`
+job's *Escalate exhausted findings* step opens a GitHub Issue titled
+`[SAST] needs human review: <fingerprint>` with labels `needs-human-review`
+(created on demand) and `security`, containing the finding details, attempt
+count, last Devin session id and a link to the run. The issue is assigned to
+the GitHub login in the repository variable **`SAST_HUMAN_REVIEWER`**
+(*Settings → Secrets and variables → Actions → Variables*); if the variable is
+unset, the actor who triggered the run is assigned. Subsequent runs do not open
+duplicates — an open issue with the same title receives a "still unresolved"
+comment instead. To let automation retry a finding, delete its entry from
+`.devin/remediation-state.json` and close the issue.
 
 ## Devin invocation
 
@@ -125,7 +139,8 @@ the baseline `findings.json`:
 
 - **resolved** — present before, gone now;
 - **remaining** — still present; these are retried on the next run until the
-  two-attempt budget is exhausted, then flagged `needs-human-review`;
+  two-attempt budget is exhausted, then escalated as a `needs-human-review`
+  issue assigned to `SAST_HUMAN_REVIEWER`;
 - **new** — appeared since the baseline.
 
 Results are written to the step summary and the `sast-rescan` artifact.

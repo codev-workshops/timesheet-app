@@ -7,7 +7,8 @@
 #   1. Provenance guard: skip runs triggered by bot commits (actor ends with
 #      "[bot]", Devin's account, or a "Devin-Session-Id:" commit trailer).
 #   2. Attempt counter: each finding fingerprint is dispatched at most
-#      MAX_ATTEMPTS (2) times; after that it is labelled needs-human-review.
+#      MAX_ATTEMPTS (2) times; after that it is labelled needs-human-review
+#      and escalated as a GitHub Issue assigned to HUMAN_REVIEWER.
 #      State lives in .devin/remediation-state.json on REMEDIATION_BRANCH.
 #
 # Required secrets: DEVIN_API_KEY (+ optional DEVIN_CREATE_AS_USER_ID,
@@ -36,6 +37,7 @@ concurrency:
 permissions:
   contents: write
   actions: read
+  issues: write
 
 env:
   NODE_VERSION: '20'                     # no "engines" field in package.json; matches Dockerfile + pr-checks.yml
@@ -44,6 +46,8 @@ env:
   MAX_ATTEMPTS: '2'
   DEVIN_BOT_ACTORS: 'devin-ai-integration[bot] devin-ai-integration'
   DEVIN_ORG_ID: org-732f6f756e234fe49c954e2ede7ecba9
+  # GitHub login that receives escalation issues; repo variable overrides the triggering actor.
+  HUMAN_REVIEWER: ${{ vars.SAST_HUMAN_REVIEWER || github.actor }}
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -244,7 +248,62 @@ jobs:
           jq '[.[] | select(.action == "needs-human-review")]' reports/gated.json > reports/needs-human-review.json
 
           echo "to_dispatch=$(jq length reports/to-dispatch.json)" >> "$GITHUB_OUTPUT"
+          echo "to_escalate=$(jq length reports/needs-human-review.json)" >> "$GITHUB_OUTPUT"
           jq -r '.[] | "::warning title=needs-human-review::\(.fingerprint) exhausted \(.attempts)/'"$MAX_ATTEMPTS"' attempts"' reports/needs-human-review.json
+
+      - name: Escalate exhausted findings to a human reviewer
+        if: steps.gate.outputs.to_escalate != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -uo pipefail
+          LABEL=needs-human-review
+          gh label create "$LABEL" --repo "$REPO" --color B60205 \
+            --description "SAST finding not resolved after automated remediation attempts" --force >/dev/null
+
+          while IFS= read -r finding; do
+            FP=$(jq -r .fingerprint <<<"$finding")
+            TITLE="[SAST] needs human review: ${FP}"
+            STATE_ENTRY=$(jq -c --arg fp "$FP" '.attempts[$fp] // {}' "$STATE_FILE")
+            BODY=$(cat <<BODY_END
+          Automated remediation exhausted its ${MAX_ATTEMPTS}-attempt budget without resolving this finding on branch \`${REMEDIATION_BRANCH}\`.
+
+          | Field | Value |
+          |---|---|
+          | Fingerprint | \`${FP}\` |
+          | Source | $(jq -r .source <<<"$finding") |
+          | Severity | $(jq -r .severity <<<"$finding") |
+          | ID | $(jq -r .id <<<"$finding") |
+          | Package | \`$(jq -r .package <<<"$finding")@$(jq -r .installed <<<"$finding")\` |
+          | Fixed version | $(jq -r '.fixed // "n/a"' <<<"$finding") |
+          | Location | \`$(jq -r .location <<<"$finding")\` |
+          | Title | $(jq -r .title <<<"$finding") |
+          | Attempts | $(jq -r .attempts <<<"$finding") |
+          | Last Devin session | $(jq -r '.last_session // "n/a"' <<<"$STATE_ENTRY") |
+
+          Latest workflow run: ${RUN_URL}
+
+          Next steps for the assignee: fix manually on \`${REMEDIATION_BRANCH}\`, or accept the risk. To let automation retry, delete the \`${FP}\` entry from \`${STATE_FILE}\`.
+          BODY_END
+            )
+
+            EXISTING=$(gh issue list --repo "$REPO" --state open --label "$LABEL" --search "\"${FP}\" in:title" --json number,title \
+              --jq --arg t "$TITLE" '.[] | select(.title == $t) | .number' | head -n1)
+
+            if [ -n "$EXISTING" ]; then
+              gh issue comment "$EXISTING" --repo "$REPO" --body "Still unresolved as of ${RUN_URL}."
+              echo "Updated escalation issue #${EXISTING} for ${FP}"
+              echo "- ${FP}: escalation issue #${EXISTING} updated" >> "$GITHUB_STEP_SUMMARY"
+            else
+              URL=$(gh issue create --repo "$REPO" --title "$TITLE" --body "$BODY" \
+                --label "$LABEL" --label security --assignee "$HUMAN_REVIEWER" 2>/dev/null \
+                || gh issue create --repo "$REPO" --title "$TITLE" --body "$BODY" --label "$LABEL" --assignee "$HUMAN_REVIEWER")
+              echo "Opened escalation issue ${URL} for ${FP} (assignee: ${HUMAN_REVIEWER})"
+              echo "- ${FP}: escalated to @${HUMAN_REVIEWER} -> ${URL}" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done < <(jq -c '.[]' reports/needs-human-review.json)
 
       - name: Dispatch Devin sessions
         id: dispatch

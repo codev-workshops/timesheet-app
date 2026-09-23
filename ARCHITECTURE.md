@@ -55,7 +55,7 @@ flowchart TD
   I --> N
   N -->|"has_findings == false"| Z["Done"]
   N -->|"has_findings == true"| G["Gate: attempt counter (.devin/remediation-state.json)"]
-  G -->|"attempts >= 2"| H["needs-human-review"]
+  G -->|"attempts >= 2"| H["Escalate: GitHub Issue labelled needs-human-review, assigned to SAST_HUMAN_REVIEWER"]
   G -->|"attempts < 2"| C["POST Devin API (one session per finding)"]
   C --> F["Devin fixes on same branch feature/asiri-sast with Devin-Session-Id trailer"]
   C --> W["Commit incremented attempt state to branch"]
@@ -72,6 +72,9 @@ Design points:
   pipeline from reacting to its own output (no infinite loop).
 - **Stable fingerprints** (`npm:<pkg>@<range>:<GHSA>`, `trivy:<CVE>:<pkg>`)
   drive both dispatch and the two-attempt retry budget.
+- **Human escalation** — findings that survive two Devin attempts become a
+  deduplicated GitHub Issue assigned to the `SAST_HUMAN_REVIEWER` repo
+  variable (fallback: triggering actor).
 - **Same-branch strategy** — fixes and state go straight to
   `feature/asiri-sast`; no branches or PRs are created by Devin.
 - **Secrets** — `DEVIN_API_KEY` (required) and optional
