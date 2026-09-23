@@ -1,0 +1,6 @@
+npm error Missing script: "test:coverage"
+npm error
+npm error To see a list of scripts, run:
+npm error   npm run
+npm error A complete log of this run can be found in: /home/ubuntu/.npm/_logs/2026-09-23T09_03_22_750Z-debug-0.log
+exit=1
