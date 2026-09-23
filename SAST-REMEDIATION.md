@@ -88,7 +88,7 @@ The repo already invokes Devin from `sast-scan.yml` and `pr-checks.yml`
 via the v3 API; the new workflow reuses that pattern:
 
 ```
-POST https://api.devin.ai/v3/organizations/${DEVIN_ORG_ID}/sessions
+POST https://api.devin.ai/v3/organizations/org-732f6f756e234fe49c954e2ede7ecba9/sessions
 Authorization: Bearer ${DEVIN_API_KEY}
 { "prompt": "...", "title": "...", "repos": ["<owner>/<repo>"],
   "create_as_user_id": "...", "tags": ["sast-auto-remediate", ...] }
@@ -110,10 +110,11 @@ version, and location, plus these instructions:
 | Secret | Purpose |
 |---|---|
 | `DEVIN_API_KEY` | **Required.** Bearer token for the Devin API. Never hardcoded. |
-| `DEVIN_ORG_ID` | Organization id used in the v3 sessions URL. |
 | `DEVIN_CREATE_AS_USER_ID` | Optional; attributes sessions to a user. |
 
-Add them under *Settings → Secrets and variables → Actions*.
+Add them under *Settings → Secrets and variables → Actions*. The Devin
+organization id is fixed in the workflow's `env.DEVIN_ORG_ID`
+(`org-732f6f756e234fe49c954e2ede7ecba9`).
 
 ## Re-scan validation
 

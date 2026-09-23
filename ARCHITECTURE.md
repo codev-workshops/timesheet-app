@@ -74,5 +74,5 @@ Design points:
   drive both dispatch and the two-attempt retry budget.
 - **Same-branch strategy** — fixes and state go straight to
   `feature/asiri-sast`; no branches or PRs are created by Devin.
-- **Secrets** — `DEVIN_API_KEY` (required), `DEVIN_ORG_ID`,
-  `DEVIN_CREATE_AS_USER_ID`, matching the existing workflows.
+- **Secrets** — `DEVIN_API_KEY` (required) and optional
+  `DEVIN_CREATE_AS_USER_ID`; the Devin org id is fixed in the workflow env.

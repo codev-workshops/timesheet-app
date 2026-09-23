@@ -10,7 +10,7 @@
 #      MAX_ATTEMPTS (2) times; after that it is labelled needs-human-review.
 #      State lives in .devin/remediation-state.json on REMEDIATION_BRANCH.
 #
-# Required secrets: DEVIN_API_KEY (+ DEVIN_ORG_ID, DEVIN_CREATE_AS_USER_ID,
+# Required secrets: DEVIN_API_KEY (+ optional DEVIN_CREATE_AS_USER_ID,
 # matching the existing Devin v3 invocation pattern used in sast-scan.yml
 # and pr-checks.yml). See SAST-REMEDIATION.md.
 
@@ -43,6 +43,7 @@ env:
   STATE_FILE: .devin/remediation-state.json
   MAX_ATTEMPTS: '2'
   DEVIN_BOT_ACTORS: 'devin-ai-integration[bot] devin-ai-integration'
+  DEVIN_ORG_ID: org-732f6f756e234fe49c954e2ede7ecba9
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -250,7 +251,6 @@ jobs:
         if: steps.gate.outputs.to_dispatch != '0'
         env:
           DEVIN_API_KEY: ${{ secrets.DEVIN_API_KEY }}
-          DEVIN_ORG_ID: ${{ secrets.DEVIN_ORG_ID }}
           CREATE_AS_USER_ID: ${{ secrets.DEVIN_CREATE_AS_USER_ID }}
           REPO: ${{ github.repository }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
