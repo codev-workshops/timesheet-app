@@ -1,0 +1,520 @@
+# SAST Auto-Remediate
+#
+# Event-driven pipeline: scan (npm audit + Trivy) -> gate (circuit breakers)
+# -> dispatch Devin sessions -> Devin fixes on the SAME branch -> re-scan.
+#
+# Circuit breakers:
+#   1. Provenance guard: skip runs triggered by bot commits (actor ends with
+#      "[bot]", Devin's account, or a "Devin-Session-Id:" commit trailer).
+#   2. Attempt counter: each finding fingerprint is dispatched at most
+#      MAX_ATTEMPTS (2) times; after that it is labelled needs-human-review
+#      and escalated as a GitHub Issue assigned to HUMAN_REVIEWER.
+#      State lives in .devin/remediation-state.json on REMEDIATION_BRANCH.
+#
+# Required secrets: DEVIN_API_KEY (+ optional DEVIN_CREATE_AS_USER_ID,
+# matching the existing Devin v3 invocation pattern used in sast-scan.yml
+# and pr-checks.yml). See SAST-REMEDIATION.md.
+
+name: SAST Auto-Remediate
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * *'   # nightly 02:00 UTC
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to scan and remediate'
+        required: false
+        default: 'feature/asiri-sast'
+
+# Overlapping runs cancel each other.
+concurrency:
+  group: sast-auto-remediate-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  actions: read
+  issues: write
+
+env:
+  NODE_VERSION: '20'                     # no "engines" field in package.json; matches Dockerfile + pr-checks.yml
+  REMEDIATION_BRANCH: ${{ github.event.inputs.branch || 'feature/asiri-sast' }}
+  STATE_FILE: .devin/remediation-state.json
+  MAX_ATTEMPTS: '2'
+  DEVIN_BOT_ACTORS: 'devin-ai-integration[bot] devin-ai-integration'
+  DEVIN_ORG_ID: org-732f6f756e234fe49c954e2ede7ecba9
+  # GitHub login that receives escalation issues; repo variable overrides the triggering actor.
+  HUMAN_REVIEWER: ${{ vars.SAST_HUMAN_REVIEWER || github.actor }}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. Provenance guard (circuit breaker: never remediate bot-authored commits)
+  # ---------------------------------------------------------------------------
+  provenance:
+    name: Provenance guard
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.guard.outputs.should_run }}
+      reason: ${{ steps.guard.outputs.reason }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Inspect triggering actor and commit
+        id: guard
+        env:
+          ACTOR: ${{ github.actor }}
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_COMMIT_AUTHOR: ${{ github.event.head_commit.author.username }}
+          HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          set -euo pipefail
+          # Commit-level checks only apply to push events: a scheduled or manual run has no
+          # triggering commit, and the branch tip is expected to be a Devin fix after remediation.
+          if [ "$EVENT_NAME" = "push" ]; then
+            MESSAGE="${HEAD_COMMIT_MESSAGE:-$(git log -1 --pretty=%B)}"
+            AUTHOR="${HEAD_COMMIT_AUTHOR:-$(git log -1 --pretty=%an)}"
+          else
+            MESSAGE=""
+            AUTHOR=""
+          fi
+
+          echo "event=${EVENT_NAME} actor=${ACTOR} author=${AUTHOR:-n/a}"
+
+          skip() {
+            echo "::notice::Provenance guard: skipping run ($1)"
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "reason=$1" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+
+          case "$ACTOR" in *"[bot]") skip "actor ${ACTOR} is a bot";; esac
+          case "$AUTHOR" in *"[bot]") skip "commit author ${AUTHOR} is a bot";; esac
+          for bot in $DEVIN_BOT_ACTORS; do
+            [ "$ACTOR" = "$bot" ] && skip "actor ${ACTOR} is Devin"
+            [ "$AUTHOR" = "$bot" ] && skip "author ${AUTHOR} is Devin"
+          done
+          if printf '%s\n' "$MESSAGE" | grep -qiE '^Devin-Session-Id:'; then
+            skip "commit carries a Devin-Session-Id trailer"
+          fi
+
+          echo "should_run=true" >> "$GITHUB_OUTPUT"
+          echo "reason=human-authored change" >> "$GITHUB_OUTPUT"
+
+  # ---------------------------------------------------------------------------
+  # 2. Scan: npm audit (backend + frontend) and Trivy image scan
+  # ---------------------------------------------------------------------------
+  scan:
+    name: Scan (npm audit + Trivy)
+    needs: provenance
+    if: needs.provenance.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      has_findings: ${{ steps.normalize.outputs.has_findings }}
+      findings_count: ${{ steps.normalize.outputs.findings_count }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.REMEDIATION_BRANCH }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: npm audit (backend + frontend)
+        run: |
+          set -uo pipefail
+          mkdir -p reports
+          for dir in backend frontend; do
+            echo "::group::npm audit ${dir}"
+            (cd "$dir" && npm ci --ignore-scripts --no-audit --no-fund)
+            # audit exits non-zero when vulnerabilities exist; never fail the job here.
+            (cd "$dir" && npm audit --json > "../reports/npm-audit-${dir}.json") || true
+            echo "::endgroup::"
+          done
+
+      - name: Build Docker image
+        # docker/Dockerfile exists, so we scan the built image rather than the filesystem.
+        run: docker build -f docker/Dockerfile -t timesheet-app:scan .
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: timesheet-app:scan
+          format: json
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          output: reports/trivy-report.json
+          exit-code: '0'
+
+      - name: Normalize findings
+        id: normalize
+        run: |
+          set -euo pipefail
+          # npm audit: fingerprint = "npm:<package>@<installed-range>:<advisory-id>" (direct advisories only)
+          # trivy:     fingerprint = "trivy:<CVE-ID>:<package>"
+          jq -n \
+            --slurpfile be reports/npm-audit-backend.json \
+            --slurpfile fe reports/npm-audit-frontend.json \
+            --slurpfile tv reports/trivy-report.json '
+            def npm_findings($report; $dir):
+              ($report[0].vulnerabilities // {}) | to_entries[] | .value as $v
+              | select(($v.severity | ascii_downcase) as $s | $s == "critical" or $s == "high")
+              | ($v.via | map(select(type == "object"))) as $advs
+              | ($advs[0] // {}) as $adv
+              # entries with no direct advisory are transitive echoes of another finding; skip them
+              | select(($adv.url // "") != "")
+              | {
+                  source: "npm-audit",
+                  severity: ($v.severity | ascii_upcase),
+                  package: $v.name,
+                  installed: ($v.range // "unknown"),
+                  id: (($adv.url // "") | split("/") | last | select(length > 0) // ("advisory-" + $v.name)),
+                  title: ($adv.title // "transitive vulnerability"),
+                  location: ($dir + "/package.json"),
+                  fix_available: ($v.fixAvailable != false),
+                  fingerprint: ("npm:" + $v.name + "@" + ($v.range // "unknown") + ":" + (($adv.url // "") | split("/") | last // "na"))
+                };
+            def trivy_findings:
+              ($tv[0].Results // [])[] | .Target as $target
+              | (.Vulnerabilities // [])[]
+              | {
+                  source: "trivy",
+                  severity: .Severity,
+                  package: .PkgName,
+                  installed: .InstalledVersion,
+                  fixed: (.FixedVersion // ""),
+                  id: .VulnerabilityID,
+                  title: (.Title // ""),
+                  location: (if ($target | test("Node\\.js")) then "backend/package.json" else $target end),
+                  fix_available: ((.FixedVersion // "") != ""),
+                  fingerprint: ("trivy:" + .VulnerabilityID + ":" + .PkgName)
+                };
+            [npm_findings($be; "backend"), npm_findings($fe; "frontend"), trivy_findings]
+            | unique_by(.fingerprint)
+            | sort_by(.severity, .fingerprint)
+          ' > reports/findings.json
+
+          COUNT=$(jq length reports/findings.json)
+          echo "findings_count=${COUNT}" >> "$GITHUB_OUTPUT"
+          if [ "$COUNT" -gt 0 ]; then
+            echo "has_findings=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_findings=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          {
+            echo "## SAST scan — ${COUNT} CRITICAL/HIGH finding(s)"
+            echo ""
+            echo "| Severity | Source | ID | Package | Location |"
+            echo "|---|---|---|---|---|"
+            jq -r '.[] | "| \(.severity) | \(.source) | \(.id) | \(.package)@\(.installed) | \(.location) |"' reports/findings.json
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sast-reports
+          path: reports/
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # 3. Gate + dispatch: attempt-counter breaker, then one Devin session per affected location
+  # ---------------------------------------------------------------------------
+  dispatch:
+    name: Gate + dispatch Devin
+    needs: [provenance, scan]
+    if: needs.provenance.outputs.should_run == 'true' && needs.scan.outputs.has_findings == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      dispatched_count: ${{ steps.dispatch.outputs.dispatched_count }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.REMEDIATION_BRANCH }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sast-reports
+          path: reports/
+
+      - name: Apply attempt-counter circuit breaker
+        id: gate
+        run: |
+          set -euo pipefail
+          [ -f "$STATE_FILE" ] || { mkdir -p "$(dirname "$STATE_FILE")"; echo '{"attempts":{}}' > "$STATE_FILE"; }
+
+          jq --slurpfile state "$STATE_FILE" --argjson max "$MAX_ATTEMPTS" '
+            map(. + { attempts: ($state[0].attempts[.fingerprint].count // 0) })
+            | map(. + { action: (if .attempts >= $max then "needs-human-review" else "dispatch" end) })
+          ' reports/findings.json > reports/gated.json
+
+          jq '[.[] | select(.action == "dispatch")]' reports/gated.json > reports/to-dispatch.json
+          jq '[.[] | select(.action == "needs-human-review")]' reports/gated.json > reports/needs-human-review.json
+
+          echo "to_dispatch=$(jq length reports/to-dispatch.json)" >> "$GITHUB_OUTPUT"
+          echo "to_escalate=$(jq length reports/needs-human-review.json)" >> "$GITHUB_OUTPUT"
+          jq -r '.[] | "::warning title=needs-human-review::\(.fingerprint) exhausted \(.attempts)/'"$MAX_ATTEMPTS"' attempts"' reports/needs-human-review.json
+
+      - name: Escalate exhausted findings to a human reviewer
+        if: steps.gate.outputs.to_escalate != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -uo pipefail
+          LABEL=needs-human-review
+          gh label create "$LABEL" --repo "$REPO" --color B60205 \
+            --description "SAST finding not resolved after automated remediation attempts" --force >/dev/null
+
+          while IFS= read -r finding; do
+            FP=$(jq -r .fingerprint <<<"$finding")
+            TITLE="[SAST] needs human review: ${FP}"
+            STATE_ENTRY=$(jq -c --arg fp "$FP" '.attempts[$fp] // {}' "$STATE_FILE")
+            BODY=$(cat <<BODY_END
+          Automated remediation exhausted its ${MAX_ATTEMPTS}-attempt budget without resolving this finding on branch \`${REMEDIATION_BRANCH}\`.
+
+          | Field | Value |
+          |---|---|
+          | Fingerprint | \`${FP}\` |
+          | Source | $(jq -r .source <<<"$finding") |
+          | Severity | $(jq -r .severity <<<"$finding") |
+          | ID | $(jq -r .id <<<"$finding") |
+          | Package | \`$(jq -r .package <<<"$finding")@$(jq -r .installed <<<"$finding")\` |
+          | Fixed version | $(jq -r '.fixed // "n/a"' <<<"$finding") |
+          | Location | \`$(jq -r .location <<<"$finding")\` |
+          | Title | $(jq -r .title <<<"$finding") |
+          | Attempts | $(jq -r .attempts <<<"$finding") |
+          | Last Devin session | $(jq -r '.last_session // "n/a"' <<<"$STATE_ENTRY") |
+
+          Latest workflow run: ${RUN_URL}
+
+          Next steps for the assignee: fix manually on \`${REMEDIATION_BRANCH}\`, or accept the risk. To let automation retry, delete the \`${FP}\` entry from \`${STATE_FILE}\`.
+          BODY_END
+            )
+
+            EXISTING=$(gh issue list --repo "$REPO" --state open --label "$LABEL" --search "\"${FP}\" in:title" --json number,title \
+              | jq -r --arg t "$TITLE" '.[] | select(.title == $t) | .number' | head -n1)
+
+            if [ -n "$EXISTING" ]; then
+              gh issue comment "$EXISTING" --repo "$REPO" --body "Still unresolved as of ${RUN_URL}."
+              echo "Updated escalation issue #${EXISTING} for ${FP}"
+              echo "- ${FP}: escalation issue #${EXISTING} updated" >> "$GITHUB_STEP_SUMMARY"
+            else
+              URL=$(gh issue create --repo "$REPO" --title "$TITLE" --body "$BODY" \
+                --label "$LABEL" --label security --assignee "$HUMAN_REVIEWER" 2>/dev/null \
+                || gh issue create --repo "$REPO" --title "$TITLE" --body "$BODY" --label "$LABEL" --assignee "$HUMAN_REVIEWER")
+              echo "Opened escalation issue ${URL} for ${FP} (assignee: ${HUMAN_REVIEWER})"
+              echo "- ${FP}: escalated to @${HUMAN_REVIEWER} -> ${URL}" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done < <(jq -c '.[]' reports/needs-human-review.json)
+
+      - name: Dispatch Devin sessions
+        id: dispatch
+        if: steps.gate.outputs.to_dispatch != '0'
+        env:
+          DEVIN_API_KEY: ${{ secrets.DEVIN_API_KEY }}
+          CREATE_AS_USER_ID: ${{ secrets.DEVIN_CREATE_AS_USER_ID }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -uo pipefail
+          if [ -z "${DEVIN_API_KEY}" ]; then
+            echo "::error::DEVIN_API_KEY secret is not configured"; exit 1
+          fi
+          DISPATCHED=0
+          NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+          # One session per affected location (backend/package.json, frontend/package.json,
+          # each Trivy target) rather than per finding: dependency bumps in one lockfile
+          # conflict if done in parallel, and it keeps the session count bounded.
+          jq -c 'group_by(.location) | .[] | {location: .[0].location, findings: .}' reports/to-dispatch.json > reports/dispatch-groups.jsonl
+
+          while IFS= read -r group; do
+            LOCATION=$(jq -r .location <<<"$group")
+            COUNT=$(jq '.findings | length' <<<"$group")
+            FPS=$(jq -r '.findings[].fingerprint' <<<"$group")
+            MAX_ATTEMPT=$(( $(jq '[.findings[].attempts] | max' <<<"$group") + 1 ))
+            FINDINGS_MD=$(jq -r '.findings[] | "- [\(.severity)] \(.id) — \(.package)@\(.installed) (fixed: \(.fixed // "n/a")) — \(.title)\n  fingerprint: \(.fingerprint) (this will be attempt \(.attempts + 1) of '"$MAX_ATTEMPTS"')"' <<<"$group")
+
+            PROMPT=$(cat <<PROMPT_END
+          Automated SAST remediation for repository ${REPO} (workflow run: ${RUN_URL}).
+
+          Location: ${LOCATION}
+          ${COUNT} CRITICAL/HIGH finding(s) to remediate:
+          ${FINDINGS_MD}
+
+          Instructions:
+          1. Clone ${REPO} and check out the EXISTING branch '${REMEDIATION_BRANCH}'. Do NOT create a new branch and do NOT touch the default branch.
+          2. Fix ONLY the findings listed above with minimal changes (bump affected packages to patched versions in the relevant package.json/package-lock.json; for Docker/OS-level CVEs bump the base image or packages in docker/Dockerfile). Do not refactor unrelated code. If a finding cannot be fixed without a breaking major upgrade, leave it and explain why in the commit message.
+          3. Verify: run 'npm audit --audit-level=high' in the affected directory and, for Docker findings, rebuild the image ('docker build -f docker/Dockerfile .') and run 'trivy image --severity HIGH,CRITICAL'. Run 'npm test' in backend/ and 'npm run build' in frontend/ to make sure nothing breaks.
+          4. Update the attempt counter: in '${STATE_FILE}' for EACH fingerprint above set .attempts["<fingerprint>"] = {"count": <attempt number shown above>, "last_attempt": "<ISO timestamp>", "last_session": "<your session id>"} (create the file with {"attempts":{}} if missing). Commit this together with the fix.
+          5. Every commit MUST end with the trailer line 'Devin-Session-Id: <your session id>' so the SAST Auto-Remediate provenance guard skips your commits. Suggested message: "fix(security): remediate CRITICAL/HIGH findings in ${LOCATION}".
+          6. Push directly to '${REMEDIATION_BRANCH}'. Do NOT open a pull request.
+          PROMPT_END
+          )
+
+            REQUEST_BODY=$(jq -n \
+              --arg prompt "$PROMPT" \
+              --arg title "SAST auto-remediate ${LOCATION} (${COUNT} findings, attempt ${MAX_ATTEMPT})" \
+              --arg repo "$REPO" \
+              --arg user_id "${CREATE_AS_USER_ID}" \
+              '{ prompt: $prompt, title: $title, repos: [$repo],
+                 tags: ["sast-auto-remediate", "security", "automated"] }
+               + (if $user_id != "" then { create_as_user_id: $user_id } else {} end)')
+
+            # Existing repo pattern (sast-scan.yml / pr-checks.yml): Devin v3 API.
+            HTTP_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
+              -H "Authorization: Bearer ${DEVIN_API_KEY}" \
+              -H "Content-Type: application/json" \
+              -d "$REQUEST_BODY" \
+              "https://api.devin.ai/v3/organizations/${DEVIN_ORG_ID}/sessions")
+            HTTP_BODY=$(sed '/^HTTP_STATUS:/d' <<<"$HTTP_RESPONSE")
+            HTTP_CODE=$(grep '^HTTP_STATUS:' <<<"$HTTP_RESPONSE" | cut -d: -f2)
+
+            if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+              SESSION_URL=$(jq -r '.url // empty' <<<"$HTTP_BODY")
+              SESSION_ID=$(jq -r '.session_id // .id // empty' <<<"$HTTP_BODY")
+              echo "Dispatched ${LOCATION} (${COUNT} findings) -> ${SESSION_URL}"
+              echo "- ${LOCATION}: ${COUNT} finding(s) -> [session](${SESSION_URL})" >> "$GITHUB_STEP_SUMMARY"
+              # Record the attempt in the workflow's own state copy so that a session
+              # which never lands a commit still consumes retry budget.
+              while IFS= read -r FP; do
+                jq --arg fp "$FP" --arg ts "$NOW" --arg sid "$SESSION_ID" \
+                  '.attempts[$fp] = {count: ((.attempts[$fp].count // 0) + 1), last_attempt: $ts, last_session: $sid}' \
+                  "$STATE_FILE" > state.tmp && mv state.tmp "$STATE_FILE"
+              done <<<"$FPS"
+              DISPATCHED=$((DISPATCHED + 1))
+            else
+              echo "::error::Devin API returned HTTP ${HTTP_CODE} for ${LOCATION}: ${HTTP_BODY}"
+            fi
+          done < reports/dispatch-groups.jsonl
+
+          echo "dispatched_count=${DISPATCHED}" >> "$GITHUB_OUTPUT"
+
+      - name: Persist attempt state to remediation branch
+        if: steps.dispatch.outputs.dispatched_count != '0' && steps.dispatch.outputs.dispatched_count != ''
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$STATE_FILE"
+          if git diff --cached --quiet; then exit 0; fi
+          # Trailer keeps the provenance guard from re-triggering on this commit.
+          git commit -m "chore(sast): record remediation attempts" -m "Devin-Session-Id: workflow-${{ github.run_id }}"
+          git pull --rebase origin "$REMEDIATION_BRANCH"
+          git push origin HEAD:"$REMEDIATION_BRANCH"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sast-gate
+          path: |
+            reports/gated.json
+            reports/needs-human-review.json
+
+  # ---------------------------------------------------------------------------
+  # 4. Re-scan validation: confirm dispatched findings are gone once Devin pushes
+  # ---------------------------------------------------------------------------
+  rescan:
+    name: Re-scan validation
+    needs: [provenance, scan, dispatch]
+    if: needs.provenance.outputs.should_run == 'true' && needs.scan.outputs.has_findings == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Devin commits to land
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          BASE=$(gh api "repos/${{ github.repository }}/commits/${REMEDIATION_BRANCH}" --jq .sha)
+          echo "Baseline sha: ${BASE}"
+          # Poll up to ~45 minutes for a Devin-Session-Id commit newer than the dispatch.
+          for i in $(seq 1 45); do
+            sleep 60
+            MSG=$(gh api "repos/${{ github.repository }}/commits/${REMEDIATION_BRANCH}" --jq '.commit.message')
+            SHA=$(gh api "repos/${{ github.repository }}/commits/${REMEDIATION_BRANCH}" --jq .sha)
+            if [ "$SHA" != "$BASE" ] && grep -q 'Devin-Session-Id:' <<<"$MSG"; then
+              echo "Devin commit detected: ${SHA}"; exit 0
+            fi
+          done
+          echo "::warning::No Devin commit landed within the wait window; re-scanning current branch state anyway."
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.REMEDIATION_BRANCH }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sast-reports
+          path: baseline/
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Re-run npm audit
+        run: |
+          set -uo pipefail
+          mkdir -p reports
+          for dir in backend frontend; do
+            (cd "$dir" && npm ci --ignore-scripts --no-audit --no-fund)
+            (cd "$dir" && npm audit --json > "../reports/npm-audit-${dir}.json") || true
+          done
+
+      - name: Rebuild image
+        run: docker build -f docker/Dockerfile -t timesheet-app:rescan .
+
+      - name: Re-run Trivy
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: timesheet-app:rescan
+          format: json
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          output: reports/trivy-report.json
+          exit-code: '0'
+
+      - name: Compare against baseline findings
+        run: |
+          set -euo pipefail
+          jq -n --slurpfile be reports/npm-audit-backend.json --slurpfile fe reports/npm-audit-frontend.json --slurpfile tv reports/trivy-report.json '
+            def npm_fps($r): ($r[0].vulnerabilities // {}) | to_entries[] | .value
+                | select((.severity|ascii_downcase) as $s | $s=="critical" or $s=="high")
+                | ((.via | map(select(type=="object"))[0].url // "")) as $url | select($url != "")
+                | "npm:" + .name + "@" + (.range // "unknown") + ":" + ($url | split("/") | last);
+            [ npm_fps($be), npm_fps($fe),
+              (($tv[0].Results // [])[] | (.Vulnerabilities // [])[] | "trivy:" + .VulnerabilityID + ":" + .PkgName)
+            ] | unique' > reports/current-fingerprints.json
+
+          jq '[.[].fingerprint]' baseline/findings.json > reports/baseline-fingerprints.json
+          jq -n --slurpfile b reports/baseline-fingerprints.json --slurpfile c reports/current-fingerprints.json \
+            '{resolved: ($b[0] - $c[0]), remaining: ($b[0] - ($b[0] - $c[0])), new: ($c[0] - $b[0])}' > reports/rescan-summary.json
+
+          {
+            echo "## Re-scan validation"
+            echo ""
+            echo "Resolved: $(jq '.resolved|length' reports/rescan-summary.json)"
+            jq -r '.resolved[] | "- ✔ \(.)"' reports/rescan-summary.json
+            echo ""
+            echo "Remaining (count toward the ${MAX_ATTEMPTS}-attempt budget on the next run):"
+            jq -r '.remaining[] | "- ✖ \(.)"' reports/rescan-summary.json
+            echo ""
+            echo "New since baseline:"
+            jq -r '.new[] | "- ⚠ \(.)"' reports/rescan-summary.json
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          REMAINING=$(jq '.remaining|length' reports/rescan-summary.json)
+          if [ "$REMAINING" -gt 0 ]; then
+            echo "::warning::${REMAINING} CRITICAL/HIGH finding(s) remain after remediation; the next run will retry those under the attempt budget."
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sast-rescan
+          path: reports/
+          retention-days: 30
