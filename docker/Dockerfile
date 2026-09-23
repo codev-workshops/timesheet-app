@@ -1,5 +1,5 @@
 # Build stage for frontend
-FROM node:20-alpine AS frontend-builder
+FROM node:24-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 
@@ -16,7 +16,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # Build stage for backend
-FROM node:20-alpine AS backend-builder
+FROM node:24-alpine AS backend-builder
 
 WORKDIR /app/backend
 
@@ -27,13 +27,16 @@ COPY backend/package*.json ./
 RUN npm ci --only=production
 
 # Production stage
-FROM node:20-alpine AS production
+FROM node:24-alpine AS production
 
 WORKDIR /app
 
 # Install dumb-init for proper signal handling
 RUN apk upgrade --no-cache libssl3 libcrypto3 && \
     apk add --no-cache dumb-init
+
+# Remove the bundled npm CLI; the runtime only needs node
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
