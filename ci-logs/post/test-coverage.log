@@ -1,0 +1,27 @@
+
+> frontend@0.0.0 test:coverage
+> vitest run --coverage
+
+
+ RUN  v5.0.1 /home/ubuntu/repos/timesheet-app/frontend
+      Coverage enabled with v8
+
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  09:05:47
+   Duration  4.82s (import 70%, tests 14%, environment 12%, setup 2%, transform 2%, worker 1%)
+
+ % Coverage report from v8
+------------|---------|----------|---------|---------|-------------------
+File        | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+------------|---------|----------|---------|---------|-------------------
+------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 100% ( 14/14 )
+Branches     : 100% ( 2/2 )
+Functions    : 100% ( 5/5 )
+Lines        : 100% ( 14/14 )
+================================================================================
+exit=0

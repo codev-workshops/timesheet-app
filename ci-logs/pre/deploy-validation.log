@@ -1,0 +1,14 @@
+== deploy.yml referenced scripts ==
+MISSING scripts/notify-slack.sh
+MISSING scripts/tag-release.sh
+MISSING scripts/reconcile-billing.sh
+== build step present? ==
+0
+== frontend/dist exists? ==
+ls: cannot access 'frontend/dist': No such file or directory
+== hardcoded secrets in deploy.yml ==
+15: <redacted literal>
+16: <redacted literal>
+23: <redacted literal>
+29: <redacted literal>
+35: <redacted literal>
