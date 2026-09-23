@@ -1,4 +1,7 @@
 const Joi = require('joi');
+const { CATEGORIES } = require('../services/categories');
+
+const categoryField = Joi.string().valid(...CATEGORIES).optional().allow('', null);
 
 const clientSchema = Joi.object({
   name: Joi.string().trim().min(1).max(255).required(),
@@ -11,6 +14,7 @@ const workEntrySchema = Joi.object({
   clientId: Joi.number().integer().positive().required(),
   hours: Joi.number().positive().max(24).precision(2).required(),
   description: Joi.string().trim().max(1000).optional().allow(''),
+  category: categoryField,
   date: Joi.date().iso().required()
 });
 
@@ -18,6 +22,7 @@ const updateWorkEntrySchema = Joi.object({
   clientId: Joi.number().integer().positive().optional(),
   hours: Joi.number().positive().max(24).precision(2).optional(),
   description: Joi.string().trim().max(1000).optional().allow(''),
+  category: categoryField,
   date: Joi.date().iso().optional()
 }).min(1); // At least one field must be provided
 
