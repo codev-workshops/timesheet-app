@@ -60,12 +60,19 @@ describe('Authentication Middleware', () => {
 
       authenticateUser(req, res, next);
 
-      expect(mockDb.get).toHaveBeenCalled();
+      expect(mockDb.get).toHaveBeenCalledWith(
+        'SELECT email FROM users WHERE email = ?',
+        ['test@example.com'],
+        expect.any(Function)
+      );
+      expect(req.userEmail).toBe('test@example.com');
+      expect(next).toHaveBeenCalledTimes(1);
+      expect(res.status).not.toHaveBeenCalled();
     });
   });
 
   describe('Existing User Authentication', () => {
-    test('should authenticate existing user and call next()', (done) => {
+    test('should authenticate existing user and call next()', () => {
       req.headers['x-user-email'] = 'existing@example.com';
       
       mockDb.get.mockImplementation((query, params, callback) => {
@@ -74,15 +81,13 @@ describe('Authentication Middleware', () => {
 
       authenticateUser(req, res, next);
 
-      setImmediate(() => {
-        expect(req.userEmail).toBe('existing@example.com');
-        expect(next).toHaveBeenCalled();
-        expect(res.status).not.toHaveBeenCalled();
-        done();
-      });
+      expect(req.userEmail).toBe('existing@example.com');
+      expect(next).toHaveBeenCalledTimes(1);
+      expect(res.status).not.toHaveBeenCalled();
+      expect(mockDb.run).not.toHaveBeenCalled();
     });
 
-    test('should handle database error when checking user', (done) => {
+    test('should handle database error when checking user', () => {
       req.headers['x-user-email'] = 'test@example.com';
       
       mockDb.get.mockImplementation((query, params, callback) => {
@@ -91,19 +96,17 @@ describe('Authentication Middleware', () => {
 
       authenticateUser(req, res, next);
 
-      setImmediate(() => {
-        expect(res.status).toHaveBeenCalledWith(500);
-        expect(res.json).toHaveBeenCalledWith({
-          error: 'Internal server error'
-        });
-        expect(next).not.toHaveBeenCalled();
-        done();
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        error: 'Internal server error'
       });
+      expect(next).not.toHaveBeenCalled();
+      expect(req.userEmail).toBeUndefined();
     });
   });
 
   describe('New User Creation', () => {
-    test('should create new user if not exists and call next()', (done) => {
+    test('should create new user if not exists and call next()', () => {
       req.headers['x-user-email'] = 'newuser@example.com';
       
       mockDb.get.mockImplementation((query, params, callback) => {
@@ -116,19 +119,17 @@ describe('Authentication Middleware', () => {
 
       authenticateUser(req, res, next);
 
-      setImmediate(() => {
-        expect(mockDb.run).toHaveBeenCalledWith(
-          'INSERT INTO users (email) VALUES (?)',
-          ['newuser@example.com'],
-          expect.any(Function)
-        );
-        expect(req.userEmail).toBe('newuser@example.com');
-        expect(next).toHaveBeenCalled();
-        done();
-      });
+      expect(mockDb.run).toHaveBeenCalledWith(
+        'INSERT INTO users (email) VALUES (?)',
+        ['newuser@example.com'],
+        expect.any(Function)
+      );
+      expect(req.userEmail).toBe('newuser@example.com');
+      expect(next).toHaveBeenCalledTimes(1);
+      expect(res.status).not.toHaveBeenCalled();
     });
 
-    test('should handle error when creating new user', (done) => {
+    test('should handle error when creating new user', () => {
       req.headers['x-user-email'] = 'newuser@example.com';
       
       mockDb.get.mockImplementation((query, params, callback) => {
@@ -141,14 +142,12 @@ describe('Authentication Middleware', () => {
 
       authenticateUser(req, res, next);
 
-      setImmediate(() => {
-        expect(res.status).toHaveBeenCalledWith(500);
-        expect(res.json).toHaveBeenCalledWith({
-          error: 'Failed to create user'
-        });
-        expect(next).not.toHaveBeenCalled();
-        done();
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        error: 'Failed to create user'
       });
+      expect(next).not.toHaveBeenCalled();
+      expect(req.userEmail).toBeUndefined();
     });
   });
 
@@ -157,18 +156,24 @@ describe('Authentication Middleware', () => {
       req.headers['x-user-email'] = 'notanemail';
       authenticateUser(req, res, next);
       expect(res.status).toHaveBeenCalledWith(400);
+      expect(next).not.toHaveBeenCalled();
+      expect(mockDb.get).not.toHaveBeenCalled();
     });
 
     test('should reject email without domain', () => {
       req.headers['x-user-email'] = 'test@';
       authenticateUser(req, res, next);
       expect(res.status).toHaveBeenCalledWith(400);
+      expect(next).not.toHaveBeenCalled();
+      expect(mockDb.get).not.toHaveBeenCalled();
     });
 
     test('should reject email without TLD', () => {
       req.headers['x-user-email'] = 'test@domain';
       authenticateUser(req, res, next);
       expect(res.status).toHaveBeenCalledWith(400);
+      expect(next).not.toHaveBeenCalled();
+      expect(mockDb.get).not.toHaveBeenCalled();
     });
 
     test('should accept email with subdomain', () => {
@@ -179,7 +184,13 @@ describe('Authentication Middleware', () => {
       });
 
       authenticateUser(req, res, next);
-      expect(mockDb.get).toHaveBeenCalled();
+      expect(mockDb.get).toHaveBeenCalledWith(
+        'SELECT email FROM users WHERE email = ?',
+        ['test@mail.example.com'],
+        expect.any(Function)
+      );
+      expect(req.userEmail).toBe('test@mail.example.com');
+      expect(next).toHaveBeenCalledTimes(1);
     });
   });
 });
