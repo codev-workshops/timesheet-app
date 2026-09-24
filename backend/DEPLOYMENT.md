@@ -55,7 +55,7 @@ pm2 startup
 
 ### Option 2: Docker Deployment
 ```dockerfile
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
