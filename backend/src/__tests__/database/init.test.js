@@ -1,8 +1,5 @@
-const sqlite3 = require('sqlite3');
-const { getDatabase, initializeDatabase, closeDatabase } = require('../../database/init');
-
 // Mock sqlite3
-jest.mock('sqlite3', () => {
+const mockSqlite3Factory = () => {
   const mockDatabase = {
     serialize: jest.fn((callback) => callback()),
     run: jest.fn((query, callback) => {
@@ -19,17 +16,21 @@ jest.mock('sqlite3', () => {
       })
     }))
   };
-});
+};
 
 describe('Database Initialization', () => {
   let consoleLogSpy, consoleErrorSpy;
+  let getDatabase, initializeDatabase, closeDatabase;
 
   beforeEach(() => {
     consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
     
-    // Reset the database singleton
+    // Reset the module registry and re-require so every test gets a fresh
+    // database singleton and a fresh sqlite3 mock instance
     jest.resetModules();
+    jest.doMock('sqlite3', mockSqlite3Factory);
+    ({ getDatabase, initializeDatabase, closeDatabase } = require('../../database/init'));
   });
 
   afterEach(() => {
@@ -116,31 +117,35 @@ describe('Database Initialization', () => {
   });
 
   describe('closeDatabase', () => {
-    test('should close database connection', () => {
+    test('should close database connection', async () => {
       const db = getDatabase();
-      closeDatabase();
+      await closeDatabase();
 
-      expect(db.close).toHaveBeenCalled();
+      expect(db.close).toHaveBeenCalledTimes(1);
       expect(consoleLogSpy).toHaveBeenCalledWith('Database connection closed');
     });
 
-    test('should handle close error gracefully', () => {
+    test('should handle close error gracefully', async () => {
       const db = getDatabase();
       db.close.mockImplementation((callback) => callback(new Error('Close error')));
 
-      closeDatabase();
+      await closeDatabase();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith('Error closing database:', expect.any(Error));
     });
 
-    test('should handle multiple close calls safely', () => {
+    test('should handle multiple close calls safely', async () => {
       const db = getDatabase();
-      // Reset close mock to default behavior (no error)
-      db.close.mockImplementation((callback) => callback(null));
-      closeDatabase();
-      closeDatabase(); // Second call should not throw
+      await closeDatabase();
+      await closeDatabase(); // Second call should not throw or close again
 
+      expect(db.close).toHaveBeenCalledTimes(1);
       expect(consoleErrorSpy).not.toHaveBeenCalled();
+    });
+
+    test('should resolve immediately when no database was opened', async () => {
+      await expect(closeDatabase()).resolves.toBeUndefined();
+      expect(consoleLogSpy).not.toHaveBeenCalledWith('Database connection closed');
     });
   });
 
