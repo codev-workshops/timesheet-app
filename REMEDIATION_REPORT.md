@@ -72,3 +72,11 @@ follow-up (not in this PR): add an `eslint.config.js` to `backend/` with `eslint
 - `sqlite3` was moved across a major version. Native binary prebuilds are downloaded at install time; CI images
   must be able to compile or fetch `sqlite3@6.x` prebuilds for Node 20.
 - Dependency freshness will drift again; consider enabling Dependabot/Renovate for `backend/` and `frontend/`.
+
+## Runtime requirement change
+
+`sqlite3` 6.x (and its `node-gyp` 12 build dependency) declares `engines.node >= 20.17.0`. Node 18 reached
+end-of-life in April 2025, so this PR raises the documented minimum: `backend/package.json` now declares
+`"engines": { "node": ">=20.17.0" }`, `README.md` states Node 20.17+, and the Dockerfile example in
+`backend/DEPLOYMENT.md` uses `node:20-alpine`. Any remaining Node 18 deployment targets must be upgraded before
+taking this change.
