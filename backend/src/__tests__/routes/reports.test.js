@@ -302,6 +302,83 @@ describe('Report Routes', () => {
   });
 
   describe('CSV Export Success Path', () => {
+    test('should generate and download CSV report', async () => {
+      const mockClient = { id: 1, name: 'Test Client' };
+      const mockWorkEntries = [
+        { date: '2024-01-01', hours: 5, description: 'Work 1', created_at: '2024-01-01' },
+        { date: '2024-01-02', hours: 3, description: 'Work 2', created_at: '2024-01-02' }
+      ];
+
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, mockClient);
+      });
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, mockWorkEntries);
+      });
+
+      const writeRecords = jest.fn().mockResolvedValue(undefined);
+      const csvWriter = require('csv-writer');
+      csvWriter.createObjectCsvWriter.mockReturnValue({ writeRecords });
+
+      const downloadSpy = jest
+        .spyOn(express.response, 'download')
+        .mockImplementation(function (filePath, filename, callback) {
+          this.send('csv-content');
+          callback(null);
+        });
+
+      const response = await request(app).get('/api/reports/export/csv/1');
+
+      expect(response.status).toBe(200);
+      expect(csvWriter.createObjectCsvWriter).toHaveBeenCalledWith(
+        expect.objectContaining({ path: expect.stringContaining('.csv') })
+      );
+      expect(writeRecords).toHaveBeenCalledWith(mockWorkEntries);
+      expect(downloadSpy).toHaveBeenCalled();
+      expect(fs.unlink).toHaveBeenCalledWith(
+        expect.stringContaining('.csv'),
+        expect.any(Function)
+      );
+
+      downloadSpy.mockRestore();
+    });
+
+    test('should clean up temp file when download fails', async () => {
+      const mockClient = { id: 1, name: 'Test Client' };
+
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, mockClient);
+      });
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, []);
+      });
+
+      const csvWriter = require('csv-writer');
+      csvWriter.createObjectCsvWriter.mockReturnValue({
+        writeRecords: jest.fn().mockResolvedValue(undefined)
+      });
+
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+      const downloadSpy = jest
+        .spyOn(express.response, 'download')
+        .mockImplementation(function (filePath, filename, callback) {
+          this.send('partial');
+          callback(new Error('Send failed'));
+        });
+
+      await request(app).get('/api/reports/export/csv/1');
+
+      expect(fs.unlink).toHaveBeenCalledWith(
+        expect.stringContaining('.csv'),
+        expect.any(Function)
+      );
+
+      downloadSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
+    });
+
     test('should handle CSV write error', async () => {
       const mockClient = { id: 1, name: 'Test Client' };
       const mockWorkEntries = [
@@ -436,6 +513,86 @@ describe('Report Routes', () => {
         expect.arrayContaining([1, 'test@example.com']),
         expect.any(Function)
       );
+    });
+
+    const buildMockDoc = (overrides = {}) => ({
+      fontSize: jest.fn().mockReturnThis(),
+      text: jest.fn().mockReturnThis(),
+      moveDown: jest.fn().mockReturnThis(),
+      moveTo: jest.fn().mockReturnThis(),
+      lineTo: jest.fn().mockReturnThis(),
+      stroke: jest.fn().mockReturnThis(),
+      addPage: jest.fn().mockReturnThis(),
+      pipe: jest.fn((res) => res.end('%PDF-mock')),
+      end: jest.fn(),
+      y: 100,
+      ...overrides
+    });
+
+    test('should generate PDF report with content', async () => {
+      const mockClient = { id: 1, name: 'Test Client' };
+      const mockWorkEntries = [
+        { hours: 5, description: 'Work 1', date: '2024-01-01', created_at: '2024-01-01' },
+        { hours: 3, description: 'Work 2', date: '2024-01-02', created_at: '2024-01-02' }
+      ];
+
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, mockClient);
+      });
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, mockWorkEntries);
+      });
+
+      const PDFDocument = require('pdfkit');
+      const defaultImpl = PDFDocument.getMockImplementation();
+      const doc = buildMockDoc();
+      PDFDocument.mockImplementation(() => doc);
+
+      const response = await request(app).get('/api/reports/export/pdf/1');
+
+      expect(response.status).toBe(200);
+      expect(response.headers['content-type']).toBe('application/pdf');
+      expect(response.headers['content-disposition']).toContain('attachment');
+      expect(doc.pipe).toHaveBeenCalled();
+      expect(doc.text).toHaveBeenCalledWith(
+        'Time Report for Test Client',
+        expect.objectContaining({ align: 'center' })
+      );
+      expect(doc.text).toHaveBeenCalledWith('Total Hours: 8.00');
+      expect(doc.end).toHaveBeenCalled();
+
+      PDFDocument.mockImplementation(defaultImpl);
+    });
+
+    test('should add a new page and separators for long entry lists', async () => {
+      const mockClient = { id: 1, name: 'Test Client' };
+      const mockWorkEntries = Array.from({ length: 5 }, (_, i) => ({
+        hours: 4,
+        description: `Work ${i + 1}`,
+        date: `2024-01-0${i + 1}`,
+        created_at: '2024-01-01'
+      }));
+
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, mockClient);
+      });
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, mockWorkEntries);
+      });
+
+      const PDFDocument = require('pdfkit');
+      const defaultImpl = PDFDocument.getMockImplementation();
+      const doc = buildMockDoc({ y: 750 });
+      PDFDocument.mockImplementation(() => doc);
+
+      await request(app).get('/api/reports/export/pdf/1');
+
+      expect(doc.addPage).toHaveBeenCalled();
+      expect(doc.moveTo).toHaveBeenCalled();
+      expect(doc.stroke).toHaveBeenCalled();
+      expect(doc.end).toHaveBeenCalled();
+
+      PDFDocument.mockImplementation(defaultImpl);
     });
   });
 });
