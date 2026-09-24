@@ -142,6 +142,47 @@ describe('Database Initialization', () => {
 
       expect(consoleErrorSpy).not.toHaveBeenCalled();
     });
+
+    test('should resolve immediately when no database connection exists', async () => {
+      let freshModule;
+      jest.isolateModules(() => {
+        freshModule = require('../../database/init');
+      });
+
+      await expect(freshModule.closeDatabase()).resolves.toBeUndefined();
+      expect(consoleLogSpy).not.toHaveBeenCalledWith('Database connection closed');
+    });
+
+    test('should wait for an in-progress close before resolving', async () => {
+      let finishClose;
+      const closeMock = jest.fn((callback) => {
+        finishClose = () => callback(null);
+      });
+      jest.doMock('sqlite3', () => ({
+        verbose: () => ({
+          Database: jest.fn((path, callback) => {
+            callback(null);
+            return { close: closeMock };
+          })
+        })
+      }));
+
+      let freshModule;
+      jest.isolateModules(() => {
+        freshModule = require('../../database/init');
+      });
+      const db = freshModule.getDatabase();
+
+      const firstClose = freshModule.closeDatabase();
+      const secondClose = freshModule.closeDatabase();
+
+      expect(db.close).toHaveBeenCalledTimes(1);
+      finishClose();
+
+      await expect(firstClose).resolves.toBeUndefined();
+      await expect(secondClose).resolves.toBeUndefined();
+      expect(consoleLogSpy).toHaveBeenCalledWith('Database connection closed');
+    });
   });
 
   describe('Database Schema', () => {
