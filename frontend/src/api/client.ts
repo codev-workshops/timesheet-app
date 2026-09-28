@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios';
+import { type CategorizeEntryResponse } from '../types/api';
 
 // Use empty string to make requests relative to the current origin
 // Vite proxy will forward /api requests to the backend
@@ -110,6 +111,11 @@ class ApiClient {
 
   async deleteWorkEntry(id: number) {
     const response = await this.client.delete(`/api/work-entries/${id}`);
+    return response.data;
+  }
+
+  async categorizeEntry(id: number): Promise<CategorizeEntryResponse> {
+    const response = await this.client.post<CategorizeEntryResponse>(`/api/entries/${id}/categorize`);
     return response.data;
   }
 

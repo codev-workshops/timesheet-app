@@ -24,6 +24,14 @@ export interface WorkEntry {
   client_name?: string;
 }
 
+export type EntryCategory = 'development' | 'meeting' | 'review' | 'admin' | 'other';
+
+export interface CategorizeEntryResponse {
+  category: EntryCategory;
+  summary: string;
+  source: 'llm' | 'fallback';
+}
+
 export interface WorkEntryWithClient extends WorkEntry {
   client_name: string;
 }

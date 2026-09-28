@@ -64,6 +64,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/work-entries', workEntryRoutes);
+app.use('/api/entries', workEntryRoutes);
 app.use('/api/reports', reportRoutes);
 
 // Error handling for API routes

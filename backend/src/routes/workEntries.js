@@ -2,6 +2,8 @@ const express = require('express');
 const { getDatabase } = require('../database/init');
 const { authenticateUser } = require('../middleware/auth');
 const { workEntrySchema, updateWorkEntrySchema } = require('../validation/schemas');
+const { categorizeRateLimit } = require('../middleware/categorizeRateLimit');
+const llmService = require('../services/llmService');
 
 const router = express.Router();
 
@@ -294,6 +296,55 @@ router.delete('/:id', (req, res) => {
           res.json({ message: 'Work entry deleted successfully' });
         }
       );
+    }
+  );
+});
+
+// Suggest a category and one-line summary for a work entry
+router.post('/:id/categorize', categorizeRateLimit, (req, res) => {
+  const workEntryId = parseInt(req.params.id);
+
+  if (isNaN(workEntryId)) {
+    return res.status(400).json({ error: 'Invalid work entry ID' });
+  }
+
+  const db = getDatabase();
+
+  db.get(
+    `SELECT we.id, we.client_id, we.hours, we.description, we.date,
+            we.created_at, we.updated_at, c.name as client_name
+     FROM work_entries we
+     JOIN clients c ON we.client_id = c.id
+     WHERE we.id = ? AND we.user_email = ?`,
+    [workEntryId, req.userEmail],
+    async (err, row) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+
+      if (!row) {
+        return res.status(404).json({ error: 'Work entry not found' });
+      }
+
+      let result;
+      try {
+        result = await llmService.categorizeEntry({
+          description: row.description,
+          clientName: row.client_name,
+          hours: row.hours,
+          date: row.date
+        });
+      } catch (error) {
+        console.error('Categorization error:', error);
+        result = llmService.fallbackResult(row.description);
+      }
+
+      res.json({
+        category: result.category,
+        summary: result.summary,
+        source: result.source
+      });
     }
   );
 });

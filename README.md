@@ -185,10 +185,47 @@ Frontend will be running at `http://localhost:5173`
 
 All authenticated endpoints require `Authorization: Bearer <token>` header.
 
+## LLM Entry Categorization
+
+Each work entry can be categorized and summarized by an LLM via any OpenAI-compatible chat completions API. Suggestions are returned only; nothing is persisted.
+
+### Endpoint
+- `POST /api/entries/:id/categorize` - Suggest a category and one-line summary for a work entry (requires `x-user-email` header). Also reachable at `POST /api/work-entries/:id/categorize`.
+
+Response:
+```json
+{
+  "category": "development",
+  "summary": "Fixed login bug and added regression tests",
+  "source": "llm"
+}
+```
+- `category` is one of `development`, `meeting`, `review`, `admin`, `other`
+- `source` is `llm` when the model answered, or `fallback` otherwise
+- Returns `400` for a non-numeric id and `404` if the entry doesn't exist or belongs to another user
+
+### Configuration
+Set these environment variables for the backend (see `backend/.env.example`):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OPENAI_API_KEY` | _(none)_ | API key for the LLM provider. If unset, the fallback is always used. |
+| `OPENAI_MODEL` | `gpt-4o-mini` | Model name sent in the chat completions request. |
+| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | Base URL; requests go to `{OPENAI_BASE_URL}/chat/completions`. Point it at any OpenAI-compatible API (Azure OpenAI proxy, OpenRouter, Ollama, vLLM, LiteLLM, etc.). |
+
+### Fallback Behavior
+If the API key is missing, the request fails or times out (8 seconds), or the response can't be parsed as the expected JSON, the endpoint still returns `200` with `{ "category": "other", "summary": "<original description>", "source": "fallback" }`. The error is logged server-side; LLM unavailability never causes a `500`.
+
+### Rate Limit
+Categorization is limited to **10 requests per minute per user** (keyed by `x-user-email`, not IP). Exceeding it returns `429` with `{ "error": "Too many categorization requests. ..." }`.
+
+In the UI, click the sparkle icon in a work entry's Actions column to see the suggested category and summary.
+
 ## Security Features
 
 - JWT-based authentication with 24-hour token expiration
 - Rate limiting on authentication endpoints (5 attempts per 15 minutes)
+- Per-user rate limiting on LLM categorization (10 requests per minute)
 - CORS protection
 - Helmet security headers
 - Input validation with Joi schemas
