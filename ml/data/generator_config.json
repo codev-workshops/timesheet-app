@@ -1,0 +1,28 @@
+{
+  "config": {
+    "seed": 42,
+    "start_date": "2025-10-01",
+    "end_date": "2026-09-27",
+    "test_fraction": 0.2,
+    "n_regular_users": 14,
+    "n_sparse_users": 3,
+    "n_late_joiners": 2,
+    "n_new_users": 1,
+    "min_clients_per_user": 5,
+    "max_clients_per_user": 15,
+    "new_client_fraction": 0.08,
+    "weekday_activity": 0.85,
+    "weekend_activity": 0.05,
+    "sparse_activity": 0.12,
+    "missing_description_rate": 0.15,
+    "email_domain": "acme-consulting.example"
+  },
+  "split_date": "2026-07-18",
+  "rows": {
+    "all": 8193,
+    "train": 6270,
+    "test": 1923
+  },
+  "users": 20,
+  "clients": 216
+}
