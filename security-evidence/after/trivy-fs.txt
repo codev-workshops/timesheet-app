@@ -1,0 +1,82 @@
+
+backend/package-lock.json (npm)
+===============================
+Total: 1 (UNKNOWN: 0, LOW: 1, MEDIUM: 0, HIGH: 0, CRITICAL: 0)
+
+┌───────────────────┬───────────────┬──────────┬────────┬───────────────────┬───────────────┬─────────────────────────────────────────────────────────────┐
+│      Library      │ Vulnerability │ Severity │ Status │ Installed Version │ Fixed Version │                            Title                            │
+├───────────────────┼───────────────┼──────────┼────────┼───────────────────┼───────────────┼─────────────────────────────────────────────────────────────┤
+│ @tootallnate/once │ CVE-2026-3449 │ LOW      │ fixed  │ 1.1.2             │ 3.0.1, 2.0.1  │ @tootallnate/once: @tootallnate/once: Denial of Service due │
+│                   │               │          │        │                   │               │ to incorrect control flow scoping with...                   │
+│                   │               │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2026-3449                   │
+└───────────────────┴───────────────┴──────────┴────────┴───────────────────┴───────────────┴─────────────────────────────────────────────────────────────┘
+
+.github/workflows/deploy.yml (secrets)
+======================================
+Total: 5 (UNKNOWN: 0, LOW: 0, MEDIUM: 0, HIGH: 1, CRITICAL: 4)
+
+CRITICAL: AWS (aws-access-key-id)
+════════════════════════════════════════
+AWS Access Key ID
+────────────────────────────────────────
+ .github/workflows/deploy.yml:15 (offset: 207 bytes)
+────────────────────────────────────────
+  13         - name: Configure AWS
+  14           env:
+  15 [           AWS_ACCESS_KEY_ID: ********************
+  16             AWS_SECRET_ACCESS_KEY: ****************************************
+────────────────────────────────────────
+
+
+CRITICAL: AWS (aws-secret-access-key)
+════════════════════════════════════════
+AWS Secret Access Key
+────────────────────────────────────────
+ .github/workflows/deploy.yml:16 (offset: 261 bytes)
+────────────────────────────────────────
+  14           env:
+  15             AWS_ACCESS_KEY_ID: ********************
+  16 [           AWS_SECRET_ACCESS_KEY: ****************************************
+  17             AWS_DEFAULT_REGION: us-east-1
+────────────────────────────────────────
+
+
+CRITICAL: GitHub (github-pat)
+════════════════════════════════════════
+GitHub Personal Access Token
+────────────────────────────────────────
+ .github/workflows/deploy.yml:29 (offset: 686 bytes)
+────────────────────────────────────────
+  27         - name: Tag release in GitHub
+  28           env:
+  29 [           GITHUB_PAT: ****************************************
+  30           run: |
+────────────────────────────────────────
+
+
+HIGH: Slack (slack-access-token)
+════════════════════════════════════════
+Slack token
+────────────────────────────────────────
+ .github/workflows/deploy.yml:23 (offset: 505 bytes)
+────────────────────────────────────────
+  21         - name: Publish release notes to Slack
+  22           env:
+  23 [           SLACK_BOT_TOKEN: ******************-2456987654321-Ab3Cd4Ef5Gh6Ij7Kl8Mn9Op0
+  24           run: |
+────────────────────────────────────────
+
+
+CRITICAL: Stripe (stripe-secret-token)
+════════════════════════════════════════
+Stripe Secret Key
+────────────────────────────────────────
+ .github/workflows/deploy.yml:35 (offset: 857 bytes)
+────────────────────────────────────────
+  33         - name: Charge billing webhook
+  34           env:
+  35 [           STRIPE_SECRET_KEY: ****************************************7hI
+  36           run: |
+────────────────────────────────────────
+
+
