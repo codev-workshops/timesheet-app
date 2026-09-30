@@ -4,6 +4,7 @@ const { authenticateUser } = require('../middleware/auth');
 const { clientSchema, updateClientSchema } = require('../validation/schemas');
 
 const router = express.Router();
+const ID_PATTERN = /^\d+$/;
 
 // All routes require authentication
 router.use(authenticateUser);
@@ -28,11 +29,10 @@ router.get('/', (req, res) => {
 
 // Get specific client
 router.get('/:id', (req, res) => {
-  const clientId = parseInt(req.params.id);
-  
-  if (isNaN(clientId)) {
+  if (!ID_PATTERN.test(req.params.id)) {
     return res.status(400).json({ error: 'Invalid client ID' });
   }
+  const clientId = parseInt(req.params.id, 10);
   
   const db = getDatabase();
   
@@ -100,11 +100,10 @@ router.post('/', (req, res, next) => {
 // Update client
 router.put('/:id', (req, res, next) => {
   try {
-    const clientId = parseInt(req.params.id);
-    
-    if (isNaN(clientId)) {
+    if (!ID_PATTERN.test(req.params.id)) {
       return res.status(400).json({ error: 'Invalid client ID' });
     }
+    const clientId = parseInt(req.params.id, 10);
 
     const { error, value } = updateClientSchema.validate(req.body);
     if (error) {
@@ -209,11 +208,10 @@ router.delete('/', (req, res) => {
 
 // Delete client
 router.delete('/:id', (req, res) => {
-  const clientId = parseInt(req.params.id);
-  
-  if (isNaN(clientId)) {
+  if (!ID_PATTERN.test(req.params.id)) {
     return res.status(400).json({ error: 'Invalid client ID' });
   }
+  const clientId = parseInt(req.params.id, 10);
   
   const db = getDatabase();
   

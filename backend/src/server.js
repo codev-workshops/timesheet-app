@@ -22,12 +22,25 @@ app.use(cors({
   credentials: true
 }));
 
-// Rate limiting
-const limiter = rateLimit({
+// Rate limiting: scoped to auth and mutating API requests only.
+// Keyed per bearer token when present so one user cannot starve others.
+const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  max: 50
 });
-app.use(limiter);
+app.use('/api/auth', authLimiter);
+
+const mutationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200,
+  keyGenerator: (req) => req.headers.authorization || req.ip
+});
+app.use('/api', (req, res, next) => {
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
+    return next();
+  }
+  return mutationLimiter(req, res, next);
+});
 
 // Logging
 app.use(morgan('combined'));
@@ -69,6 +82,8 @@ async function startServer() {
   }
 }
 
-startServer();
+if (require.main === module) {
+  startServer();
+}
 
 module.exports = app;

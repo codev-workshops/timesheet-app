@@ -7,18 +7,33 @@ const clientSchema = Joi.object({
   email: Joi.string().trim().email().max(255).optional().allow('')
 });
 
+// Calendar date stored verbatim as YYYY-MM-DD (no Date object coercion)
+const dateStringSchema = Joi.string()
+  .pattern(/^\d{4}-\d{2}-\d{2}$/)
+  .custom((value, helpers) => {
+    const parsed = new Date(`${value}T00:00:00Z`);
+    if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
+      return helpers.error('any.invalid');
+    }
+    return value;
+  }, 'calendar date validation')
+  .messages({ 'any.invalid': '"date" must be a valid calendar date' });
+
+// Hours with at most 2 decimal places; stricter input is rejected, not rounded
+const hoursSchema = Joi.number().strict().positive().max(24).precision(2);
+
 const workEntrySchema = Joi.object({
   clientId: Joi.number().integer().positive().required(),
-  hours: Joi.number().positive().max(24).precision(2).required(),
+  hours: hoursSchema.required(),
   description: Joi.string().trim().max(1000).optional().allow(''),
-  date: Joi.date().iso().required()
+  date: dateStringSchema.required()
 });
 
 const updateWorkEntrySchema = Joi.object({
   clientId: Joi.number().integer().positive().optional(),
-  hours: Joi.number().positive().max(24).precision(2).optional(),
+  hours: hoursSchema.optional(),
   description: Joi.string().trim().max(1000).optional().allow(''),
-  date: Joi.date().iso().optional()
+  date: dateStringSchema.optional()
 }).min(1); // At least one field must be provided
 
 const updateClientSchema = Joi.object({

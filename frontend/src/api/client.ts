@@ -1,8 +1,29 @@
-import axios, { type AxiosInstance, type AxiosResponse } from 'axios';
+import axios, { AxiosError, type AxiosInstance, type AxiosResponse } from 'axios';
 
 // Use empty string to make requests relative to the current origin
 // Vite proxy will forward /api requests to the backend
 const API_BASE_URL = '';
+const TOKEN_STORAGE_KEY = 'authToken';
+const EMAIL_STORAGE_KEY = 'userEmail';
+
+// Attaches a user-facing message to normalized errors so callers can display it
+export interface NormalizedApiError extends AxiosError {
+  userMessage?: string;
+}
+
+function normalizeError(error: AxiosError): NormalizedApiError {
+  const normalized = error as NormalizedApiError;
+  if (error.response) {
+    // Server responded with an error status; prefer its message
+    const data = error.response.data as { error?: string } | undefined;
+    normalized.userMessage = data?.error || `Request failed (${error.response.status})`;
+  } else if (error.code === 'ECONNABORTED') {
+    normalized.userMessage = 'Request timed out. Please try again.';
+  } else {
+    normalized.userMessage = 'Unable to reach the server. Check your connection and try again.';
+  }
+  return normalized;
+}
 
 class ApiClient {
   private client: AxiosInstance;
@@ -16,12 +37,12 @@ class ApiClient {
       },
     });
 
-    // Request interceptor to add email header
+    // Request interceptor to add the JWT bearer token
     this.client.interceptors.request.use(
       (config) => {
-        const userEmail = localStorage.getItem('userEmail');
-        if (userEmail) {
-          config.headers['x-user-email'] = userEmail;
+        const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
       },
@@ -33,13 +54,17 @@ class ApiClient {
     // Response interceptor for error handling
     this.client.interceptors.response.use(
       (response: AxiosResponse) => response,
-      (error) => {
+      (error: AxiosError) => {
         if (error.response?.status === 401) {
-          // Clear stored email on auth error
-          localStorage.removeItem('userEmail');
-          window.location.href = '/login';
+          // Clear stored credentials on auth error; only redirect when not
+          // already on the login page to avoid a reload loop
+          localStorage.removeItem(TOKEN_STORAGE_KEY);
+          localStorage.removeItem(EMAIL_STORAGE_KEY);
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
         }
-        return Promise.reject(error);
+        return Promise.reject(normalizeError(error));
       }
     );
   }
@@ -47,6 +72,11 @@ class ApiClient {
   // Auth endpoints
   async login(email: string) {
     const response = await this.client.post('/api/auth/login', { email });
+    const { token } = response.data;
+    if (token) {
+      localStorage.setItem(TOKEN_STORAGE_KEY, token);
+      localStorage.setItem(EMAIL_STORAGE_KEY, email);
+    }
     return response.data;
   }
 
@@ -142,3 +172,4 @@ class ApiClient {
 
 export const apiClient = new ApiClient();
 export default apiClient;
+export { TOKEN_STORAGE_KEY, EMAIL_STORAGE_KEY };

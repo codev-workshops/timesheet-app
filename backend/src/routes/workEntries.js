@@ -4,6 +4,7 @@ const { authenticateUser } = require('../middleware/auth');
 const { workEntrySchema, updateWorkEntrySchema } = require('../validation/schemas');
 
 const router = express.Router();
+const ID_PATTERN = /^\d+$/;
 
 // All routes require authentication
 router.use(authenticateUser);
@@ -12,7 +13,7 @@ router.use(authenticateUser);
 router.get('/', (req, res) => {
   const { clientId } = req.query;
   const db = getDatabase();
-  
+
   let query = `
     SELECT we.id, we.client_id, we.hours, we.description, we.date, 
            we.created_at, we.updated_at, c.name as client_name
@@ -24,12 +25,11 @@ router.get('/', (req, res) => {
   const params = [req.userEmail];
   
   if (clientId) {
-    const clientIdNum = parseInt(clientId);
-    if (isNaN(clientIdNum)) {
+    if (!ID_PATTERN.test(String(clientId))) {
       return res.status(400).json({ error: 'Invalid client ID' });
     }
     query += ' AND we.client_id = ?';
-    params.push(clientIdNum);
+    params.push(parseInt(clientId, 10));
   }
   
   query += ' ORDER BY we.date DESC, we.created_at DESC';
@@ -46,11 +46,10 @@ router.get('/', (req, res) => {
 
 // Get specific work entry
 router.get('/:id', (req, res) => {
-  const workEntryId = parseInt(req.params.id);
-  
-  if (isNaN(workEntryId)) {
+  if (!ID_PATTERN.test(req.params.id)) {
     return res.status(400).json({ error: 'Invalid work entry ID' });
   }
+  const workEntryId = parseInt(req.params.id, 10);
   
   const db = getDatabase();
   
@@ -143,11 +142,10 @@ router.post('/', (req, res, next) => {
 // Update work entry
 router.put('/:id', (req, res, next) => {
   try {
-    const workEntryId = parseInt(req.params.id);
-    
-    if (isNaN(workEntryId)) {
+    if (!ID_PATTERN.test(req.params.id)) {
       return res.status(400).json({ error: 'Invalid work entry ID' });
     }
+    const workEntryId = parseInt(req.params.id, 10);
 
     const { error, value } = updateWorkEntrySchema.validate(req.body);
     if (error) {
@@ -259,11 +257,10 @@ router.put('/:id', (req, res, next) => {
 
 // Delete work entry
 router.delete('/:id', (req, res) => {
-  const workEntryId = parseInt(req.params.id);
-  
-  if (isNaN(workEntryId)) {
+  if (!ID_PATTERN.test(req.params.id)) {
     return res.status(400).json({ error: 'Invalid work entry ID' });
   }
+  const workEntryId = parseInt(req.params.id, 10);
   
   const db = getDatabase();
   
