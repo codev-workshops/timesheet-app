@@ -1,23 +1,44 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
 
 let db = null;
 let isClosing = false;
 let isClosed = false;
+
+function getDatabasePath() {
+  if (process.env.DB_PATH) {
+    return process.env.DB_PATH;
+  }
+  // Tests keep the in-memory database unless DB_PATH says otherwise
+  if (process.env.NODE_ENV === 'test') {
+    return ':memory:';
+  }
+  return path.join(__dirname, '../../data/timesheet.db');
+}
 
 function getDatabase() {
   if (!db) {
     // Reset state when creating a new database connection
     isClosing = false;
     isClosed = false;
-    // Use in-memory database as specified in requirements
-    db = new sqlite3.Database(':memory:', (err) => {
+    const dbPath = getDatabasePath();
+    if (dbPath !== ':memory:') {
+      fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+    }
+    db = new sqlite3.Database(dbPath, (err) => {
       if (err) {
         console.error('Error opening database:', err);
         throw err;
       }
-      console.log('Connected to SQLite in-memory database');
+      console.log(dbPath === ':memory:'
+        ? 'Connected to SQLite in-memory database'
+        : `Connected to SQLite database at ${dbPath}`);
     });
+    if (typeof db.configure === 'function') {
+      db.configure('busyTimeout', 5000);
+    }
+    db.run('PRAGMA foreign_keys = ON');
   }
   return db;
 }

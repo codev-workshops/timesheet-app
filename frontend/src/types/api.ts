@@ -70,6 +70,7 @@ export interface LoginRequest {
 export interface LoginResponse {
   message: string;
   user: User;
+  token: string;
 }
 
 export interface ApiResponse<T> {

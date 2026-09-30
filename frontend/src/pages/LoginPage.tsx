@@ -28,8 +28,8 @@ const LoginPage: React.FC = () => {
       await login(email);
       navigate('/dashboard');
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { error?: string } } };
-      setError(error.response?.data?.error || 'Login failed. Please try again.');
+      const error = err as { userMessage?: string; response?: { data?: { error?: string } } };
+      setError(error.userMessage || error.response?.data?.error || 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
