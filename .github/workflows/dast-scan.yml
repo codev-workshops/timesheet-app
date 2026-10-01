@@ -1,0 +1,331 @@
+name: DAST Scan (OWASP ZAP)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  APP_IMAGE: timesheet-dast
+  APP_CONTAINER: timesheet-dast
+  APP_URL: http://localhost:3001
+  ZAP_IMAGE: ghcr.io/zaproxy/zaproxy:stable
+  # Fail when the number of distinct Medium+ alerts (after exclusions) exceeds this value.
+  DAST_MAX_MEDIUM_PLUS_ALERTS: '0'
+  # Pre-existing Medium alerts on main accepted as known risk (ZAP alertRef IDs, space-separated):
+  #   10055-5  CSP: script-src unsafe-inline
+  #   10055-6  CSP: style-src unsafe-inline
+  #   10055-13 CSP: Failure to Define Directive with No Fallback
+  DAST_ACCEPTED_ALERT_REFS: '10055-5 10055-6 10055-13'
+
+jobs:
+  dast-scan:
+    name: DAST Scan (OWASP ZAP Baseline)
+    if: "!contains(github.event.pull_request.user.login, 'devin')"
+    runs-on: ubuntu-latest
+    outputs:
+      dast_failed: ${{ steps.analyze.outputs.dast_failed }}
+      alert_count: ${{ steps.analyze.outputs.alert_count }}
+      zap_findings: ${{ steps.analyze.outputs.zap_findings }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -f docker/Dockerfile -t "$APP_IMAGE" .
+
+      - name: Start app container
+        run: docker run -d --name "$APP_CONTAINER" -p 3001:3001 "$APP_IMAGE"
+
+      - name: Wait for app health check
+        run: |
+          for i in $(seq 1 30); do
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' "${APP_URL}/health" || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "App is healthy after $((i * 2))s."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::App did not return 200 on ${APP_URL}/health within 60s."
+          docker logs "$APP_CONTAINER" || true
+          exit 1
+
+      - name: Run OWASP ZAP baseline scan
+        id: zap
+        continue-on-error: true
+        run: |
+          mkdir -p zap-reports
+          chmod 777 zap-reports
+          docker run --rm --network host \
+            -v "${GITHUB_WORKSPACE}/zap-reports:/zap/wrk:rw" \
+            "$ZAP_IMAGE" zap-baseline.py \
+              -t "$APP_URL" \
+              -J report.json \
+              -r report.html \
+              -w report.md \
+              -I
+
+      - name: Analyze ZAP results
+        id: analyze
+        run: |
+          REPORT=zap-reports/report.json
+          if [ ! -s "$REPORT" ]; then
+            echo "::error::ZAP did not produce a JSON report (scan step outcome: ${{ steps.zap.outcome }})."
+            echo "dast_failed=false" >> "$GITHUB_OUTPUT"
+            echo "alert_count=0" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          ACCEPTED_JSON=$(printf '%s\n' $DAST_ACCEPTED_ALERT_REFS | jq -R . | jq -s .)
+
+          FINDINGS_JSON=$(jq --argjson accepted "$ACCEPTED_JSON" '
+            [ .site[].alerts[]
+              | select((.riskcode | tonumber) >= 2)
+              | select(.alertRef as $r | ($accepted | index($r)) | not) ]
+          ' "$REPORT")
+
+          ALERT_COUNT=$(echo "$FINDINGS_JSON" | jq 'length')
+          echo "alert_count=${ALERT_COUNT}" >> "$GITHUB_OUTPUT"
+
+          FINDINGS=$(echo "$FINDINGS_JSON" | jq -r '
+            def strip: gsub("<[^>]*>"; "") | gsub("\\s+"; " ") | ltrimstr(" ") | rtrimstr(" ");
+            .[] |
+            "- [\(.riskdesc | split(" ")[0] | ascii_upcase)] \(.name) (ZAP rule \(.pluginid), alertRef \(.alertRef)) — \(.count) instance(s)\n" +
+            "  - Example: \(.instances[0].method // "GET") \(.instances[0].uri)\(if (.instances[0].param // "") != "" then " (param: \(.instances[0].param))" else "" end)\n" +
+            "  - Fix: \(.solution | strip | .[0:300])"
+          ')
+
+          if [ -z "$FINDINGS" ]; then
+            FINDINGS="No Medium+ alerts (excluding accepted alertRefs: ${DAST_ACCEPTED_ALERT_REFS})."
+          fi
+
+          DELIM="ZAP_EOF_$(openssl rand -hex 8)"
+          {
+            echo "zap_findings<<${DELIM}"
+            echo "$FINDINGS"
+            echo "${DELIM}"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Medium+ alerts (excluding accepted): ${ALERT_COUNT} (threshold: ${DAST_MAX_MEDIUM_PLUS_ALERTS})"
+          echo "$FINDINGS"
+
+          if [ "$ALERT_COUNT" -gt "$DAST_MAX_MEDIUM_PLUS_ALERTS" ]; then
+            echo "dast_failed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "dast_failed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          {
+            echo "## DAST Scan (OWASP ZAP Baseline)"
+            echo ""
+            echo "Medium+ alerts (excluding accepted): **${ALERT_COUNT}** (threshold: ${DAST_MAX_MEDIUM_PLUS_ALERTS})"
+            echo ""
+            echo "$FINDINGS"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload ZAP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report-pr-${{ github.event.pull_request.number }}
+          path: zap-reports/
+          if-no-files-found: warn
+
+      - name: Comment findings on PR
+        if: steps.analyze.outputs.dast_failed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ALERT_COUNT: ${{ steps.analyze.outputs.alert_count }}
+          ZAP_FINDINGS: ${{ steps.analyze.outputs.zap_findings }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          COMMENT=$(cat <<EOF
+          ## DAST Scan Failed – OWASP ZAP Baseline
+
+          **OWASP ZAP baseline** found **${ALERT_COUNT} Medium+ alert type(s)** (threshold: ${DAST_MAX_MEDIUM_PLUS_ALERTS}) against the Docker-built app (\`docker/Dockerfile\`) at \`${APP_URL}\`.
+
+          ### Findings
+
+          ${ZAP_FINDINGS}
+
+          ### Recommended Fix
+
+          The Docker image serves \`docker/overrides/server.js\`. Fix the flagged response headers / cookies / content in the app, rebuild with \`docker build -f docker/Dockerfile\`, and re-run \`zap-baseline.py\` against \`http://localhost:3001\`. Full HTML/JSON report: ${RUN_URL} (artifact \`zap-report-pr-${{ github.event.pull_request.number }}\`).
+          EOF
+          )
+
+          gh pr comment ${{ github.event.pull_request.number }} --body "$COMMENT"
+
+      - name: Tear down app container
+        if: always()
+        run: docker rm -f "$APP_CONTAINER" || true
+
+      - name: Fail if DAST findings exceed threshold
+        if: steps.analyze.outputs.dast_failed == 'true'
+        run: |
+          echo "Failing job: ${{ steps.analyze.outputs.alert_count }} Medium+ ZAP alert type(s) exceed threshold ${DAST_MAX_MEDIUM_PLUS_ALERTS}."
+          exit 1
+
+  trigger-devin-dast-fix:
+    name: Trigger Devin DAST Auto-Fix
+    needs: [dast-scan]
+    if: |
+      always() &&
+      github.event.pull_request.user.login == 'bsmitches' &&
+      needs.dast-scan.result == 'failure' &&
+      needs.dast-scan.outputs.dast_failed == 'true'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: dast-fix-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Check head commit for DAST remediation marker
+        id: commit_guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          HEAD_MESSAGE=$(gh api "repos/${{ github.repository }}/commits/${HEAD_SHA}" --jq '.commit.message')
+          echo "Head commit ${HEAD_SHA}:"
+          echo "$HEAD_MESSAGE"
+
+          if echo "$HEAD_MESSAGE" | grep -qF "fix: remediate DAST findings"; then
+            echo "Head commit is a Devin DAST remediation commit. Skipping (circuit breaker)."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check for prior Devin DAST fix attempt
+        id: guard
+        if: steps.commit_guard.outputs.should_run == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          DEVIN_COMMENTS=$(gh api repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments --paginate \
+            --jq '[.[] | select(.body | contains("Devin DAST Auto-Fix"))] | length')
+
+          if [ "$DEVIN_COMMENTS" -gt 0 ]; then
+            echo "Devin has already attempted a DAST fix on this PR. Skipping (max 1 attempt)."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Report guard decision
+        run: |
+          COMMIT_GUARD="${{ steps.commit_guard.outputs.should_run }}"
+          COMMENT_GUARD="${{ steps.guard.outputs.should_run }}"
+          if [ "$COMMIT_GUARD" = "true" ] && [ "$COMMENT_GUARD" = "true" ]; then
+            echo "should_run=true"
+          else
+            echo "should_run=false (commit_guard=${COMMIT_GUARD:-n/a}, comment_guard=${COMMENT_GUARD:-n/a})"
+          fi
+
+      - name: Invoke Devin v3 API to fix DAST findings
+        if: steps.commit_guard.outputs.should_run == 'true' && steps.guard.outputs.should_run == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEVIN_API_KEY: ${{ secrets.DEVIN_API_KEY }}
+          DEVIN_ORG_ID: ${{ secrets.DEVIN_ORG_ID }}
+          CREATE_AS_USER_ID: ${{ secrets.DEVIN_CREATE_AS_USER_ID }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          REPO: ${{ github.repository }}
+          ALERT_COUNT: ${{ needs.dast-scan.outputs.alert_count }}
+          ZAP_FINDINGS: ${{ needs.dast-scan.outputs.zap_findings }}
+        run: |
+          PROMPT=$(cat <<PROMPT_END
+          An OWASP ZAP baseline DAST scan FAILED on PR #${PR_NUMBER} in repository ${REPO} on branch '${PR_BRANCH}'. ZAP found ${ALERT_COUNT} Medium+ alert type(s) against the Docker-built app.
+
+          This branch has a runtime security issue identified by DAST. Please correct it — this is a one-time automated remediation attempt before the PR is merged.
+
+          ZAP findings:
+          ${ZAP_FINDINGS}
+
+          Instructions:
+          1. Clone the repository ${REPO} and checkout branch '${PR_BRANCH}'.
+          2. Build and run the app exactly as CI does:
+             docker build -f docker/Dockerfile -t timesheet-dast .
+             docker run -d --name timesheet-dast -p 3001:3001 timesheet-dast
+             Wait until http://localhost:3001/health returns 200.
+             Note: the Docker image runs docker/overrides/server.js (copied over src/server.js), so header/middleware fixes for the containerized app usually belong there; keep backend/src/server.js consistent if the same issue exists there.
+          3. Fix each flagged issue at its source (e.g. missing security headers such as X-Frame-Options / CSP frame-ancestors, X-Content-Type-Options, cookies without Secure/HttpOnly/SameSite, overly permissive CORS, CSP weaknesses, reflected/unescaped input / XSS).
+          4. Verify by rebuilding the image, restarting the container and re-running the scan:
+             docker run --rm --network host -v "\$(pwd)/zap:/zap/wrk:rw" ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://localhost:3001 -J report.json -I
+             Confirm the flagged alerts no longer appear at Medium+ risk.
+          5. Run \`cd backend && npm test\` to ensure existing tests still pass.
+          6. Commit the fix with message exactly: "fix: remediate DAST findings on PR #${PR_NUMBER}"
+          7. Push to branch '${PR_BRANCH}'.
+
+          Constraints:
+          - Only fix the flagged DAST issues — do not refactor unrelated code.
+          - Do not modify .github/workflows/dast-scan.yml (thresholds, accepted alertRefs) to make the scan pass.
+          - This is a ONE-TIME remediation attempt. Make it count.
+          PROMPT_END
+          )
+
+          ESCAPED_PROMPT=$(echo "$PROMPT" | jq -Rs .)
+
+          REQUEST_BODY=$(jq -n \
+            --argjson prompt "$ESCAPED_PROMPT" \
+            --arg title "Remediate DAST (OWASP ZAP) findings on PR #${PR_NUMBER}" \
+            --arg repo "$REPO" \
+            --arg user_id "${CREATE_AS_USER_ID}" \
+            '{
+              prompt: $prompt,
+              title: $title,
+              repos: [$repo],
+              create_as_user_id: $user_id,
+              tags: ["dast-fix", "owasp-zap", "security", "automated"]
+            }')
+
+          HTTP_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
+            -H "Authorization: Bearer ${DEVIN_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "$REQUEST_BODY" \
+            "https://api.devin.ai/v3/organizations/${DEVIN_ORG_ID}/sessions")
+
+          HTTP_BODY=$(echo "$HTTP_RESPONSE" | sed '/^HTTP_STATUS:/d')
+          HTTP_CODE=$(echo "$HTTP_RESPONSE" | grep '^HTTP_STATUS:' | cut -d: -f2)
+
+          if [ "$HTTP_CODE" -eq 200 ]; then
+            SESSION_URL=$(echo "$HTTP_BODY" | jq -r '.url')
+            SESSION_ID=$(echo "$HTTP_BODY" | jq -r '.session_id')
+            echo "Devin session created: ${SESSION_URL}"
+            echo "Session ID: ${SESSION_ID}"
+
+            {
+              echo "## Devin DAST Auto-Fix Triggered"
+              echo ""
+              echo "OWASP ZAP found ${ALERT_COUNT} Medium+ alert type(s) on PR #${PR_NUMBER}."
+              echo "A Devin session has been created for a one-time remediation attempt."
+              echo ""
+              echo "**Session:** ${SESSION_URL}"
+            } >> "$GITHUB_STEP_SUMMARY"
+
+            COMMENT=$(cat <<EOF
+          ## Devin DAST Auto-Fix — Remediation In Progress
+
+          The OWASP ZAP baseline DAST scan identified ${ALERT_COUNT} Medium+ alert type(s) against the Docker-built app. A Devin session has been automatically created for a **one-time remediation attempt** before merge.
+
+          **Devin Session:** ${SESSION_URL}
+
+          Devin will commit the fix directly to branch \`${PR_BRANCH}\` with message \`fix: remediate DAST findings on PR #${PR_NUMBER}\`. The DAST scan will re-run on push; no further auto-fix sessions will be created for this PR.
+          EOF
+            )
+
+            gh api repos/${REPO}/issues/${PR_NUMBER}/comments -f body="$COMMENT"
+          else
+            echo "::error::Failed to create Devin session (HTTP ${HTTP_CODE})"
+            echo "$HTTP_BODY"
+            exit 1
+          fi
