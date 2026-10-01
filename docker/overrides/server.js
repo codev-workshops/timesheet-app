@@ -33,6 +33,7 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
   crossOriginOpenerPolicy: { policy: "unsafe-none" },
   strictTransportSecurity: false,
+  frameguard: false,
 }));
 
 // CORS configuration - in production, same origin so allow all
