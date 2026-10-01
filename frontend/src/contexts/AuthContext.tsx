@@ -1,6 +1,6 @@
 import React, { useState, useEffect, type ReactNode } from 'react';
 import { type User } from '../types/api';
-import apiClient from '../api/client';
+import apiClient, { AUTH_TOKEN_STORAGE_KEY } from '../api/client';
 import { AuthContext, type AuthContextType } from './AuthContextValue';
 
 interface AuthProviderProps {
@@ -13,15 +13,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const storedEmail = localStorage.getItem('userEmail');
-      
-      if (storedEmail) {
+      const storedToken = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+
+      if (storedToken) {
         try {
           const response = await apiClient.getCurrentUser();
           setUser(response.user);
         } catch (error) {
           console.error('Auth check failed:', error);
-          localStorage.removeItem('userEmail');
+          localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
         }
       }
       setIsLoading(false);
@@ -33,8 +33,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string) => {
     try {
       const response = await apiClient.login(email);
+      localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, response.token);
       setUser(response.user);
-      localStorage.setItem('userEmail', email);
     } catch (error) {
       console.error('Login failed:', error);
       throw error;
@@ -43,7 +43,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('userEmail');
+    localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
   };
 
   const value: AuthContextType = {

@@ -14,58 +14,24 @@ A Node.js/Express backend API for employee time tracking application with SQLite
 ## API Endpoints
 
 ### Authentication
-- `POST /api/auth/login` - User login with email
-- `GET /api/auth/me` - Get current user info
 
-### Clients
-- `GET /api/clients` - Get all clients for authenticated user
-- `POST /api/clients` - Create new client
-- `GET /api/clients/:id` - Get specific client
-- `PUT /api/clients/:id` - Update client
-- `DELETE /api/clients/:id` - Delete client
+`POST /api/auth/login` with `{ "email": "user@company.com" }` returns a signed JWT (HS256, 24h expiry) in the `token` field alongside `user`. Send it on every authenticated request:
 
-### Work Entries
-- `GET /api/work-entries` - Get all work entries (with optional client filter)
-- `POST /api/work-entries` - Create new work entry
-- `GET /api/work-entries/:id` - Get specific work entry
-- `PUT /api/work-entries/:id` - Update work entry
-- `DELETE /api/work-entries/:id` - Delete work entry
-
-### Reports
-- `GET /api/reports/client/:clientId` - Get hourly report for specific client
-- `GET /api/reports/export/csv/:clientId` - Export client report as CSV
-- `GET /api/reports/export/pdf/:clientId` - Export client report as PDF
-
-## Installation
-
-1. Install dependencies:
-```bash
-npm install
+```
+Authorization: Bearer <token>
 ```
 
-2. Copy environment variables:
-```bash
-cp .env.example .env
-```
+Missing, malformed, invalid, or expired tokens return `401` with `{ "error": ... }`. The `x-user-email` header is no longer accepted.
 
-3. Start the development server:
-```bash
-npm run dev
-```
+### Environment variables
 
-4. For production:
-```bash
-npm start
-```
+- `JWT_SECRET` (required) - HMAC secret used to sign and verify tokens. The server refuses to start if it is unset or empty. Use a long random value, e.g. `openssl rand -hex 32`. `.env.example` is a template only; the server does not load `.env` itself, so export the variable (e.g. `export JWT_SECRET=...`) or inject it via your process manager / container runtime.
 
-## Authentication
+## Security
 
-The API uses simple email-based authentication. Include the user's email in the `x-user-email` header for all authenticated requests.
-
-Example:
-```
-x-user-email: user@company.com
-```
+- Login is still email-only (no password) in this phase: anyone who knows an email address can obtain a token for it. Tokens prevent request-level identity spoofing, not account takeover via login.
+- The frontend stores the JWT in `localStorage` (`authToken` key). This is readable by any script on the page and therefore exposed to XSS; this trade-off is accepted for this phase. Moving to an `httpOnly`, `Secure`, `SameSite` cookie is the planned follow-up.
+- Tokens are not revocable before expiry (24h); rotating `JWT_SECRET` invalidates all outstanding tokens.
 
 ## Database Schema
 

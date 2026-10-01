@@ -1,7 +1,9 @@
 const request = require('supertest');
+const jwt = require('jsonwebtoken');
 const express = require('express');
 const authRoutes = require('../../routes/auth');
 const { getDatabase } = require('../../database/init');
+const { signToken } = require('../../middleware/auth');
 
 jest.mock('../../database/init');
 
@@ -49,6 +51,8 @@ describe('Auth Routes', () => {
       expect(response.status).toBe(200);
       expect(response.body.message).toBe('Login successful');
       expect(response.body.user.email).toBe('existing@example.com');
+      const decoded = jwt.verify(response.body.token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
+      expect(decoded.email).toBe('existing@example.com');
     });
 
     test('should create new user on first login', async () => {
@@ -67,6 +71,8 @@ describe('Auth Routes', () => {
       expect(response.status).toBe(201);
       expect(response.body.message).toBe('User created and logged in successfully');
       expect(response.body.user.email).toBe('newuser@example.com');
+      const decoded = jwt.verify(response.body.token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
+      expect(decoded.email).toBe('newuser@example.com');
       expect(mockDb.run).toHaveBeenCalledWith(
         'INSERT INTO users (email) VALUES (?)',
         ['newuser@example.com'],
@@ -149,18 +155,54 @@ describe('Auth Routes', () => {
 
       const response = await request(app)
         .get('/api/auth/me')
-        .set('x-user-email', 'test@example.com');
+        .set('Authorization', `Bearer ${signToken('test@example.com')}`);
 
       expect(response.status).toBe(200);
       expect(response.body.user.email).toBe('test@example.com');
       expect(response.body.user.createdAt).toBe('2024-01-01T00:00:00.000Z');
     });
 
-    test('should return 401 if no email header provided', async () => {
+    test('should return 401 if no Authorization header provided', async () => {
       const response = await request(app).get('/api/auth/me');
 
       expect(response.status).toBe(401);
-      expect(response.body).toEqual({ error: 'User email required in x-user-email header' });
+      expect(response.body).toEqual({ error: 'Authorization header with Bearer token required' });
+    });
+
+    test('should return 401 when only x-user-email header is provided', async () => {
+      const response = await request(app)
+        .get('/api/auth/me')
+        .set('x-user-email', 'test@example.com');
+
+      expect(response.status).toBe(401);
+      expect(mockDb.get).not.toHaveBeenCalled();
+    });
+
+    test('should return 401 for an invalid token', async () => {
+      const forged = jwt.sign({ email: 'test@example.com' }, 'wrong-secret', { algorithm: 'HS256' });
+      const response = await request(app)
+        .get('/api/auth/me')
+        .set('Authorization', `Bearer ${forged}`);
+
+      expect(response.status).toBe(401);
+      expect(response.body).toEqual({ error: 'Invalid token' });
+    });
+
+    test('should accept the token returned by login', async () => {
+      const user = { email: 'test@example.com', created_at: '2024-01-01T00:00:00.000Z' };
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, user);
+      });
+
+      const login = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'test@example.com' });
+      const response = await request(app)
+        .get('/api/auth/me')
+        .set('Authorization', `Bearer ${login.body.token}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.user.email).toBe('test@example.com');
     });
 
     test('should return 404 if user not found', async () => {
@@ -176,7 +218,7 @@ describe('Auth Routes', () => {
 
       const response = await request(app)
         .get('/api/auth/me')
-        .set('x-user-email', 'test@example.com');
+        .set('Authorization', `Bearer ${signToken('test@example.com')}`);
 
       expect(response.status).toBe(404);
       expect(response.body).toEqual({ error: 'User not found' });
@@ -193,7 +235,7 @@ describe('Auth Routes', () => {
 
       const response = await request(app)
         .get('/api/auth/me')
-        .set('x-user-email', 'test@example.com');
+        .set('Authorization', `Bearer ${signToken('test@example.com')}`);
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ error: 'Internal server error' });
