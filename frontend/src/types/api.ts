@@ -22,7 +22,27 @@ export interface WorkEntry {
   created_at: string;
   updated_at: string;
   client_name?: string;
+  category_id: number | null;
+  category: WorkEntryCategory | null;
+  categorization_status: CategorizationStatus;
+  categorization_source: CategorizationSource | null;
+  categorized_at: string | null;
 }
+
+export type WorkEntryCategory =
+  | 'development'
+  | 'meetings'
+  | 'design'
+  | 'testing'
+  | 'documentation'
+  | 'research'
+  | 'support'
+  | 'admin'
+  | 'uncategorized';
+
+export type CategorizationStatus = 'pending' | 'done' | 'failed';
+
+export type CategorizationSource = 'llm' | 'manual' | 'seed';
 
 export interface WorkEntryWithClient extends WorkEntry {
   client_name: string;

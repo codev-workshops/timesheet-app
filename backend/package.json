@@ -11,7 +11,9 @@
     "test:coverage": "jest --coverage",
     "test:coverage:html": "jest --coverage && open coverage/index.html",
     "test:verbose": "jest --verbose",
-    "test:ci": "jest --coverage --ci --maxWorkers=2"
+    "test:ci": "jest --coverage --ci --maxWorkers=2",
+    "categorize:backfill": "node src/scripts/backfillCategories.js",
+    "seed:test-data": "node src/scripts/seedTestData.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -22,6 +24,7 @@
     "joi": "^17.11.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
+    "p-retry": "^4.6.2",
     "pdfkit": "^0.13.0",
     "sqlite3": "^5.1.6"
   },

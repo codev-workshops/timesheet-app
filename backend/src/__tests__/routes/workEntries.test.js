@@ -585,4 +585,42 @@ describe('Work Entry Routes', () => {
       expect(response.body.message).toBe('Work entry updated successfully');
     });
   });
+
+  describe('Categorization fields', () => {
+    test('GET joins categories and returns category', async () => {
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, [{ id: 1, category: 'meetings', categorization_status: 'done' }]);
+      });
+
+      const response = await request(app).get('/api/work-entries');
+
+      expect(response.body.workEntries[0].category).toBe('meetings');
+      expect(mockDb.all).toHaveBeenCalledWith(
+        expect.stringMatching(/LEFT JOIN categories cat ON we\.category_id = cat\.id[\s\S]*cat\.name as category|cat\.name as category[\s\S]*LEFT JOIN categories/),
+        ['test@example.com'],
+        expect.any(Function)
+      );
+    });
+
+    test('PUT with a new description resets categorization to pending', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, { id: 1 }));
+      mockDb.run.mockImplementation((query, params, callback) => callback(null));
+
+      await request(app).put('/api/work-entries/1').send({ description: 'Daily standup' });
+
+      const [updateQuery] = mockDb.run.mock.calls[0];
+      expect(updateQuery).toContain('category_id = NULL');
+      expect(updateQuery).toContain("categorization_status = 'pending'");
+    });
+
+    test('PUT without a description keeps the existing category', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, { id: 1 }));
+      mockDb.run.mockImplementation((query, params, callback) => callback(null));
+
+      await request(app).put('/api/work-entries/1').send({ hours: 2 });
+
+      const [updateQuery] = mockDb.run.mock.calls[0];
+      expect(updateQuery).not.toContain('category_id');
+    });
+  });
 });

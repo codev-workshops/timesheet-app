@@ -32,7 +32,17 @@ const emailSchema = Joi.object({
   email: Joi.string().email().required()
 });
 
+const categorizeQuerySchema = Joi.object({
+  userEmail: Joi.string().trim().email().max(255).optional(),
+  date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional()
+    .messages({ 'string.pattern.base': '"date" must be in YYYY-MM-DD format' }),
+  dryRun: Joi.boolean().default(false),
+  retryFailed: Joi.boolean().default(false),
+  limit: Joi.number().integer().min(1).max(100000).optional()
+});
+
 module.exports = {
+  categorizeQuerySchema,
   clientSchema,
   workEntrySchema,
   updateWorkEntrySchema,
