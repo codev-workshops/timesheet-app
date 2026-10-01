@@ -95,7 +95,7 @@ jobs:
           echo "alert_count=${ALERT_COUNT}" >> "$GITHUB_OUTPUT"
 
           FINDINGS=$(echo "$FINDINGS_JSON" | jq -r '
-            def strip: gsub("<[^>]*>"; "") | gsub("\\s+"; " ") | ltrimstr(" ") | rtrimstr(" ");
+            def strip: gsub("<[^>]*>"; " ") | gsub("\\s+"; " ") | ltrimstr(" ") | rtrimstr(" ");
             .[] |
             "- [\(.riskdesc | split(" ")[0] | ascii_upcase)] \(.name) (ZAP rule \(.pluginid), alertRef \(.alertRef)) — \(.count) instance(s)\n" +
             "  - Example: \(.instances[0].method // "GET") \(.instances[0].uri)\(if (.instances[0].param // "") != "" then " (param: \(.instances[0].param))" else "" end)\n" +
