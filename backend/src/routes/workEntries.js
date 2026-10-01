@@ -5,6 +5,9 @@ const { workEntrySchema, updateWorkEntrySchema } = require('../validation/schema
 
 const router = express.Router();
 
+const CATEGORY_COLUMNS = `we.category_id, cat.name as category, we.categorization_status,
+           we.categorization_source, we.categorized_at`;
+
 // All routes require authentication
 router.use(authenticateUser);
 
@@ -15,9 +18,11 @@ router.get('/', (req, res) => {
   
   let query = `
     SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-           we.created_at, we.updated_at, c.name as client_name
+           we.created_at, we.updated_at, c.name as client_name,
+           ${CATEGORY_COLUMNS}
     FROM work_entries we
     JOIN clients c ON we.client_id = c.id
+    LEFT JOIN categories cat ON we.category_id = cat.id
     WHERE we.user_email = ?
   `;
   
@@ -56,9 +61,11 @@ router.get('/:id', (req, res) => {
   
   db.get(
     `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-            we.created_at, we.updated_at, c.name as client_name
+            we.created_at, we.updated_at, c.name as client_name,
+            ${CATEGORY_COLUMNS}
      FROM work_entries we
      JOIN clients c ON we.client_id = c.id
+     LEFT JOIN categories cat ON we.category_id = cat.id
      WHERE we.id = ? AND we.user_email = ?`,
     [workEntryId, req.userEmail],
     (err, row) => {
@@ -114,9 +121,11 @@ router.post('/', (req, res, next) => {
             // Return the created work entry with client name
             db.get(
               `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-                      we.created_at, we.updated_at, c.name as client_name
+                      we.created_at, we.updated_at, c.name as client_name,
+                      ${CATEGORY_COLUMNS}
                FROM work_entries we
                JOIN clients c ON we.client_id = c.id
+               LEFT JOIN categories cat ON we.category_id = cat.id
                WHERE we.id = ?`,
               [this.lastID],
               (err, row) => {
@@ -210,6 +219,15 @@ router.put('/:id', (req, res, next) => {
           if (value.description !== undefined) {
             updates.push('description = ?');
             values.push(value.description || null);
+            // A changed description invalidates its category; the scheduler re-categorizes it.
+            updates.push(
+              'category_id = NULL',
+              "categorization_status = 'pending'",
+              'categorization_source = NULL',
+              'categorized_at = NULL',
+              'categorization_model = NULL',
+              'prompt_version = NULL'
+            );
           }
 
           if (value.date !== undefined) {
@@ -231,9 +249,11 @@ router.put('/:id', (req, res, next) => {
             // Return updated work entry with client name
             db.get(
               `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-                      we.created_at, we.updated_at, c.name as client_name
+                      we.created_at, we.updated_at, c.name as client_name,
+                      ${CATEGORY_COLUMNS}
                FROM work_entries we
                JOIN clients c ON we.client_id = c.id
+               LEFT JOIN categories cat ON we.category_id = cat.id
                WHERE we.id = ?`,
               [workEntryId],
               (err, row) => {

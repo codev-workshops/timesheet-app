@@ -31,6 +31,9 @@ A Node.js/Express backend API for employee time tracking application with SQLite
 - `PUT /api/work-entries/:id` - Update work entry
 - `DELETE /api/work-entries/:id` - Delete work entry
 
+### Admin (scheduler)
+- `POST /api/admin/categorize` - Categorize pending work entries. Authenticated with the `X-Scheduler-Key` header (matched against `SCHEDULER_API_KEY`), not user auth. Query params: `userEmail`, `date` (YYYY-MM-DD), `dryRun=true`, `retryFailed=true`, `limit`. Returns `{processed, categorized, failed, skipped}`; `409` if a run is already in progress.
+
 ### Reports
 - `GET /api/reports/client/:clientId` - Get hourly report for specific client
 - `GET /api/reports/export/csv/:clientId` - Export client report as CSV
@@ -88,13 +91,42 @@ x-user-email: user@company.com
 - `hours` (DECIMAL)
 - `description` (TEXT)
 - `date` (DATE)
+- `category_id` (INTEGER, FOREIGN KEY -> categories)
+- `categorization_status` (TEXT: pending | done | failed, default pending)
+- `categorization_source` (TEXT: llm | manual | seed)
+- `categorized_at` (DATETIME)
+- `categorization_model` (TEXT)
+- `prompt_version` (TEXT)
 - `created_at` (DATETIME)
 - `updated_at` (DATETIME)
+
+### Categories
+- `id` (INTEGER, PRIMARY KEY)
+- `name` (TEXT, UNIQUE): development, meetings, design, testing, documentation, research, support, admin, uncategorized
+- `description` (TEXT)
+
+## Persistence
+
+`DB_FILE` selects the SQLite database. Unset (tests/dev) it defaults to `:memory:`; set a file path in staging/prod (e.g. `DB_FILE=./data/timesheet.db`).
+
+## Categorization
+
+Entries are categorized by a pluggable provider chosen via env vars only: `LLM_PROVIDER` (`mock` | `openai` | `anthropic`), `LLM_API_KEY`, `LLM_MODEL` (optional: `LLM_BASE_URL`, `LLM_BATCH_SIZE`, `LLM_RATE_LIMIT_RPM`, `LLM_TIMEOUT_MS`). Blank descriptions resolve to `uncategorized` without calling the provider. Runs only pick up `pending` entries, so they are safe to re-run.
+
+```bash
+# Seed ~100 synthetic entries, preview the backfill, then apply it
+DB_FILE=./data/timesheet.db npm run seed:test-data -- --reset
+DB_FILE=./data/timesheet.db LLM_PROVIDER=mock npm run categorize:backfill -- --dry-run
+DB_FILE=./data/timesheet.db LLM_PROVIDER=mock npm run categorize:backfill
+
+# Scheduler trigger
+curl -X POST -H "X-Scheduler-Key: $SCHEDULER_API_KEY" "http://localhost:3001/api/admin/categorize?dryRun=true"
+```
 
 ## Development
 
 - `npm run dev` - Start development server with nodemon
-- `npm test` - Run tests (when implemented)
+- `npm test` - Run tests
 - `npm start` - Start production server
 
 ## Health Check
