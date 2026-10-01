@@ -11,6 +11,7 @@ const reportRoutes = require('./routes/reports');
 
 const { initializeDatabase } = require('./database/init');
 const { errorHandler } = require('./middleware/errorHandler');
+const { checkRequiredEnv } = require('./config/env-check');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -58,6 +59,7 @@ app.use('*', (req, res) => {
 // Initialize database and start server
 async function startServer() {
   try {
+    checkRequiredEnv();
     await initializeDatabase();
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

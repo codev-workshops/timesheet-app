@@ -183,7 +183,7 @@ Frontend will be running at `http://localhost:5173`
 - `GET /api/reports/export/csv/:clientId` - Export report as CSV
 - `GET /api/reports/export/pdf/:clientId` - Export report as PDF
 
-All authenticated endpoints require `Authorization: Bearer <token>` header.
+All authenticated endpoints require `Authorization: Bearer <token>` header. The token is returned in the `token` field of the `POST /api/auth/login` response. The legacy `x-user-email` header is not accepted.
 
 ## Security Features
 
@@ -193,6 +193,11 @@ All authenticated endpoints require `Authorization: Bearer <token>` header.
 - Helmet security headers
 - Input validation with Joi schemas
 - SQL injection protection with parameterized queries
+
+### Security notes
+
+- `JWT_SECRET` is required: the backend exits at startup if it is unset or empty. The backend does not load `.env` automatically, so export it in the shell or inject it via the runtime environment.
+- The frontend stores the JWT in `localStorage` (`authToken`). This is exposed to XSS (any script on the page can read it); this is an accepted risk for the current phase, with `httpOnly` cookies as the planned follow-up.
 
 ## Development
 

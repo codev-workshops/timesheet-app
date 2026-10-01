@@ -1,46 +1,68 @@
+const jwt = require('jsonwebtoken');
 const { getDatabase } = require('../database/init');
 
-// Simple email-based authentication middleware
+const JWT_ALGORITHM = 'HS256';
+const JWT_EXPIRES_IN = '24h';
+
+function signToken(email) {
+  return jwt.sign({ email }, process.env.JWT_SECRET, {
+    algorithm: JWT_ALGORITHM,
+    expiresIn: JWT_EXPIRES_IN
+  });
+}
+
+function extractBearerToken(header) {
+  if (typeof header !== 'string') {
+    return null;
+  }
+  const match = /^Bearer ([A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+)$/i.exec(header.trim());
+  return match ? match[1] : null;
+}
+
 function authenticateUser(req, res, next) {
-  const userEmail = req.headers['x-user-email'];
-  
-  if (!userEmail) {
-    return res.status(401).json({ error: 'User email required in x-user-email header' });
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    return res.status(401).json({ error: 'Authorization header with Bearer token required' });
   }
 
-  // Validate email format
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(userEmail)) {
-    return res.status(400).json({ error: 'Invalid email format' });
+  const token = extractBearerToken(authHeader);
+  if (!token) {
+    return res.status(401).json({ error: 'Malformed Authorization header' });
+  }
+
+  let payload;
+  try {
+    payload = jwt.verify(token, process.env.JWT_SECRET, { algorithms: [JWT_ALGORITHM] });
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expired' });
+    }
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+
+  if (!payload || typeof payload.email !== 'string') {
+    return res.status(401).json({ error: 'Invalid token' });
   }
 
   const db = getDatabase();
-  
-  // Check if user exists, create if not
-  db.get('SELECT email FROM users WHERE email = ?', [userEmail], (err, row) => {
+
+  db.get('SELECT email FROM users WHERE email = ?', [payload.email], (err, row) => {
     if (err) {
       console.error('Database error:', err);
       return res.status(500).json({ error: 'Internal server error' });
     }
-    
+
     if (!row) {
-      // Create new user
-      db.run('INSERT INTO users (email) VALUES (?)', [userEmail], (err) => {
-        if (err) {
-          console.error('Error creating user:', err);
-          return res.status(500).json({ error: 'Failed to create user' });
-        }
-        
-        req.userEmail = userEmail;
-        next();
-      });
-    } else {
-      req.userEmail = userEmail;
-      next();
+      return res.status(401).json({ error: 'User not found' });
     }
+
+    req.userEmail = row.email;
+    next();
   });
 }
 
 module.exports = {
-  authenticateUser
+  authenticateUser,
+  signToken
 };
