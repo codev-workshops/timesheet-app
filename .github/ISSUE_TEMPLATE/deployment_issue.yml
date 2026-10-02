@@ -1,0 +1,49 @@
+name: Deployment Issue
+description: Report a failed or broken deployment (see RUNBOOK.md "Process crash / startup failure" and "Misconfiguration")
+title: "[Deploy]: "
+labels: ["deployment", "infra"]
+body:
+  - type: input
+    id: image_tag
+    attributes:
+      label: Image tag
+      description: The image/tag that was deployed (and the previous known-good tag if rolling back)
+      placeholder: "timesheet-app:1.4.2"
+    validations:
+      required: true
+  - type: textarea
+    id: env_diffs
+    attributes:
+      label: Environment variable diffs
+      description: Changes vs the previous deploy — PORT, FRONTEND_URL, DATABASE_PATH, NODE_ENV, NODE_OPTIONS
+      render: text
+    validations:
+      required: false
+  - type: textarea
+    id: container_logs
+    attributes:
+      label: Container logs
+      description: docker logs output — look for "Failed to start server", "Error opening database", "Uncaught exception", or the DATABASE_PATH/type startup line
+      render: text
+    validations:
+      required: false
+  - type: dropdown
+    id: rollback_status
+    attributes:
+      label: Rollback status
+      options:
+        - Rolled back to last known-good
+        - Rollback in progress
+        - Rollback failed
+        - Not yet rolled back
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Verified
+      options:
+        - label: "/health returns 200 (db: up)"
+        - label: Startup logs show expected DATABASE_PATH and type=file
+        - label: Volume mounted on /app/data
+        - label: /metrics reachable

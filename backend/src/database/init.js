@@ -1,28 +1,77 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
 
 let db = null;
 let isClosing = false;
 let isClosed = false;
+
+const HANDLERS_FLAG = '__timesheet_process_handlers_registered__';
+
+function getDatabasePath() {
+  return process.env.DATABASE_PATH || ':memory:';
+}
+
+function registerProcessHandlers() {
+  if (globalThis[HANDLERS_FLAG]) {
+    return;
+  }
+  globalThis[HANDLERS_FLAG] = true;
+
+  // Signal handlers make crash vs clean shutdown distinguishable in logs.
+  // Skipped under Jest so tests don't inherit exit-on-error behavior.
+  if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID) {
+    return;
+  }
+
+  const shutdown = (signal) => {
+    console.log(`Received ${signal}, closing database and shutting down`);
+    closeDatabase()
+      .catch((err) => console.error('Error during shutdown:', err))
+      .finally(() => process.exit(1));
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
+
+  process.on('uncaughtException', (err) => {
+    console.error('Uncaught exception:', err);
+    process.exit(1);
+  });
+
+  process.on('unhandledRejection', (reason) => {
+    console.error('Unhandled promise rejection:', reason);
+    process.exit(1);
+  });
+}
 
 function getDatabase() {
   if (!db) {
     // Reset state when creating a new database connection
     isClosing = false;
     isClosed = false;
-    // Use in-memory database as specified in requirements
-    db = new sqlite3.Database(':memory:', (err) => {
+    const dbPath = getDatabasePath();
+    const dbType = dbPath === ':memory:' ? 'memory' : 'file';
+    console.log(`Connecting to SQLite database: DATABASE_PATH=${dbPath} type=${dbType}`);
+    if (dbType === 'file') {
+      const dbDir = path.dirname(dbPath);
+      if (!fs.existsSync(dbDir)) {
+        fs.mkdirSync(dbDir, { recursive: true });
+      }
+    }
+    db = new sqlite3.Database(dbPath, (err) => {
       if (err) {
         console.error('Error opening database:', err);
         throw err;
       }
-      console.log('Connected to SQLite in-memory database');
+      console.log(`Connected to SQLite database: DATABASE_PATH=${dbPath} type=${dbType}`);
     });
   }
   return db;
 }
 
 async function initializeDatabase() {
+  registerProcessHandlers();
   const database = getDatabase();
   
   return new Promise((resolve, reject) => {
@@ -78,6 +127,36 @@ async function initializeDatabase() {
   });
 }
 
+// File-based databases only: checkpoints WAL then copies the DB file to a
+// timestamped backup in BACKUP_DIR (default: <db dir>/backups). Returns the
+// backup path, or null when the database is in-memory.
+async function backupDatabase() {
+  const dbPath = getDatabasePath();
+  if (dbPath === ':memory:') {
+    console.warn('Backup skipped: in-memory database cannot be backed up');
+    return null;
+  }
+
+  const backupDir = process.env.BACKUP_DIR || path.join(path.dirname(dbPath), 'backups');
+  fs.mkdirSync(backupDir, { recursive: true });
+
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const dest = path.join(backupDir, `timesheet-${stamp}.db`);
+
+  const database = getDatabase();
+  await new Promise((resolve, reject) => {
+    database.run('PRAGMA wal_checkpoint(TRUNCATE)', (err) => {
+      // A failed checkpoint means journal mode is delete (not WAL); the file
+      // copy is still consistent for a serialized single-connection app.
+      resolve();
+    });
+  });
+
+  fs.copyFileSync(dbPath, dest);
+  console.log(`Database backup written: ${dest}`);
+  return dest;
+}
+
 function closeDatabase() {
   return new Promise((resolve, reject) => {
     if (isClosed) {
@@ -121,5 +200,7 @@ function closeDatabase() {
 module.exports = {
   getDatabase,
   initializeDatabase,
-  closeDatabase
+  closeDatabase,
+  backupDatabase,
+  registerProcessHandlers
 };

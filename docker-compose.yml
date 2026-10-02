@@ -1,0 +1,22 @@
+services:
+  timesheet:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: timesheet-app:latest
+    container_name: timesheet-app
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_PATH: /app/data/timesheet.db
+      FRONTEND_URL: http://localhost:3001
+    volumes:
+      # Required for persistence: without this volume the SQLite file lives
+      # only inside the container and is lost on container recreation.
+      - timesheet-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  timesheet-data:

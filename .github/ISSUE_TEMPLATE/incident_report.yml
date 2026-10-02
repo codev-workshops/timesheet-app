@@ -1,0 +1,75 @@
+name: Incident Report
+description: Report a production incident (see RUNBOOK.md for severity definitions and recovery steps)
+title: "[Incident]: "
+labels: ["incident"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Follow the recovery steps in [RUNBOOK.md](../../RUNBOOK.md) while filling this out.
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: Per the severity table in RUNBOOK.md
+      options:
+        - SEV-1 (service down or data loss)
+        - SEV-2 (degraded for many users)
+        - SEV-3 (limited impact / single feature)
+    validations:
+      required: true
+  - type: input
+    id: detected_at
+    attributes:
+      label: Detected at
+      description: When the incident was first noticed (UTC preferred)
+      placeholder: "2026-01-01 12:00 UTC"
+    validations:
+      required: true
+  - type: input
+    id: endpoints
+    attributes:
+      label: Affected endpoints
+      description: Which API routes are failing or degraded
+      placeholder: "/api/work-entries, /api/reports/export/pdf/*"
+    validations:
+      required: false
+  - type: dropdown
+    id: health_status
+    attributes:
+      label: /health status
+      description: What does GET /health currently return?
+      options:
+        - "200 (db: up)"
+        - "503 (db: down)"
+        - "Connection refused / timeout"
+        - "429 (rate limited)"
+        - Unknown / not checked
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant log lines (docker logs, app output). Look for `Failed to start server`, `Uncaught exception`, `Received SIGTERM`, SQLITE_* errors.
+      render: text
+    validations:
+      required: false
+  - type: checkboxes
+    id: rollback
+    attributes:
+      label: Rollback taken?
+      options:
+        - label: Rolled back to last known-good image/config
+        - label: Rollback attempted but failed
+        - label: No rollback attempted yet
+  - type: checkboxes
+    id: data_loss
+    attributes:
+      label: Data-loss check
+      description: Check /metrics for db_rows drops, or compare row counts against the last backup
+      options:
+        - label: db_rows dropped vs previous scrape / expected counts
+        - label: db_file_exists is 0 or db_file_size_bytes shrank
+        - label: Verified — no data loss
+        - label: Not yet checked

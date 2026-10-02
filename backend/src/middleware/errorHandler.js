@@ -1,3 +1,5 @@
+const { dbErrorsTotal } = require('../metrics');
+
 function errorHandler(err, req, res, next) {
   console.error('Error:', err);
 
@@ -11,6 +13,7 @@ function errorHandler(err, req, res, next) {
 
   // SQLite errors
   if (err.code && err.code.startsWith('SQLITE_')) {
+    dbErrorsTotal.inc({ code: err.code });
     return res.status(500).json({
       error: 'Database error',
       message: 'An error occurred while processing your request'

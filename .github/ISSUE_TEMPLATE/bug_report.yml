@@ -1,0 +1,50 @@
+name: Bug Report
+description: Report a defect in the API or frontend
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Endpoint / area
+      options:
+        - Database (SQLite / queries)
+        - Auth (x-user-email / 401s)
+        - Exports (CSV / PDF reports)
+        - Frontend (React UI)
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: error_code
+    attributes:
+      label: Error code
+      description: HTTP status or SQLite error code if any
+      placeholder: "500, SQLITE_BUSY, CORS, ..."
+    validations:
+      required: false
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps, including request headers/body where relevant
+      placeholder: |
+        1. POST /api/work-entries with ...
+        2. Observe ...
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include the response body/logs. Check `db_errors_total` at /metrics for DB errors.
+      render: text
+    validations:
+      required: true
