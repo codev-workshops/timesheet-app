@@ -1,5 +1,5 @@
 const sqlite3 = require('sqlite3');
-const { getDatabase, initializeDatabase, closeDatabase } = require('../../database/init');
+const { getDatabase, initializeDatabase, closeDatabase, backupDatabase } = require('../../database/init');
 
 // Mock sqlite3
 jest.mock('sqlite3', () => {
@@ -43,7 +43,7 @@ describe('Database Initialization', () => {
       const db = getDatabase();
       
       expect(db).toBeDefined();
-      expect(consoleLogSpy).toHaveBeenCalledWith('Connected to SQLite in-memory database');
+      expect(consoleLogSpy).toHaveBeenCalledWith('Connected to SQLite database: DATABASE_PATH=:memory: type=memory');
     });
 
     test('should return same database instance on multiple calls', () => {
@@ -141,6 +141,19 @@ describe('Database Initialization', () => {
       closeDatabase(); // Second call should not throw
 
       expect(consoleErrorSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('backupDatabase', () => {
+    test('returns null and warns for in-memory database', async () => {
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      delete process.env.DATABASE_PATH;
+
+      const result = await backupDatabase();
+
+      expect(result).toBeNull();
+      expect(consoleWarnSpy).toHaveBeenCalledWith('Backup skipped: in-memory database cannot be backed up');
+      consoleWarnSpy.mockRestore();
     });
   });
 

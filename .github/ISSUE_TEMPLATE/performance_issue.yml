@@ -1,0 +1,44 @@
+name: Performance Issue
+description: Report slow endpoints or resource exhaustion (see RUNBOOK.md "OOM / memory growth" and "Export timeouts")
+title: "[Perf]: "
+labels: ["performance"]
+body:
+  - type: input
+    id: endpoint
+    attributes:
+      label: Endpoint
+      description: Which route is slow? (see http_request_duration_seconds at /metrics)
+      placeholder: "/api/reports/export/pdf/:clientId"
+    validations:
+      required: true
+  - type: input
+    id: latency
+    attributes:
+      label: Observed vs expected latency
+      description: e.g. "observed 25s, expected < 2s". Frontend axios timeout is 10s.
+      placeholder: "observed 25s, expected < 2s"
+    validations:
+      required: true
+  - type: input
+    id: dataset_size
+    attributes:
+      label: Dataset size
+      description: Rows involved — see db_rows{table=...} at /metrics, or COUNT(*) on work_entries for the affected client
+      placeholder: "e.g. 50k work_entries"
+    validations:
+      required: false
+  - type: textarea
+    id: memory
+    attributes:
+      label: Heap / memory observations
+      description: process_resident_memory_bytes trend, heap snapshot findings, OOMKilled status (docker inspect)
+      render: text
+    validations:
+      required: false
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+      render: text
+    validations:
+      required: true

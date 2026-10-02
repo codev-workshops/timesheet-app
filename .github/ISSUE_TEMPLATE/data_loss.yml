@@ -1,0 +1,54 @@
+name: Data Loss Report
+description: Report lost or corrupted data (SEV-1 — see RUNBOOK.md "Data loss / DB reset")
+title: "[Data Loss]: "
+labels: ["incident", "data-loss", "sev-1"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Data loss is always **SEV-1**. Follow the recovery steps in [RUNBOOK.md](../../RUNBOOK.md) — stop the app before restoring to prevent new writes over the DB file.
+  - type: dropdown
+    id: backup_available
+    attributes:
+      label: Backup available?
+      description: Is there a backup (backend/scripts/backup.js output) or volume snapshot to restore from?
+      options:
+        - "Yes — backup file exists"
+        - "Yes — volume snapshot exists"
+        - "No backup available"
+        - Unknown
+    validations:
+      required: true
+  - type: input
+    id: last_known_good
+    attributes:
+      label: Last-known-good timestamp
+      description: When was the data last confirmed intact (backup time, last successful query)?
+      placeholder: "2026-01-01 12:00 UTC"
+    validations:
+      required: true
+  - type: input
+    id: affected_users
+    attributes:
+      label: Affected users count
+      description: How many users lost data? (SELECT COUNT(*) FROM users before/after)
+      placeholder: "e.g. 12"
+    validations:
+      required: false
+  - type: checkboxes
+    id: affected_tables
+    attributes:
+      label: Affected tables
+      description: Which tables lost rows? (compare db_rows{table=...} at /metrics against expected counts)
+      options:
+        - label: users
+        - label: clients
+        - label: work_entries
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: What happened — restart, container recreation without volume, manual deletion? Include docker inspect output (volume mounts, restart count) if relevant.
+      render: text
+    validations:
+      required: false

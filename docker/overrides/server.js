@@ -10,8 +10,9 @@ const clientRoutes = require('./routes/clients');
 const workEntryRoutes = require('./routes/workEntries');
 const reportRoutes = require('./routes/reports');
 
-const { initializeDatabase } = require('./database/init');
+const { initializeDatabase, getDatabase } = require('./database/init');
 const { errorHandler } = require('./middleware/errorHandler');
+const { metricsMiddleware, metricsHandler } = require('./metrics');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -41,6 +42,21 @@ app.use(cors({
   credentials: true
 }));
 
+// Health check - deep check so the Docker HEALTHCHECK catches DB failures
+// Registered before the rate limiter: monitoring must not be rate-limited
+app.get('/health', (req, res) => {
+  getDatabase().get('SELECT 1 AS ok', (err) => {
+    if (err) {
+      console.error('Health check database probe failed:', err);
+      return res.status(503).json({ status: 'FAIL', db: 'down', timestamp: new Date().toISOString() });
+    }
+    res.status(200).json({ status: 'OK', db: 'up', timestamp: new Date().toISOString() });
+  });
+});
+
+// Prometheus metrics - no auth, no rate limit (same treatment as /health)
+app.get('/metrics', metricsHandler);
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -48,17 +64,15 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+// Request duration metrics
+app.use(metricsMiddleware);
+
 // Logging
 app.use(morgan('combined'));
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
-
-// Health check
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
-});
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -92,6 +106,7 @@ async function startServer() {
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);
       console.log(`Health check: http://localhost:${PORT}/health`);
+      console.log(`Metrics: http://localhost:${PORT}/metrics`);
       console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
     });
   } catch (error) {
