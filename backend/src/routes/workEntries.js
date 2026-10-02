@@ -140,6 +140,66 @@ router.post('/', (req, res, next) => {
   }
 });
 
+// Duplicate work entry (copies client, hours, description; date set to today)
+router.post('/:id/duplicate', (req, res) => {
+  const workEntryId = parseInt(req.params.id);
+
+  if (isNaN(workEntryId)) {
+    return res.status(400).json({ error: 'Invalid work entry ID' });
+  }
+
+  const db = getDatabase();
+
+  db.get(
+    'SELECT * FROM work_entries WHERE id = ? AND user_email = ?',
+    [workEntryId, req.userEmail],
+    (err, original) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+
+      if (!original) {
+        return res.status(404).json({ error: 'Work entry not found' });
+      }
+
+      // Match POST /: Joi converts ISO dates to Date objects at UTC midnight
+      const today = new Date(new Date().toISOString().slice(0, 10));
+
+      db.run(
+        'INSERT INTO work_entries (client_id, user_email, hours, description, date) VALUES (?, ?, ?, ?, ?)',
+        [original.client_id, req.userEmail, original.hours, original.description, today],
+        function(err) {
+          if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ error: 'Failed to duplicate work entry' });
+          }
+
+          db.get(
+            `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
+                    we.created_at, we.updated_at, c.name as client_name
+             FROM work_entries we
+             JOIN clients c ON we.client_id = c.id
+             WHERE we.id = ? AND we.user_email = ?`,
+            [this.lastID, req.userEmail],
+            (err, row) => {
+              if (err) {
+                console.error('Database error:', err);
+                return res.status(500).json({ error: 'Work entry duplicated but failed to retrieve' });
+              }
+
+              res.status(201).json({
+                message: 'Work entry duplicated successfully',
+                workEntry: row
+              });
+            }
+          );
+        }
+      );
+    }
+  );
+});
+
 // Update work entry
 router.put('/:id', (req, res, next) => {
   try {
