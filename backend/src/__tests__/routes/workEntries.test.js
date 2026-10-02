@@ -585,4 +585,164 @@ describe('Work Entry Routes', () => {
       expect(response.body.message).toBe('Work entry updated successfully');
     });
   });
+
+  describe('POST /api/work-entries/:id/duplicate', () => {
+    const existingEntry = {
+      id: 1,
+      client_id: 2,
+      hours: 4,
+      description: 'Original work',
+      date: '2025-01-01',
+      user_email: 'test@example.com'
+    };
+
+    beforeEach(() => {
+      jest
+        .useFakeTimers({
+          doNotFake: [
+            'nextTick',
+            'setImmediate',
+            'clearImmediate',
+            'setTimeout',
+            'clearTimeout',
+            'setInterval',
+            'clearInterval',
+            'queueMicrotask'
+          ]
+        })
+        .setSystemTime(new Date('2025-06-15T12:00:00Z'));
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    afterAll(() => {
+      jest.useRealTimers();
+    });
+
+    test('should duplicate work entry with today\'s date and return 201', async () => {
+      const newRow = {
+        id: 99,
+        client_id: 2,
+        hours: 4,
+        description: 'Original work',
+        date: '2025-06-15',
+        client_name: 'Client B'
+      };
+
+      mockDb.get.mockImplementation((query, params, callback) => {
+        if (query.includes('JOIN clients')) {
+          callback(null, newRow);
+        } else {
+          callback(null, existingEntry);
+        }
+      });
+
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        this.lastID = 99;
+        callback.call(this, null);
+      });
+
+      const response = await request(app).post('/api/work-entries/1/duplicate');
+
+      expect(response.status).toBe(201);
+      expect(response.body.message).toBe('Work entry duplicated successfully');
+      expect(response.body.workEntry.id).toBe(99);
+      expect(response.body.workEntry).toEqual(newRow);
+
+      expect(mockDb.get).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining('user_email = ?'),
+        [1, 'test@example.com'],
+        expect.any(Function)
+      );
+
+      expect(mockDb.run).toHaveBeenCalledTimes(1);
+      const [insertQuery, insertParams] = mockDb.run.mock.calls[0];
+      expect(insertQuery).toContain('INSERT INTO work_entries');
+      const [clientId, userEmail, hours, description, date] = insertParams;
+      expect(clientId).toBe(2);
+      expect(userEmail).toBe('test@example.com');
+      expect(hours).toBe(4);
+      expect(description).toBe('Original work');
+      expect(new Date(date).toISOString().slice(0, 10)).toBe('2025-06-15');
+      expect(date).toEqual(new Date('2025-06-15'));
+
+      expect(mockDb.get).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining('JOIN clients'),
+        [99, 'test@example.com'],
+        expect.any(Function)
+      );
+    });
+
+    test('should return 400 for invalid work entry ID', async () => {
+      const response = await request(app).post('/api/work-entries/abc/duplicate');
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Invalid work entry ID' });
+      expect(mockDb.get).not.toHaveBeenCalled();
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('should return 404 if work entry not found or not owned by user', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, undefined);
+      });
+
+      const response = await request(app).post('/api/work-entries/999/duplicate');
+
+      expect(response.status).toBe(404);
+      expect(response.body).toEqual({ error: 'Work entry not found' });
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('should return 500 on database error when fetching original entry', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(new Error('Database error'), null);
+      });
+
+      const response = await request(app).post('/api/work-entries/1/duplicate');
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Internal server error' });
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('should return 500 on database error during insert', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, existingEntry);
+      });
+
+      mockDb.run.mockImplementation((query, params, callback) => {
+        callback(new Error('Insert failed'));
+      });
+
+      const response = await request(app).post('/api/work-entries/1/duplicate');
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Failed to duplicate work entry' });
+    });
+
+    test('should return 500 if duplicated entry cannot be retrieved', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        if (query.includes('JOIN clients')) {
+          callback(new Error('Retrieval failed'), null);
+        } else {
+          callback(null, existingEntry);
+        }
+      });
+
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        this.lastID = 99;
+        callback.call(this, null);
+      });
+
+      const response = await request(app).post('/api/work-entries/1/duplicate');
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Work entry duplicated but failed to retrieve' });
+    });
+  });
 });

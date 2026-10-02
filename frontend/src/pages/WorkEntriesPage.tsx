@@ -23,11 +23,14 @@ import {
   Select,
   MenuItem,
   Chip,
+  Snackbar,
+  Tooltip,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
+  ContentCopy as ContentCopyIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -46,6 +49,7 @@ const WorkEntriesPage: React.FC = () => {
     date: new Date(),
   });
   const [error, setError] = useState('');
+  const [duplicatedEntryId, setDuplicatedEntryId] = useState<number | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -93,6 +97,29 @@ const WorkEntriesPage: React.FC = () => {
     onError: (err: unknown) => {
       const error = err as { response?: { data?: { error?: string } } };
       setError(error.response?.data?.error || 'Failed to delete work entry');
+    },
+  });
+
+  const duplicateMutation = useMutation({
+    mutationFn: (id: number) => apiClient.duplicateWorkEntry(id),
+    onSuccess: (data: { workEntry: WorkEntry }) => {
+      queryClient.invalidateQueries({ queryKey: ['workEntries'] });
+      setDuplicatedEntryId(data.workEntry.id);
+    },
+    onError: (err: unknown) => {
+      const error = err as { response?: { data?: { error?: string } } };
+      setError(error.response?.data?.error || 'Failed to duplicate work entry');
+    },
+  });
+
+  const undoDuplicateMutation = useMutation({
+    mutationFn: (id: number) => apiClient.deleteWorkEntry(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workEntries'] });
+    },
+    onError: (err: unknown) => {
+      const error = err as { response?: { data?: { error?: string } } };
+      setError(error.response?.data?.error || 'Failed to undo duplicate');
     },
   });
 
@@ -174,6 +201,13 @@ const WorkEntriesPage: React.FC = () => {
     if (window.confirm(`Are you sure you want to delete this ${entry.hours} hour entry for ${entry.client_name}?`)) {
       deleteMutation.mutate(entry.id);
     }
+  };
+
+  const handleUndoDuplicate = () => {
+    if (duplicatedEntryId !== null) {
+      undoDuplicateMutation.mutate(duplicatedEntryId);
+    }
+    setDuplicatedEntryId(null);
   };
 
   if (entriesLoading || clientsLoading) {
@@ -260,6 +294,17 @@ const WorkEntriesPage: React.FC = () => {
                           >
                             <EditIcon />
                           </IconButton>
+                          <Tooltip title="Duplicate to today">
+                            <IconButton
+                              onClick={() => duplicateMutation.mutate(entry.id)}
+                              color="default"
+                              size="small"
+                              aria-label="Duplicate work entry"
+                              disabled={duplicateMutation.isPending}
+                            >
+                              <ContentCopyIcon />
+                            </IconButton>
+                          </Tooltip>
                           <IconButton
                             onClick={() => handleDelete(entry)}
                             color="error"
@@ -284,6 +329,22 @@ const WorkEntriesPage: React.FC = () => {
             </TableContainer>
           </Paper>
         )}
+
+        <Snackbar
+          open={duplicatedEntryId !== null}
+          autoHideDuration={6000}
+          onClose={(_event, reason) => {
+            if (reason !== 'clickaway') {
+              setDuplicatedEntryId(null);
+            }
+          }}
+          message="Work entry duplicated"
+          action={
+            <Button color="secondary" size="small" onClick={handleUndoDuplicate}>
+              Undo
+            </Button>
+          }
+        />
 
         <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
           <DialogTitle>
