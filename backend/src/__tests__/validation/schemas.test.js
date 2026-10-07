@@ -3,7 +3,8 @@ const {
   workEntrySchema,
   updateWorkEntrySchema,
   updateClientSchema,
-  emailSchema
+  emailSchema,
+  CATEGORIES
 } = require('../../validation/schemas');
 
 describe('Validation Schemas', () => {
@@ -323,6 +324,43 @@ describe('Validation Schemas', () => {
 
       const { error } = emailSchema.validate(data);
       expect(error).toBeUndefined();
+    });
+  });
+
+  describe('work entry category', () => {
+    const baseEntry = { clientId: 1, hours: 2, date: '2024-01-15' };
+
+    test('should export the supported categories', () => {
+      expect(CATEGORIES).toEqual(['Development', 'Design', 'Meeting', 'Research', 'Documentation', 'Admin', 'Other']);
+    });
+
+    test.each(['Development', 'Design', 'Meeting', 'Research', 'Documentation', 'Admin', 'Other'])(
+      'workEntrySchema should accept category %s',
+      (category) => {
+        const { error, value } = workEntrySchema.validate({ ...baseEntry, category });
+        expect(error).toBeUndefined();
+        expect(value.category).toBe(category);
+      }
+    );
+
+    test('workEntrySchema should accept omitted or null category', () => {
+      expect(workEntrySchema.validate(baseEntry).error).toBeUndefined();
+      expect(workEntrySchema.validate({ ...baseEntry, category: null }).error).toBeUndefined();
+    });
+
+    test('workEntrySchema should reject unknown, empty, or wrong-case category', () => {
+      expect(workEntrySchema.validate({ ...baseEntry, category: 'Coding' }).error).toBeDefined();
+      expect(workEntrySchema.validate({ ...baseEntry, category: '' }).error).toBeDefined();
+      expect(workEntrySchema.validate({ ...baseEntry, category: 'development' }).error).toBeDefined();
+    });
+
+    test('updateWorkEntrySchema should accept a category or null as the only field', () => {
+      expect(updateWorkEntrySchema.validate({ category: 'Meeting' }).error).toBeUndefined();
+      expect(updateWorkEntrySchema.validate({ category: null }).error).toBeUndefined();
+    });
+
+    test('updateWorkEntrySchema should reject unknown category', () => {
+      expect(updateWorkEntrySchema.validate({ category: 'Coding' }).error).toBeDefined();
     });
   });
 });

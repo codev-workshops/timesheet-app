@@ -438,4 +438,94 @@ describe('Report Routes', () => {
       );
     });
   });
+
+  describe('Category in reports', () => {
+    test('client report should select category', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, name: 'Test Client' });
+      });
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, [{ id: 1, hours: 2, category: 'Design' }]);
+      });
+
+      const response = await request(app).get('/api/reports/client/1');
+
+      expect(response.status).toBe(200);
+      expect(response.body.workEntries[0].category).toBe('Design');
+      expect(mockDb.all.mock.calls[0][0]).toContain('category');
+    });
+
+    test('CSV export should append Category column after existing columns', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, name: 'Test Client' });
+      });
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, []);
+      });
+
+      const csvWriter = require('csv-writer');
+      csvWriter.createObjectCsvWriter.mockClear();
+      csvWriter.createObjectCsvWriter.mockReturnValue({
+        writeRecords: jest.fn().mockRejectedValue(new Error('Write failed'))
+      });
+
+      await request(app).get('/api/reports/export/csv/1');
+
+      expect(mockDb.all.mock.calls[0][0]).toContain('category');
+      const { header } = csvWriter.createObjectCsvWriter.mock.calls[0][0];
+      expect(header).toEqual([
+        { id: 'date', title: 'Date' },
+        { id: 'hours', title: 'Hours' },
+        { id: 'description', title: 'Description' },
+        { id: 'created_at', title: 'Created At' },
+        { id: 'category', title: 'Category' }
+      ]);
+    });
+
+    test('PDF export should render category for each entry', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, name: 'Test Client' });
+      });
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, [
+          { date: '2024-01-02', hours: 2, description: 'Sync', category: 'Meeting' },
+          { date: '2024-01-01', hours: 3, description: null, category: null }
+        ]);
+      });
+
+      const texts = [];
+      const PDFDocument = require('pdfkit');
+      PDFDocument.mockImplementationOnce(() => {
+        let output;
+        const doc = {
+          y: 100,
+          fontSize: jest.fn(() => doc),
+          text: jest.fn((value) => {
+            texts.push(value);
+            return doc;
+          }),
+          moveDown: jest.fn(() => doc),
+          moveTo: jest.fn(() => doc),
+          lineTo: jest.fn(() => doc),
+          stroke: jest.fn(() => doc),
+          addPage: jest.fn(() => doc),
+          pipe: jest.fn((stream) => {
+            output = stream;
+          }),
+          end: jest.fn(() => output.end())
+        };
+        return doc;
+      });
+
+      const response = await request(app).get('/api/reports/export/pdf/1');
+
+      expect(response.status).toBe(200);
+      expect(mockDb.all.mock.calls[0][0]).toContain('category');
+      expect(texts).toContain('Category');
+      expect(texts).toContain('Meeting');
+      expect(texts).toContain('Uncategorized');
+      expect(texts).toContain('Sync');
+      expect(texts).toContain('No description');
+    });
+  });
 });
