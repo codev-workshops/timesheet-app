@@ -585,4 +585,176 @@ describe('Work Entry Routes', () => {
       expect(response.body.message).toBe('Work entry updated successfully');
     });
   });
+
+  describe('category', () => {
+    test('GET should select category and filter by it', async () => {
+      const mockEntries = [{ id: 1, client_id: 1, hours: 2, category: 'Meeting', client_name: 'Client A' }];
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, mockEntries);
+      });
+
+      const response = await request(app).get('/api/work-entries?category=Meeting');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ workEntries: mockEntries });
+      const [query, params] = mockDb.all.mock.calls[0];
+      expect(query).toContain('we.category');
+      expect(query).toContain('AND we.category = ?');
+      expect(params).toEqual(['test@example.com', 'Meeting']);
+    });
+
+    test('GET should combine client and category filters', async () => {
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, []);
+      });
+
+      await request(app).get('/api/work-entries?clientId=2&category=Design');
+
+      const [query, params] = mockDb.all.mock.calls[0];
+      expect(query).toContain('AND we.client_id = ?');
+      expect(query).toContain('AND we.category = ?');
+      expect(params).toEqual(['test@example.com', 2, 'Design']);
+    });
+
+    test('GET should not filter on category when param is absent', async () => {
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, []);
+      });
+
+      await request(app).get('/api/work-entries');
+
+      const [query, params] = mockDb.all.mock.calls[0];
+      expect(query).not.toContain('AND we.category = ?');
+      expect(params).toEqual(['test@example.com']);
+    });
+
+    test.each(['Coding', '', 'meeting'])('GET should return 400 for invalid category %p', async (category) => {
+      const response = await request(app).get('/api/work-entries').query({ category });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Invalid category' });
+      expect(mockDb.all).not.toHaveBeenCalled();
+    });
+
+    test('GET /:id should select category', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, category: 'Admin' });
+      });
+
+      const response = await request(app).get('/api/work-entries/1');
+
+      expect(response.status).toBe(200);
+      expect(response.body.workEntry.category).toBe('Admin');
+      expect(mockDb.get.mock.calls[0][0]).toContain('we.category');
+    });
+
+    test('POST should insert and return a valid category', async () => {
+      const newEntry = { clientId: 1, hours: 3, date: '2024-01-15', category: 'Research' };
+      mockDb.get.mockImplementation((query, params, callback) => {
+        if (query.includes('FROM clients')) {
+          callback(null, { id: 1 });
+        } else {
+          callback(null, { id: 1, client_id: 1, hours: 3, category: 'Research', client_name: 'Client A' });
+        }
+      });
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        callback.call({ lastID: 1 }, null);
+      });
+
+      const response = await request(app).post('/api/work-entries').send(newEntry);
+
+      expect(response.status).toBe(201);
+      expect(response.body.workEntry.category).toBe('Research');
+      const [insertQuery, insertParams] = mockDb.run.mock.calls[0];
+      expect(insertQuery).toContain('category');
+      expect(insertParams[insertParams.length - 1]).toBe('Research');
+      const selectQuery = mockDb.get.mock.calls.find(call => call[0].includes('work_entries we'))[0];
+      expect(selectQuery).toContain('we.category');
+    });
+
+    test('POST should store null when category is omitted', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1 });
+      });
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        callback.call({ lastID: 1 }, null);
+      });
+
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 3, date: '2024-01-15' });
+
+      expect(response.status).toBe(201);
+      const insertParams = mockDb.run.mock.calls[0][1];
+      expect(insertParams[insertParams.length - 1]).toBeNull();
+    });
+
+    test('POST should return 400 for invalid category', async () => {
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 3, date: '2024-01-15', category: 'Coding' });
+
+      expect(response.status).toBe(400);
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('PUT should set category and return it', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        if (query.includes('work_entries we')) {
+          callback(null, { id: 1, category: 'Documentation' });
+        } else {
+          callback(null, { id: 1 });
+        }
+      });
+      mockDb.run.mockImplementation((query, params, callback) => {
+        callback(null);
+      });
+
+      const response = await request(app).put('/api/work-entries/1').send({ category: 'Documentation' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.workEntry.category).toBe('Documentation');
+      const [updateQuery, updateParams] = mockDb.run.mock.calls[0];
+      expect(updateQuery).toContain('category = ?');
+      expect(updateParams).toEqual(['Documentation', 1, 'test@example.com']);
+      const selectQuery = mockDb.get.mock.calls.find(call => call[0].includes('work_entries we'))[0];
+      expect(selectQuery).toContain('we.category');
+    });
+
+    test('PUT should clear category when null is sent', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, category: null });
+      });
+      mockDb.run.mockImplementation((query, params, callback) => {
+        callback(null);
+      });
+
+      const response = await request(app).put('/api/work-entries/1').send({ category: null });
+
+      expect(response.status).toBe(200);
+      const [updateQuery, updateParams] = mockDb.run.mock.calls[0];
+      expect(updateQuery).toContain('category = ?');
+      expect(updateParams).toEqual([null, 1, 'test@example.com']);
+    });
+
+    test('PUT should leave category untouched when omitted', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1 });
+      });
+      mockDb.run.mockImplementation((query, params, callback) => {
+        callback(null);
+      });
+
+      await request(app).put('/api/work-entries/1').send({ hours: 4 });
+
+      expect(mockDb.run.mock.calls[0][0]).not.toContain('category');
+    });
+
+    test('PUT should return 400 for invalid category', async () => {
+      const response = await request(app).put('/api/work-entries/1').send({ category: 'Coding' });
+
+      expect(response.status).toBe(400);
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+  });
 });

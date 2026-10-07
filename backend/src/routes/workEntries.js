@@ -1,20 +1,20 @@
 const express = require('express');
 const { getDatabase } = require('../database/init');
 const { authenticateUser } = require('../middleware/auth');
-const { workEntrySchema, updateWorkEntrySchema } = require('../validation/schemas');
+const { workEntrySchema, updateWorkEntrySchema, CATEGORIES } = require('../validation/schemas');
 
 const router = express.Router();
 
 // All routes require authentication
 router.use(authenticateUser);
 
-// Get all work entries for authenticated user (with optional client filter)
+// Get all work entries for authenticated user (with optional client and category filters)
 router.get('/', (req, res) => {
-  const { clientId } = req.query;
+  const { clientId, category } = req.query;
   const db = getDatabase();
   
   let query = `
-    SELECT we.id, we.client_id, we.hours, we.description, we.date, 
+    SELECT we.id, we.client_id, we.hours, we.description, we.date, we.category,
            we.created_at, we.updated_at, c.name as client_name
     FROM work_entries we
     JOIN clients c ON we.client_id = c.id
@@ -30,6 +30,14 @@ router.get('/', (req, res) => {
     }
     query += ' AND we.client_id = ?';
     params.push(clientIdNum);
+  }
+
+  if (category !== undefined) {
+    if (!CATEGORIES.includes(category)) {
+      return res.status(400).json({ error: 'Invalid category' });
+    }
+    query += ' AND we.category = ?';
+    params.push(category);
   }
   
   query += ' ORDER BY we.date DESC, we.created_at DESC';
@@ -55,7 +63,7 @@ router.get('/:id', (req, res) => {
   const db = getDatabase();
   
   db.get(
-    `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
+    `SELECT we.id, we.client_id, we.hours, we.description, we.date, we.category,
             we.created_at, we.updated_at, c.name as client_name
      FROM work_entries we
      JOIN clients c ON we.client_id = c.id
@@ -84,7 +92,7 @@ router.post('/', (req, res, next) => {
       return next(error);
     }
 
-    const { clientId, hours, description, date } = value;
+    const { clientId, hours, description, date, category } = value;
     const db = getDatabase();
 
     // Verify client exists and belongs to user
@@ -103,8 +111,8 @@ router.post('/', (req, res, next) => {
 
         // Create work entry
         db.run(
-          'INSERT INTO work_entries (client_id, user_email, hours, description, date) VALUES (?, ?, ?, ?, ?)',
-          [clientId, req.userEmail, hours, description || null, date],
+          'INSERT INTO work_entries (client_id, user_email, hours, description, date, category) VALUES (?, ?, ?, ?, ?, ?)',
+          [clientId, req.userEmail, hours, description || null, date, category || null],
           function(err) {
             if (err) {
               console.error('Database error:', err);
@@ -113,7 +121,7 @@ router.post('/', (req, res, next) => {
 
             // Return the created work entry with client name
             db.get(
-              `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
+              `SELECT we.id, we.client_id, we.hours, we.description, we.date, we.category,
                       we.created_at, we.updated_at, c.name as client_name
                FROM work_entries we
                JOIN clients c ON we.client_id = c.id
@@ -217,6 +225,11 @@ router.put('/:id', (req, res, next) => {
             values.push(value.date);
           }
 
+          if (value.category !== undefined) {
+            updates.push('category = ?');
+            values.push(value.category || null);
+          }
+
           updates.push('updated_at = CURRENT_TIMESTAMP');
           values.push(workEntryId, req.userEmail);
 
@@ -230,7 +243,7 @@ router.put('/:id', (req, res, next) => {
 
             // Return updated work entry with client name
             db.get(
-              `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
+              `SELECT we.id, we.client_id, we.hours, we.description, we.date, we.category,
                       we.created_at, we.updated_at, c.name as client_name
                FROM work_entries we
                JOIN clients c ON we.client_id = c.id
