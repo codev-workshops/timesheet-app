@@ -23,6 +23,7 @@ import {
   Select,
   MenuItem,
   Chip,
+  Autocomplete,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -34,7 +35,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import apiClient from '../api/client';
-import { type WorkEntry } from '../types/api';
+import { type WorkEntry, type CreateWorkEntryRequest, type UpdateWorkEntryRequest } from '../types/api';
 
 const WorkEntriesPage: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -43,8 +44,10 @@ const WorkEntriesPage: React.FC = () => {
     clientId: 0,
     hours: '',
     description: '',
+    category: '',
     date: new Date(),
   });
+  const [categoryFilter, setCategoryFilter] = useState('');
   const [error, setError] = useState('');
 
   const queryClient = useQueryClient();
@@ -54,13 +57,19 @@ const WorkEntriesPage: React.FC = () => {
     queryFn: () => apiClient.getWorkEntries(),
   });
 
+  const { data: filteredEntriesData, isLoading: filteredEntriesLoading } = useQuery({
+    queryKey: ['workEntries', { category: categoryFilter }],
+    queryFn: () => apiClient.getWorkEntries(undefined, categoryFilter),
+    enabled: categoryFilter !== '',
+  });
+
   const { data: clientsData, isLoading: clientsLoading } = useQuery({
     queryKey: ['clients'],
     queryFn: () => apiClient.getClients(),
   });
 
   const createMutation = useMutation({
-    mutationFn: (entryData: { clientId: number; hours: number; description?: string; date: string }) =>
+    mutationFn: (entryData: CreateWorkEntryRequest) =>
       apiClient.createWorkEntry(entryData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workEntries'] });
@@ -73,7 +82,7 @@ const WorkEntriesPage: React.FC = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { clientId?: number; hours?: number; description?: string; date?: string } }) =>
+    mutationFn: ({ id, data }: { id: number; data: UpdateWorkEntryRequest }) =>
       apiClient.updateWorkEntry(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workEntries'] });
@@ -96,7 +105,14 @@ const WorkEntriesPage: React.FC = () => {
     },
   });
 
-  const workEntries = workEntriesData?.workEntries || [];
+  const allWorkEntries: WorkEntry[] = workEntriesData?.workEntries || [];
+  const categories = Array.from(
+    new Set(allWorkEntries.map((entry) => entry.category).filter((c): c is string => Boolean(c)))
+  ).sort((a, b) => a.localeCompare(b));
+  const activeCategory = categories.includes(categoryFilter) ? categoryFilter : '';
+  const workEntries: WorkEntry[] = activeCategory
+    ? filteredEntriesData?.workEntries || []
+    : allWorkEntries;
   const clients = clientsData?.clients || [];
 
   const handleOpen = (entry?: WorkEntry) => {
@@ -106,6 +122,7 @@ const WorkEntriesPage: React.FC = () => {
         clientId: entry.client_id,
         hours: entry.hours.toString(),
         description: entry.description || '',
+        category: entry.category || '',
         date: new Date(entry.date),
       });
     } else {
@@ -114,6 +131,7 @@ const WorkEntriesPage: React.FC = () => {
         clientId: 0,
         hours: '',
         description: '',
+        category: '',
         date: new Date(),
       });
     }
@@ -128,6 +146,7 @@ const WorkEntriesPage: React.FC = () => {
       clientId: 0,
       hours: '',
       description: '',
+      category: '',
       date: new Date(),
     });
     setError('');
@@ -157,6 +176,7 @@ const WorkEntriesPage: React.FC = () => {
       clientId: formData.clientId,
       hours,
       description: formData.description || undefined,
+      category: formData.category.trim(),
       date: formData.date.toISOString().split('T')[0],
     };
 
@@ -200,6 +220,27 @@ const WorkEntriesPage: React.FC = () => {
           </Alert>
         )}
 
+        {clients.length > 0 && categories.length > 0 && (
+          <Box mb={2}>
+            <FormControl size="small" sx={{ minWidth: 220 }}>
+              <InputLabel id="category-filter-label">Filter by category</InputLabel>
+              <Select
+                labelId="category-filter-label"
+                label="Filter by category"
+                value={activeCategory}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+              >
+                <MenuItem value="">All categories</MenuItem>
+                {categories.map((category) => (
+                  <MenuItem key={category} value={category}>
+                    {category}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+        )}
+
         {clients.length === 0 ? (
           <Paper sx={{ p: 3, textAlign: 'center' }}>
             <Typography color="text.secondary" sx={{ mb: 2 }}>
@@ -218,12 +259,19 @@ const WorkEntriesPage: React.FC = () => {
                     <TableCell>Client</TableCell>
                     <TableCell>Date</TableCell>
                     <TableCell>Hours</TableCell>
+                    <TableCell>Category</TableCell>
                     <TableCell>Description</TableCell>
                     <TableCell align="right">Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {workEntries.length > 0 ? (
+                  {activeCategory && filteredEntriesLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center">
+                        <CircularProgress size={24} />
+                      </TableCell>
+                    </TableRow>
+                  ) : workEntries.length > 0 ? (
                     workEntries.map((entry: WorkEntry) => (
                       <TableRow key={entry.id}>
                         <TableCell>
@@ -242,6 +290,15 @@ const WorkEntriesPage: React.FC = () => {
                             color="primary" 
                             variant="outlined" 
                           />
+                        </TableCell>
+                        <TableCell>
+                          {entry.category ? (
+                            <Chip label={entry.category} size="small" color="secondary" />
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">
+                              —
+                            </Typography>
+                          )}
                         </TableCell>
                         <TableCell>
                           {entry.description ? (
@@ -272,7 +329,7 @@ const WorkEntriesPage: React.FC = () => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={5} align="center">
+                      <TableCell colSpan={6} align="center">
                         <Typography color="text.secondary" sx={{ py: 3 }}>
                           No work entries found. Add your first work entry to get started.
                         </Typography>
@@ -330,6 +387,23 @@ const WorkEntriesPage: React.FC = () => {
                     disabled: createMutation.isPending || updateMutation.isPending,
                   },
                 }}
+              />
+
+              <Autocomplete
+                freeSolo
+                options={categories}
+                inputValue={formData.category}
+                onInputChange={(_, value) => setFormData({ ...formData, category: value })}
+                disabled={createMutation.isPending || updateMutation.isPending}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    margin="dense"
+                    label="Category"
+                    fullWidth
+                    inputProps={{ ...params.inputProps, maxLength: 100 }}
+                  />
+                )}
               />
 
               <TextField

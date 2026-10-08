@@ -110,6 +110,25 @@ describe('Validation Schemas', () => {
       expect(error).toBeUndefined();
     });
 
+    test('should allow optional category', () => {
+      const base = { clientId: 1, hours: 5, date: '2024-01-15' };
+
+      expect(workEntrySchema.validate({ ...base, category: 'Development' }).error).toBeUndefined();
+      expect(workEntrySchema.validate({ ...base, category: '' }).error).toBeUndefined();
+      expect(workEntrySchema.validate(base).error).toBeUndefined();
+    });
+
+    test('should trim category', () => {
+      const { value } = workEntrySchema.validate({ clientId: 1, hours: 5, date: '2024-01-15', category: '  QA  ' });
+      expect(value.category).toBe('QA');
+    });
+
+    test('should reject category longer than 100 characters', () => {
+      const entry = { clientId: 1, hours: 5, date: '2024-01-15', category: 'a'.repeat(101) };
+      expect(workEntrySchema.validate(entry).error).toBeDefined();
+      expect(workEntrySchema.validate({ ...entry, category: 'a'.repeat(100) }).error).toBeUndefined();
+    });
+
     test('should reject missing clientId', () => {
       const entry = {
         hours: 5,
@@ -208,6 +227,15 @@ describe('Validation Schemas', () => {
   });
 
   describe('updateWorkEntrySchema', () => {
+    test('should validate category-only update', () => {
+      expect(updateWorkEntrySchema.validate({ category: 'Support' }).error).toBeUndefined();
+      expect(updateWorkEntrySchema.validate({ category: '' }).error).toBeUndefined();
+    });
+
+    test('should reject category longer than 100 characters in update', () => {
+      expect(updateWorkEntrySchema.validate({ category: 'a'.repeat(101) }).error).toBeDefined();
+    });
+
     test('should validate partial update', () => {
       const update = {
         hours: 8
