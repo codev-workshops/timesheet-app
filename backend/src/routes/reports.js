@@ -5,11 +5,33 @@ const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const PDFDocument = require('pdfkit');
 const path = require('path');
 const fs = require('fs');
+const { WORK_ENTRY_CATEGORIES } = require('../constants/workEntryCategories');
 
 const router = express.Router();
 
 // All routes require authentication
 router.use(authenticateUser);
+
+// Per-category hour totals in canonical category order; uncategorized (null) entries come last
+function summarizeByCategory(workEntries) {
+  const totals = new Map();
+  for (const entry of workEntries) {
+    const category = entry.category || null;
+    const current = totals.get(category) || { category, totalHours: 0, entryCount: 0 };
+    current.totalHours += parseFloat(entry.hours);
+    current.entryCount += 1;
+    totals.set(category, current);
+  }
+  const order = (category) => {
+    const index = WORK_ENTRY_CATEGORIES.indexOf(category);
+    return index === -1 ? WORK_ENTRY_CATEGORIES.length : index;
+  };
+  return [...totals.values()].sort((a, b) => order(a.category) - order(b.category));
+}
+
+function formatCategory(category) {
+  return category ? category.charAt(0).toUpperCase() + category.slice(1) : 'Uncategorized';
+}
 
 // Get hourly report for specific client
 router.get('/client/:clientId', (req, res) => {
@@ -37,7 +59,7 @@ router.get('/client/:clientId', (req, res) => {
       
       // Get work entries for this client
       db.all(
-        `SELECT id, hours, description, date, created_at, updated_at
+        `SELECT id, hours, description, category, date, created_at, updated_at
          FROM work_entries 
          WHERE client_id = ? AND user_email = ? 
          ORDER BY date DESC`,
@@ -55,7 +77,8 @@ router.get('/client/:clientId', (req, res) => {
             client: client,
             workEntries: workEntries,
             totalHours: totalHours,
-            entryCount: workEntries.length
+            entryCount: workEntries.length,
+            categoryTotals: summarizeByCategory(workEntries)
           });
         }
       );
@@ -89,7 +112,7 @@ router.get('/export/csv/:clientId', (req, res) => {
       
       // Get work entries
       db.all(
-        `SELECT hours, description, date, created_at
+        `SELECT hours, description, category, date, created_at
          FROM work_entries 
          WHERE client_id = ? AND user_email = ? 
          ORDER BY date DESC`,
@@ -116,12 +139,18 @@ router.get('/export/csv/:clientId', (req, res) => {
             header: [
               { id: 'date', title: 'Date' },
               { id: 'hours', title: 'Hours' },
+              { id: 'category', title: 'Category' },
               { id: 'description', title: 'Description' },
               { id: 'created_at', title: 'Created At' }
             ]
           });
           
-          csvWriter.writeRecords(workEntries)
+          const csvRecords = workEntries.map((entry) => ({
+            ...entry,
+            category: formatCategory(entry.category)
+          }));
+
+          csvWriter.writeRecords(csvRecords)
             .then(() => {
               // Send file and clean up
               res.download(tempPath, filename, (err) => {
@@ -172,7 +201,7 @@ router.get('/export/pdf/:clientId', (req, res) => {
       
       // Get work entries
       db.all(
-        `SELECT hours, description, date, created_at
+        `SELECT hours, description, category, date, created_at
          FROM work_entries 
          WHERE client_id = ? AND user_email = ? 
          ORDER BY date DESC`,
@@ -204,11 +233,22 @@ router.get('/export/pdf/:clientId', (req, res) => {
           doc.text(`Total Entries: ${workEntries.length}`);
           doc.text(`Generated: ${new Date().toLocaleString()}`);
           doc.moveDown();
+
+          const categoryTotals = summarizeByCategory(workEntries);
+          if (categoryTotals.length > 0) {
+            doc.fontSize(14).text('Hours by Category');
+            doc.fontSize(12);
+            categoryTotals.forEach(({ category, totalHours: hours, entryCount }) => {
+              doc.text(`${formatCategory(category)}: ${hours.toFixed(2)} hours (${entryCount} ${entryCount === 1 ? 'entry' : 'entries'})`);
+            });
+            doc.moveDown();
+          }
           
           // Add table header
-          doc.fontSize(12).text('Date', 50, doc.y, { width: 100 });
-          doc.text('Hours', 150, doc.y - 15, { width: 80 });
-          doc.text('Description', 230, doc.y - 15, { width: 300 });
+          doc.fontSize(12).text('Date', 50, doc.y, { width: 90 });
+          doc.text('Hours', 140, doc.y - 15, { width: 60 });
+          doc.text('Category', 200, doc.y - 15, { width: 100 });
+          doc.text('Description', 300, doc.y - 15, { width: 250 });
           doc.moveDown();
           
           // Add horizontal line
@@ -224,9 +264,10 @@ router.get('/export/pdf/:clientId', (req, res) => {
               doc.addPage();
             }
             
-            doc.text(entry.date, 50, doc.y, { width: 100 });
-            doc.text(entry.hours.toString(), 150, y, { width: 80 });
-            doc.text(entry.description || 'No description', 230, y, { width: 300 });
+            doc.text(entry.date, 50, doc.y, { width: 90 });
+            doc.text(entry.hours.toString(), 140, y, { width: 60 });
+            doc.text(formatCategory(entry.category), 200, y, { width: 100 });
+            doc.text(entry.description || 'No description', 300, y, { width: 250 });
             doc.moveDown();
             
             // Add separator line every 5 entries

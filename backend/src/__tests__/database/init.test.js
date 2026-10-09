@@ -115,6 +115,69 @@ describe('Database Initialization', () => {
     });
   });
 
+  describe('work_entries category migration', () => {
+    test('work_entries table should include nullable category column', async () => {
+      const db = getDatabase();
+      await initializeDatabase();
+
+      const workEntriesQuery = db.run.mock.calls.find(call =>
+        call[0].includes('CREATE TABLE IF NOT EXISTS work_entries')
+      );
+      expect(workEntriesQuery[0]).toMatch(/category TEXT,/);
+    });
+
+    test('should add category column for existing databases after table creation', async () => {
+      const db = getDatabase();
+      await initializeDatabase();
+
+      const queries = db.run.mock.calls.map(call => call[0]);
+      const createIndex = queries.findIndex(q => q.includes('CREATE TABLE IF NOT EXISTS work_entries'));
+      const alterIndex = queries.indexOf('ALTER TABLE work_entries ADD COLUMN category TEXT');
+      const categoryIndex = queries.findIndex(q => q.includes('idx_work_entries_user_email_category'));
+
+      expect(alterIndex).toBeGreaterThan(createIndex);
+      expect(categoryIndex).toBeGreaterThan(alterIndex);
+      expect(queries[categoryIndex]).toContain('ON work_entries (user_email, category)');
+    });
+
+    test('should ignore duplicate column error when category already exists', async () => {
+      const db = getDatabase();
+      const original = db.run.getMockImplementation();
+      db.run.mockImplementation((query, callback) => {
+        if (typeof callback === 'function') {
+          callback(query.startsWith('ALTER TABLE') ? new Error('SQLITE_ERROR: duplicate column name: category') : null);
+        }
+      });
+
+      try {
+        await initializeDatabase();
+        expect(consoleErrorSpy).not.toHaveBeenCalled();
+      } finally {
+        db.run.mockImplementation(original);
+      }
+    });
+
+    test('should log unexpected migration errors', async () => {
+      const db = getDatabase();
+      const original = db.run.getMockImplementation();
+      db.run.mockImplementation((query, callback) => {
+        if (typeof callback === 'function') {
+          callback(query.startsWith('ALTER TABLE') ? new Error('disk I/O error') : null);
+        }
+      });
+
+      try {
+        await initializeDatabase();
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          'Error adding category column to work_entries:',
+          expect.any(Error)
+        );
+      } finally {
+        db.run.mockImplementation(original);
+      }
+    });
+  });
+
   describe('closeDatabase', () => {
     test('should close database connection', () => {
       const db = getDatabase();

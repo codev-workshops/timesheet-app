@@ -438,4 +438,91 @@ describe('Report Routes', () => {
       );
     });
   });
+
+  describe('Category support', () => {
+    const mockClient = { id: 1, name: 'Test Client' };
+    const categorizedEntries = [
+      { id: 1, hours: 2, description: 'Standup', category: 'meeting', date: '2024-01-03', created_at: '2024-01-03' },
+      { id: 2, hours: 5.5, description: 'Feature', category: 'development', date: '2024-01-02', created_at: '2024-01-02' },
+      { id: 3, hours: 1, description: 'Misc', category: null, date: '2024-01-01', created_at: '2024-01-01' },
+      { id: 4, hours: 1.5, description: 'Sync', category: 'meeting', date: '2024-01-01', created_at: '2024-01-01' }
+    ];
+
+    beforeEach(() => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, mockClient);
+      });
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, categorizedEntries);
+      });
+    });
+
+    test('client report should select category and return per-category totals', async () => {
+      const response = await request(app).get('/api/reports/client/1');
+
+      expect(response.status).toBe(200);
+      expect(mockDb.all.mock.calls[0][0]).toContain('category');
+      expect(response.body.categoryTotals).toEqual([
+        { category: 'development', totalHours: 5.5, entryCount: 1 },
+        { category: 'meeting', totalHours: 3.5, entryCount: 2 },
+        { category: null, totalHours: 1, entryCount: 1 }
+      ]);
+    });
+
+    test('client report should return empty category totals when no entries', async () => {
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, []);
+      });
+
+      const response = await request(app).get('/api/reports/client/1');
+
+      expect(response.body.categoryTotals).toEqual([]);
+    });
+
+    test('CSV export should include a Category column with labels', async () => {
+      const writeRecords = jest.fn().mockRejectedValue(new Error('Write failed'));
+      const csvWriter = require('csv-writer');
+      csvWriter.createObjectCsvWriter.mockReturnValue({ writeRecords });
+
+      await request(app).get('/api/reports/export/csv/1');
+
+      expect(mockDb.all.mock.calls[0][0]).toContain('category');
+      const { header } = csvWriter.createObjectCsvWriter.mock.calls[0][0];
+      expect(header).toContainEqual({ id: 'category', title: 'Category' });
+      expect(writeRecords.mock.calls[0][0].map((r) => r.category)).toEqual([
+        'Meeting', 'Development', 'Uncategorized', 'Meeting'
+      ]);
+    });
+
+    test('PDF export should include category column and per-category totals', async () => {
+      const PDFDocument = require('pdfkit');
+      const texts = [];
+      PDFDocument.mockImplementationOnce(() => {
+        let out;
+        const doc = {
+          y: 100,
+          fontSize: jest.fn(() => doc),
+          text: jest.fn((value) => { texts.push(value); return doc; }),
+          moveDown: jest.fn(() => doc),
+          moveTo: jest.fn(() => doc),
+          lineTo: jest.fn(() => doc),
+          stroke: jest.fn(() => doc),
+          addPage: jest.fn(() => doc),
+          pipe: jest.fn((res) => { out = res; }),
+          end: jest.fn(() => out.end())
+        };
+        return doc;
+      });
+
+      const response = await request(app).get('/api/reports/export/pdf/1');
+
+      expect(response.status).toBe(200);
+      expect(mockDb.all.mock.calls[0][0]).toContain('category');
+      expect(texts).toContain('Category');
+      expect(texts).toContain('Hours by Category');
+      expect(texts).toContain('Development: 5.50 hours (1 entry)');
+      expect(texts).toContain('Meeting: 3.50 hours (2 entries)');
+      expect(texts).toContain('Uncategorized: 1.00 hours (1 entry)');
+    });
+  });
 });

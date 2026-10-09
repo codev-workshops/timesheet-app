@@ -7,6 +7,7 @@ import {
   Box,
   Button,
   Paper,
+  Chip,
 } from '@mui/material';
 import {
   Business as BusinessIcon,
@@ -17,6 +18,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../api/client';
+import { type WorkEntry } from '../types/api';
+import { formatCategory } from '../constants/workEntryCategories';
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -125,9 +128,14 @@ const DashboardPage: React.FC = () => {
               </Button>
             </Box>
             {recentEntries.length > 0 ? (
-              recentEntries.map((entry: { id: number; client_name: string; hours: number; date: string; description?: string }) => (
+              recentEntries.map((entry: WorkEntry) => (
                 <Box key={entry.id} sx={{ mb: 2, pb: 2, borderBottom: '1px solid #eee' }}>
-                  <Typography variant="subtitle1">{entry.client_name}</Typography>
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <Typography variant="subtitle1">{entry.client_name}</Typography>
+                    {entry.category && (
+                      <Chip label={formatCategory(entry.category)} size="small" color="secondary" />
+                    )}
+                  </Box>
                   <Typography variant="body2" color="text.secondary">
                     {entry.hours} hours - {new Date(entry.date).toLocaleDateString()}
                   </Typography>

@@ -89,6 +89,68 @@ describe('Work Entry Routes', () => {
     });
   });
 
+  describe('GET /api/work-entries category support', () => {
+    test('should select category column', async () => {
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, [{ id: 1, category: 'meeting' }]);
+      });
+
+      const response = await request(app).get('/api/work-entries');
+
+      expect(response.status).toBe(200);
+      expect(response.body.workEntries[0].category).toBe('meeting');
+      expect(mockDb.all).toHaveBeenCalledWith(
+        expect.stringContaining('we.category'),
+        expect.any(Array),
+        expect.any(Function)
+      );
+    });
+
+    test('should filter by category when provided', async () => {
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, []);
+      });
+
+      const response = await request(app).get('/api/work-entries?category=research');
+
+      expect(response.status).toBe(200);
+      expect(mockDb.all).toHaveBeenCalledWith(
+        expect.stringContaining('AND we.category = ?'),
+        ['test@example.com', 'research'],
+        expect.any(Function)
+      );
+    });
+
+    test('should combine client and category filters', async () => {
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, []);
+      });
+
+      await request(app).get('/api/work-entries?clientId=2&category=admin');
+
+      expect(mockDb.all).toHaveBeenCalledWith(
+        expect.stringMatching(/AND we\.client_id = \?[\s\S]*AND we\.category = \?/),
+        ['test@example.com', 2, 'admin'],
+        expect.any(Function)
+      );
+    });
+
+    test('should return 400 for invalid category filter', async () => {
+      const response = await request(app).get('/api/work-entries?category=gaming');
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Invalid category' });
+      expect(mockDb.all).not.toHaveBeenCalled();
+    });
+
+    test('should return 400 for repeated category filter', async () => {
+      const response = await request(app).get('/api/work-entries?category=admin&category=meeting');
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Invalid category' });
+    });
+  });
+
   describe('GET /api/work-entries/:id', () => {
     test('should return specific work entry', async () => {
       const mockEntry = { id: 1, client_id: 1, hours: 5, description: 'Work', client_name: 'Client A' };
@@ -220,6 +282,106 @@ describe('Work Entry Routes', () => {
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ error: 'Failed to create work entry' });
+    });
+  });
+
+  describe('POST /api/work-entries category support', () => {
+    beforeEach(() => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        if (query.includes('FROM clients')) {
+          callback(null, { id: 1 });
+        } else {
+          callback(null, { id: 1, category: 'meeting', client_name: 'Client A' });
+        }
+      });
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        callback.call({ lastID: 1 }, null);
+      });
+    });
+
+    test('should insert provided category', async () => {
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 2, category: 'meeting', date: '2024-01-15' });
+
+      expect(response.status).toBe(201);
+      expect(response.body.workEntry.category).toBe('meeting');
+      const [query, params] = mockDb.run.mock.calls[0];
+      expect(query).toContain('category');
+      expect(params).toEqual([1, 'test@example.com', 2, null, 'meeting', expect.anything()]);
+    });
+
+    test('should store null when category is omitted', async () => {
+      await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 2, date: '2024-01-15' });
+
+      expect(mockDb.run.mock.calls[0][1][4]).toBeNull();
+    });
+
+    test('should store null when category is empty', async () => {
+      await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 2, category: '', date: '2024-01-15' });
+
+      expect(mockDb.run.mock.calls[0][1][4]).toBeNull();
+    });
+
+    test('should return 400 for invalid category', async () => {
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 2, category: 'gaming', date: '2024-01-15' });
+
+      expect(response.status).toBe(400);
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('PUT /api/work-entries/:id category support', () => {
+    beforeEach(() => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, category: 'admin' });
+      });
+      mockDb.run.mockImplementation((query, params, callback) => {
+        callback(null);
+      });
+    });
+
+    test('should update category', async () => {
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ category: 'admin' });
+
+      expect(response.status).toBe(200);
+      const [query, params] = mockDb.run.mock.calls[0];
+      expect(query).toContain('category = ?');
+      expect(query).toContain('WHERE id = ? AND user_email = ?');
+      expect(params).toEqual(['admin', 1, 'test@example.com']);
+    });
+
+    test('should clear category when empty string is sent', async () => {
+      await request(app)
+        .put('/api/work-entries/1')
+        .send({ category: '' });
+
+      expect(mockDb.run.mock.calls[0][1]).toEqual([null, 1, 'test@example.com']);
+    });
+
+    test('should not touch category when omitted', async () => {
+      await request(app)
+        .put('/api/work-entries/1')
+        .send({ hours: 3 });
+
+      expect(mockDb.run.mock.calls[0][0]).not.toContain('category');
+    });
+
+    test('should return 400 for invalid category', async () => {
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ category: 'gaming' });
+
+      expect(response.status).toBe(400);
+      expect(mockDb.run).not.toHaveBeenCalled();
     });
   });
 
