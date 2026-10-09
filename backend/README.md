@@ -25,14 +25,14 @@ A Node.js/Express backend API for employee time tracking application with SQLite
 - `DELETE /api/clients/:id` - Delete client
 
 ### Work Entries
-- `GET /api/work-entries` - Get all work entries (with optional client filter)
+- `GET /api/work-entries` - Get all work entries (optional `?clientId=` and `?category=` filters)
 - `POST /api/work-entries` - Create new work entry
 - `GET /api/work-entries/:id` - Get specific work entry
 - `PUT /api/work-entries/:id` - Update work entry
 - `DELETE /api/work-entries/:id` - Delete work entry
 
 ### Reports
-- `GET /api/reports/client/:clientId` - Get hourly report for specific client
+- `GET /api/reports/client/:clientId` - Get hourly report for specific client (includes `categoryTotals` per-category hours)
 - `GET /api/reports/export/csv/:clientId` - Export client report as CSV
 - `GET /api/reports/export/pdf/:clientId` - Export client report as PDF
 
@@ -87,6 +87,7 @@ x-user-email: user@company.com
 - `user_email` (TEXT, FOREIGN KEY)
 - `hours` (DECIMAL)
 - `description` (TEXT)
+- `category` (TEXT, nullable) — one of `development`, `meeting`, `research`, `admin`, `other` (see `src/constants/workEntryCategories.js`); `NULL` means uncategorized. Indexed with `user_email` (`idx_work_entries_user_email_category`). Existing databases get the column via an idempotent `ALTER TABLE` on startup.
 - `date` (DATE)
 - `created_at` (DATETIME)
 - `updated_at` (DATETIME)

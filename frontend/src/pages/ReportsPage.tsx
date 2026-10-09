@@ -30,6 +30,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../api/client';
 import { type ClientReport } from '../types/api';
+import { formatCategory } from '../constants/workEntryCategories';
 
 const ReportsPage: React.FC = () => {
   const [selectedClientId, setSelectedClientId] = useState<number>(0);
@@ -215,6 +216,40 @@ const ReportsPage: React.FC = () => {
                 </Grid>
               </Grid>
 
+              {report.categoryTotals.length > 0 && (
+                <Paper sx={{ mb: 3 }}>
+                  <Typography variant="h6" sx={{ px: 2, pt: 2 }}>
+                    Hours by Category
+                  </Typography>
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Category</TableCell>
+                          <TableCell align="right">Hours</TableCell>
+                          <TableCell align="right">Entries</TableCell>
+                          <TableCell align="right">Share</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {report.categoryTotals.map((total) => (
+                          <TableRow key={total.category ?? 'uncategorized'}>
+                            <TableCell>{formatCategory(total.category)}</TableCell>
+                            <TableCell align="right">{total.totalHours.toFixed(2)}</TableCell>
+                            <TableCell align="right">{total.entryCount}</TableCell>
+                            <TableCell align="right">
+                              {report.totalHours > 0
+                                ? `${((total.totalHours / report.totalHours) * 100).toFixed(0)}%`
+                                : '0%'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Paper>
+              )}
+
               <Paper>
                 <TableContainer>
                   <Table>
@@ -222,6 +257,7 @@ const ReportsPage: React.FC = () => {
                       <TableRow>
                         <TableCell>Date</TableCell>
                         <TableCell>Hours</TableCell>
+                        <TableCell>Category</TableCell>
                         <TableCell>Description</TableCell>
                         <TableCell>Created</TableCell>
                       </TableRow>
@@ -243,6 +279,14 @@ const ReportsPage: React.FC = () => {
                               />
                             </TableCell>
                             <TableCell>
+                              <Chip
+                                label={formatCategory(entry.category)}
+                                size="small"
+                                color={entry.category ? 'secondary' : 'default'}
+                                variant={entry.category ? 'filled' : 'outlined'}
+                              />
+                            </TableCell>
+                            <TableCell>
                               {entry.description ? (
                                 <Typography variant="body2" color="text.secondary">
                                   {entry.description}
@@ -260,7 +304,7 @@ const ReportsPage: React.FC = () => {
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={4} align="center">
+                          <TableCell colSpan={5} align="center">
                             <Typography color="text.secondary" sx={{ py: 3 }}>
                               No work entries found for this client.
                             </Typography>

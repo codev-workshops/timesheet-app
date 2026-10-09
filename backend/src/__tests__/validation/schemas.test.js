@@ -207,6 +207,46 @@ describe('Validation Schemas', () => {
     });
   });
 
+  describe('workEntrySchema category', () => {
+    const baseEntry = { clientId: 1, hours: 5, date: '2024-01-15' };
+
+    test.each(['development', 'meeting', 'research', 'admin', 'other'])(
+      'should accept category %s',
+      (category) => {
+        const { error, value } = workEntrySchema.validate({ ...baseEntry, category });
+        expect(error).toBeUndefined();
+        expect(value.category).toBe(category);
+      }
+    );
+
+    test('should allow missing category', () => {
+      const { error, value } = workEntrySchema.validate(baseEntry);
+      expect(error).toBeUndefined();
+      expect(value.category).toBeUndefined();
+    });
+
+    test('should allow empty or null category', () => {
+      expect(workEntrySchema.validate({ ...baseEntry, category: '' }).error).toBeUndefined();
+      expect(workEntrySchema.validate({ ...baseEntry, category: null }).error).toBeUndefined();
+    });
+
+    test('should normalize category case and whitespace', () => {
+      const { error, value } = workEntrySchema.validate({ ...baseEntry, category: '  Meeting ' });
+      expect(error).toBeUndefined();
+      expect(value.category).toBe('meeting');
+    });
+
+    test('should reject unknown category', () => {
+      const { error } = workEntrySchema.validate({ ...baseEntry, category: 'gaming' });
+      expect(error).toBeDefined();
+    });
+
+    test('should reject non-string category', () => {
+      const { error } = workEntrySchema.validate({ ...baseEntry, category: 42 });
+      expect(error).toBeDefined();
+    });
+  });
+
   describe('updateWorkEntrySchema', () => {
     test('should validate partial update', () => {
       const update = {
@@ -250,6 +290,23 @@ describe('Validation Schemas', () => {
 
       const { error } = updateWorkEntrySchema.validate(update);
       expect(error).toBeUndefined();
+    });
+  });
+
+  describe('updateWorkEntrySchema category', () => {
+    test('should validate category-only update', () => {
+      const { error } = updateWorkEntrySchema.validate({ category: 'research' });
+      expect(error).toBeUndefined();
+    });
+
+    test('should allow clearing category', () => {
+      expect(updateWorkEntrySchema.validate({ category: '' }).error).toBeUndefined();
+      expect(updateWorkEntrySchema.validate({ category: null }).error).toBeUndefined();
+    });
+
+    test('should reject unknown category', () => {
+      const { error } = updateWorkEntrySchema.validate({ category: 'invalid' });
+      expect(error).toBeDefined();
     });
   });
 

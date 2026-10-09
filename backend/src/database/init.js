@@ -58,6 +58,7 @@ async function initializeDatabase() {
           user_email TEXT NOT NULL,
           hours DECIMAL(5,2) NOT NULL,
           description TEXT,
+          category TEXT,
           date DATE NOT NULL,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -66,11 +67,19 @@ async function initializeDatabase() {
         )
       `);
 
+      // Migrate databases created before the category column existed
+      database.run('ALTER TABLE work_entries ADD COLUMN category TEXT', (err) => {
+        if (err && !/duplicate column name/i.test(err.message)) {
+          console.error('Error adding category column to work_entries:', err);
+        }
+      });
+
       // Create indexes for better performance
       database.run(`CREATE INDEX IF NOT EXISTS idx_clients_user_email ON clients (user_email)`);
       database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_client_id ON work_entries (client_id)`);
       database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_user_email ON work_entries (user_email)`);
       database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_date ON work_entries (date)`);
+      database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_user_email_category ON work_entries (user_email, category)`);
 
       console.log('Database tables created successfully');
       resolve();
