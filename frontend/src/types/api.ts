@@ -1,3 +1,6 @@
+export const WORK_ENTRY_CATEGORIES = ['Development', 'Meeting', 'Design', 'Testing', 'Other'] as const;
+export type WorkEntryCategory = typeof WORK_ENTRY_CATEGORIES[number];
+
 export interface User {
   email: string;
   createdAt: string;
@@ -18,6 +21,7 @@ export interface WorkEntry {
   client_id: number;
   hours: number;
   description: string | null;
+  category?: string | null;
   date: string;
   created_at: string;
   updated_at: string;
@@ -53,6 +57,7 @@ export interface CreateWorkEntryRequest {
   clientId: number;
   hours: number;
   description?: string;
+  category?: string;
   date: string;
 }
 
@@ -60,6 +65,7 @@ export interface UpdateWorkEntryRequest {
   clientId?: number;
   hours?: number;
   description?: string;
+  category?: string;
   date?: string;
 }
 

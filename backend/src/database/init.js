@@ -58,6 +58,7 @@ async function initializeDatabase() {
           user_email TEXT NOT NULL,
           hours DECIMAL(5,2) NOT NULL,
           description TEXT,
+          category TEXT,
           date DATE NOT NULL,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -71,6 +72,7 @@ async function initializeDatabase() {
       database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_client_id ON work_entries (client_id)`);
       database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_user_email ON work_entries (user_email)`);
       database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_date ON work_entries (date)`);
+      database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_category ON work_entries (category)`);
 
       console.log('Database tables created successfully');
       resolve();

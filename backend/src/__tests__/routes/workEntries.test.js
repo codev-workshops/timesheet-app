@@ -53,6 +53,7 @@ describe('Work Entry Routes', () => {
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ workEntries: mockEntries });
+      expect(mockDb.all.mock.calls[0][0]).toContain('we.category');
     });
 
     test('should filter by client ID when provided', async () => {
@@ -68,6 +69,35 @@ describe('Work Entry Routes', () => {
         ['test@example.com', 1],
         expect.any(Function)
       );
+    });
+
+    test('should filter by category when provided', async () => {
+      mockDb.all.mockImplementation((query, params, callback) => {
+        expect(query).toContain('AND we.category = ?');
+        expect(params).toEqual(['test@example.com', 'Development']);
+        callback(null, []);
+      });
+
+      await request(app).get('/api/work-entries?category=Development');
+    });
+
+    test('should reject an invalid category filter', async () => {
+      const response = await request(app).get('/api/work-entries?category=Lunch');
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Invalid category' });
+      expect(mockDb.all).not.toHaveBeenCalled();
+    });
+
+    test('should combine client and category filters', async () => {
+      mockDb.all.mockImplementation((query, params, callback) => {
+        expect(query).toContain('AND we.client_id = ?');
+        expect(query).toContain('AND we.category = ?');
+        expect(params).toEqual(['test@example.com', 1, 'Meeting']);
+        callback(null, []);
+      });
+
+      await request(app).get('/api/work-entries?clientId=1&category=Meeting');
     });
 
     test('should return 400 for invalid client ID filter', async () => {
@@ -101,6 +131,7 @@ describe('Work Entry Routes', () => {
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ workEntry: mockEntry });
+      expect(mockDb.get.mock.calls[0][0]).toContain('we.category');
     });
 
     test('should return 404 if work entry not found', async () => {
@@ -128,6 +159,7 @@ describe('Work Entry Routes', () => {
         clientId: 1,
         hours: 5.5,
         description: 'Development work',
+        category: 'Development',
         date: '2024-01-15'
       };
 
@@ -150,6 +182,38 @@ describe('Work Entry Routes', () => {
 
       expect(response.status).toBe(201);
       expect(response.body.message).toBe('Work entry created successfully');
+      expect(mockDb.run).toHaveBeenCalledWith(
+        expect.stringContaining('category'),
+        [1, 'test@example.com', 5.5, 'Development work', 'Development', expect.any(Date)],
+        expect.any(Function)
+      );
+      expect(mockDb.get.mock.calls[1][0]).toContain('we.category');
+    });
+
+    test('should store an empty category as null', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1 });
+      });
+
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        this.lastID = 1;
+        callback.call(this, null);
+      });
+
+      await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 5, date: '2024-01-15', category: '' });
+
+      expect(mockDb.run.mock.calls[0][1]).toEqual([1, 'test@example.com', 5, null, null, expect.any(Date)]);
+    });
+
+    test('should reject an invalid category', async () => {
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 5, date: '2024-01-15', category: 'Lunch' });
+
+      expect(response.status).toBe(400);
+      expect(mockDb.get).not.toHaveBeenCalled();
     });
 
     test('should return 400 if client not found', async () => {
@@ -224,6 +288,51 @@ describe('Work Entry Routes', () => {
   });
 
   describe('PUT /api/work-entries/:id', () => {
+    test('should update category', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1 });
+      });
+      mockDb.run.mockImplementation((query, params, callback) => {
+        callback(null);
+      });
+
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ category: 'Testing' });
+
+      expect(response.status).toBe(200);
+      expect(mockDb.run).toHaveBeenCalledWith(
+        expect.stringContaining('category = ?'),
+        ['Testing', 1, 'test@example.com'],
+        expect.any(Function)
+      );
+      expect(mockDb.get.mock.calls[1][0]).toContain('we.category');
+    });
+
+    test('should clear category by storing null', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1 });
+      });
+      mockDb.run.mockImplementation((query, params, callback) => {
+        callback(null);
+      });
+
+      await request(app)
+        .put('/api/work-entries/1')
+        .send({ category: '' });
+
+      expect(mockDb.run.mock.calls[0][1]).toEqual([null, 1, 'test@example.com']);
+    });
+
+    test('should reject an invalid category', async () => {
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ category: 'Lunch' });
+
+      expect(response.status).toBe(400);
+      expect(mockDb.get).not.toHaveBeenCalled();
+    });
+
     test('should update work entry hours', async () => {
       mockDb.get.mockImplementation((query, params, callback) => {
         if (query.includes('work_entries we')) {
