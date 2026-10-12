@@ -117,11 +117,16 @@ describe('Database Initialization', () => {
 
     test('should ignore a duplicate category column error', async () => {
       const db = getDatabase();
-      db.run
-        .mockImplementationOnce(() => {})
-        .mockImplementationOnce(() => {})
-        .mockImplementationOnce(() => {})
-        .mockImplementationOnce((query, callback) => callback(new Error('duplicate column name: category')));
+      db.run.mockImplementation((query, paramsOrCb, cb) => {
+        const callback = typeof paramsOrCb === 'function' ? paramsOrCb : cb;
+        if (typeof callback === 'function') {
+          callback(
+            query.startsWith('ALTER TABLE work_entries ADD COLUMN category')
+              ? new Error('duplicate column name: category')
+              : null
+          );
+        }
+      });
 
       await initializeDatabase();
 
@@ -131,11 +136,12 @@ describe('Database Initialization', () => {
     test('should log other category column upgrade errors', async () => {
       const db = getDatabase();
       const error = new Error('database is locked');
-      db.run
-        .mockImplementationOnce(() => {})
-        .mockImplementationOnce(() => {})
-        .mockImplementationOnce(() => {})
-        .mockImplementationOnce((query, callback) => callback(error));
+      db.run.mockImplementation((query, paramsOrCb, cb) => {
+        const callback = typeof paramsOrCb === 'function' ? paramsOrCb : cb;
+        if (typeof callback === 'function') {
+          callback(query.startsWith('ALTER TABLE work_entries ADD COLUMN category') ? error : null);
+        }
+      });
 
       await initializeDatabase();
 

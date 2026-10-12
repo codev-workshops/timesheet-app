@@ -1,5 +1,6 @@
 const Joi = require('joi');
 
+// Keep this list in sync with frontend/src/types/api.ts.
 const WORK_ENTRY_CATEGORIES = ['Development', 'Meeting', 'Design', 'Testing', 'Other'];
 
 const clientSchema = Joi.object({

@@ -87,8 +87,7 @@ x-user-email: user@company.com
 - `user_email` (TEXT, FOREIGN KEY)
 - `hours` (DECIMAL)
 - `description` (TEXT)
-- `category` (TEXT, nullable; one of Development/Meeting/Design/Testing/Other)
-- This column is automatically added to existing databases on startup.
+- `category` (TEXT, nullable; one of Development/Meeting/Design/Testing/Other; automatically added to existing databases on startup)
 - `date` (DATE)
 - `created_at` (DATETIME)
 - `updated_at` (DATETIME)

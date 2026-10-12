@@ -1,5 +1,9 @@
+// Keep this list in sync with backend/src/validation/schemas.js.
 export const WORK_ENTRY_CATEGORIES = ['Development', 'Meeting', 'Design', 'Testing', 'Other'] as const;
 export type WorkEntryCategory = typeof WORK_ENTRY_CATEGORIES[number];
+
+export const isWorkEntryCategory = (value: unknown): value is WorkEntryCategory =>
+  typeof value === 'string' && (WORK_ENTRY_CATEGORIES as readonly string[]).includes(value);
 
 export interface User {
   email: string;
