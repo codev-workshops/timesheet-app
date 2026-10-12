@@ -27,7 +27,7 @@ describe('Work Entry Routes', () => {
 
   beforeEach(() => {
     mockDb = {
-      all: jest.fn(),
+      all: jest.fn((query, params, callback) => callback(null, [])),
       get: jest.fn(),
       run: jest.fn()
     };
@@ -52,7 +52,9 @@ describe('Work Entry Routes', () => {
       const response = await request(app).get('/api/work-entries');
 
       expect(response.status).toBe(200);
-      expect(response.body).toEqual({ workEntries: mockEntries });
+      expect(response.body).toEqual({
+        workEntries: mockEntries.map((entry) => ({ ...entry, categories: [] }))
+      });
     });
 
     test('should filter by client ID when provided', async () => {
@@ -100,7 +102,7 @@ describe('Work Entry Routes', () => {
       const response = await request(app).get('/api/work-entries/1');
 
       expect(response.status).toBe(200);
-      expect(response.body).toEqual({ workEntry: mockEntry });
+      expect(response.body).toEqual({ workEntry: { ...mockEntry, categories: [] } });
     });
 
     test('should return 404 if work entry not found', async () => {
@@ -583,6 +585,278 @@ describe('Work Entry Routes', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.message).toBe('Work entry updated successfully');
+    });
+  });
+
+  describe('Work entry categories', () => {
+    test('GET list attaches categories and gives untagged entries an empty array', async () => {
+      const entries = [
+        { id: 1, client_id: 1, client_name: 'Client A' },
+        { id: 2, client_id: 1, client_name: 'Client A' }
+      ];
+      mockDb.all.mockImplementation((query, params, callback) => {
+        if (query.includes('work_entry_categories')) {
+          callback(null, [
+            { work_entry_id: 1, id: 8, name: 'Alpha' },
+            { work_entry_id: 1, id: 9, name: 'Zulu' }
+          ]);
+        } else {
+          callback(null, entries);
+        }
+      });
+
+      const response = await request(app).get('/api/work-entries');
+
+      expect(response.status).toBe(200);
+      expect(response.body.workEntries).toEqual([
+        { ...entries[0], categories: [{ id: 8, name: 'Alpha' }, { id: 9, name: 'Zulu' }] },
+        { ...entries[1], categories: [] }
+      ]);
+      expect(mockDb.all).toHaveBeenCalledTimes(2);
+      expect(mockDb.all.mock.calls[1][1]).toEqual(['test@example.com', 'test@example.com']);
+    });
+
+    test('GET empty list skips the category query', async () => {
+      mockDb.all.mockImplementation((query, params, callback) => callback(null, []));
+
+      const response = await request(app).get('/api/work-entries');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ workEntries: [] });
+      expect(mockDb.all).toHaveBeenCalledTimes(1);
+    });
+
+    test('GET client-filtered list scopes the category query to the client', async () => {
+      mockDb.all.mockImplementation((query, params, callback) => {
+        if (query.includes('work_entry_categories')) {
+          callback(null, []);
+        } else {
+          callback(null, [{ id: 1, client_id: 4 }]);
+        }
+      });
+
+      const response = await request(app).get('/api/work-entries?clientId=4');
+
+      expect(response.status).toBe(200);
+      expect(mockDb.all.mock.calls[1][0]).toContain('AND we.client_id = ?');
+      expect(mockDb.all.mock.calls[1][1]).toEqual(['test@example.com', 'test@example.com', 4]);
+    });
+
+    test('GET list returns 500 when attaching categories fails', async () => {
+      mockDb.all
+        .mockImplementationOnce((query, params, callback) => callback(null, [{ id: 1 }]))
+        .mockImplementationOnce((query, params, callback) => callback(new Error('category query failed')));
+
+      const response = await request(app).get('/api/work-entries');
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Internal server error' });
+    });
+
+    test('GET single attaches categories with a work entry scoped query', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, { id: 1, client_name: 'Client A' }));
+      mockDb.all.mockImplementation((query, params, callback) => callback(null, [{ work_entry_id: 1, id: 3, name: 'Planning' }]));
+
+      const response = await request(app).get('/api/work-entries/1');
+
+      expect(response.status).toBe(200);
+      expect(response.body.workEntry.categories).toEqual([{ id: 3, name: 'Planning' }]);
+      expect(mockDb.all.mock.calls[0][0]).toContain('WHERE wec.work_entry_id = ? AND we.user_email = ? AND c.user_email = ?');
+      expect(mockDb.all.mock.calls[0][1]).toEqual([1, 'test@example.com', 'test@example.com']);
+    });
+
+    test('POST verifies categories, inserts associations, and returns categories', async () => {
+      const categoryIds = [2, 3];
+      mockDb.get
+        .mockImplementationOnce((query, params, callback) => callback(null, { id: 1 }))
+        .mockImplementationOnce((query, params, callback) => callback(null, { id: 10, client_name: 'Client A' }));
+      mockDb.all.mockImplementation((query, params, callback) => {
+        if (query.includes('SELECT id FROM categories WHERE user_email')) {
+          callback(null, [{ id: 2 }, { id: 3 }]);
+        } else {
+          callback(null, [
+            { work_entry_id: 10, id: 2, name: 'Design' },
+            { work_entry_id: 10, id: 3, name: 'Build' }
+          ]);
+        }
+      });
+      mockDb.run
+        .mockImplementationOnce(function(query, params, callback) {
+          this.lastID = 10;
+          callback.call(this, null);
+        })
+        .mockImplementation((query, params, callback) => callback(null));
+
+      const response = await request(app).post('/api/work-entries').send({
+        clientId: 1,
+        hours: 5,
+        date: '2024-01-15',
+        categoryIds
+      });
+
+      expect(response.status).toBe(201);
+      expect(response.body.workEntry.categories).toEqual([
+        { id: 2, name: 'Design' },
+        { id: 3, name: 'Build' }
+      ]);
+      expect(mockDb.all.mock.calls[0][0]).toContain('SELECT id FROM categories WHERE user_email = ? AND id IN (?, ?)');
+      expect(mockDb.all.mock.calls[0][1]).toEqual(['test@example.com', 2, 3]);
+      expect(mockDb.run.mock.calls[2][0]).toContain('INSERT INTO work_entry_categories');
+      expect(mockDb.run.mock.calls[2][0]).toContain('SELECT ?, id FROM categories WHERE user_email = ?');
+      expect(mockDb.run.mock.calls[2][1]).toEqual([10, 'test@example.com', 2, 3]);
+      expect(mockDb.get.mock.calls[1][0]).toContain('WHERE we.id = ? AND we.user_email = ?');
+      expect(mockDb.get.mock.calls[1][1]).toEqual([10, 'test@example.com']);
+    });
+
+    test('POST rejects missing or foreign category IDs before inserting an entry', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, { id: 1 }));
+      mockDb.all.mockImplementation((query, params, callback) => callback(null, [{ id: 5 }]));
+
+      const response = await request(app).post('/api/work-entries').send({
+        clientId: 1,
+        hours: 5,
+        date: '2024-01-15',
+        categoryIds: [5, 6]
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'One or more categories not found or do not belong to user' });
+      expect(mockDb.run).not.toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO work_entries'),
+        expect.anything(),
+        expect.any(Function)
+      );
+    });
+
+    test('POST returns 500 when category verification fails', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, { id: 1 }));
+      mockDb.all.mockImplementation((query, params, callback) => callback(new Error('verify failed')));
+
+      const response = await request(app).post('/api/work-entries').send({
+        clientId: 1,
+        hours: 5,
+        date: '2024-01-15',
+        categoryIds: [1]
+      });
+
+      expect(response.status).toBe(500);
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('POST returns 500 when category replacement fails', async () => {
+      mockDb.get.mockImplementationOnce((query, params, callback) => callback(null, { id: 1 }));
+      mockDb.all.mockImplementation((query, params, callback) => callback(null, [{ id: 2 }]));
+      mockDb.run
+        .mockImplementationOnce(function(query, params, callback) {
+          this.lastID = 10;
+          callback.call(this, null);
+        })
+        .mockImplementationOnce((query, params, callback) => callback(new Error('replace failed')));
+
+      const response = await request(app).post('/api/work-entries').send({
+        clientId: 1,
+        hours: 5,
+        date: '2024-01-15',
+        categoryIds: [2]
+      });
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Failed to assign categories' });
+    });
+
+    test('PUT replaces category associations after verifying ownership', async () => {
+      mockDb.get
+        .mockImplementationOnce((query, params, callback) => callback(null, { id: 10 }))
+        .mockImplementationOnce((query, params, callback) => callback(null, { id: 10 }));
+      mockDb.all.mockImplementation((query, params, callback) => {
+        if (query.includes('SELECT id FROM categories WHERE user_email')) {
+          callback(null, [{ id: 2 }]);
+        } else {
+          callback(null, [{ work_entry_id: 10, id: 2, name: 'Planning' }]);
+        }
+      });
+      mockDb.run.mockImplementation((query, params, callback) => callback(null));
+
+      const response = await request(app).put('/api/work-entries/10').send({ categoryIds: [2] });
+
+      expect(response.status).toBe(200);
+      expect(response.body.workEntry.categories).toEqual([{ id: 2, name: 'Planning' }]);
+      expect(mockDb.all.mock.calls[0][1]).toEqual(['test@example.com', 2]);
+      expect(mockDb.run.mock.calls[1][0]).toContain('DELETE FROM work_entry_categories');
+      expect(mockDb.run.mock.calls[2][0]).toContain('INSERT INTO work_entry_categories');
+      expect(mockDb.run.mock.calls[2][1]).toEqual([10, 'test@example.com', 2]);
+    });
+
+    test('PUT with an empty category array clears associations without inserting', async () => {
+      mockDb.get
+        .mockImplementationOnce((query, params, callback) => callback(null, { id: 10 }))
+        .mockImplementationOnce((query, params, callback) => callback(null, { id: 10 }));
+      mockDb.run.mockImplementation((query, params, callback) => callback(null));
+
+      const response = await request(app).put('/api/work-entries/10').send({ categoryIds: [] });
+
+      expect(response.status).toBe(200);
+      expect(mockDb.run.mock.calls[1][0]).toContain('DELETE FROM work_entry_categories');
+      expect(mockDb.run.mock.calls.some(([query]) => query.includes('INSERT INTO work_entry_categories'))).toBe(false);
+    });
+
+    test('PUT without category IDs does not update the junction table', async () => {
+      mockDb.get
+        .mockImplementationOnce((query, params, callback) => callback(null, { id: 10 }))
+        .mockImplementationOnce((query, params, callback) => callback(null, { id: 10 }));
+      mockDb.run.mockImplementation((query, params, callback) => callback(null));
+
+      const response = await request(app).put('/api/work-entries/10').send({ hours: 8 });
+
+      expect(response.status).toBe(200);
+      expect(mockDb.run).toHaveBeenCalledTimes(1);
+      expect(mockDb.run.mock.calls[0][0]).not.toContain('work_entry_categories');
+    });
+
+    test('PUT rejects foreign category IDs before writing', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, { id: 10 }));
+      mockDb.all.mockImplementation((query, params, callback) => callback(null, []));
+
+      const response = await request(app).put('/api/work-entries/10').send({ categoryIds: [99] });
+
+      expect(response.status).toBe(400);
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('PUT returns 500 when category verification fails', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, { id: 10 }));
+      mockDb.all.mockImplementation((query, params, callback) => callback(new Error('verify failed')));
+
+      const response = await request(app).put('/api/work-entries/10').send({ categoryIds: [1] });
+
+      expect(response.status).toBe(500);
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('PUT returns 500 when replacing categories fails', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, { id: 10 }));
+      mockDb.all.mockImplementation((query, params, callback) => callback(null, [{ id: 1 }]));
+      mockDb.run
+        .mockImplementationOnce((query, params, callback) => callback(null))
+        .mockImplementationOnce((query, params, callback) => callback(new Error('replace failed')));
+
+      const response = await request(app).put('/api/work-entries/10').send({ categoryIds: [1] });
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Failed to assign categories' });
+    });
+
+    test('PUT returns 500 when attaching categories to the response fails', async () => {
+      mockDb.get
+        .mockImplementationOnce((query, params, callback) => callback(null, { id: 10 }))
+        .mockImplementationOnce((query, params, callback) => callback(null, { id: 10 }));
+      mockDb.run.mockImplementation((query, params, callback) => callback(null));
+      mockDb.all.mockImplementation((query, params, callback) => callback(new Error('attach failed')));
+
+      const response = await request(app).put('/api/work-entries/10').send({ hours: 8 });
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Internal server error' });
     });
   });
 });

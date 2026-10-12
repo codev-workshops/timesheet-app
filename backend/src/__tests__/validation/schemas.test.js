@@ -1,5 +1,7 @@
 const {
   clientSchema,
+  categorySchema,
+  updateCategorySchema,
   workEntrySchema,
   updateWorkEntrySchema,
   updateClientSchema,
@@ -7,6 +9,30 @@ const {
 } = require('../../validation/schemas');
 
 describe('Validation Schemas', () => {
+  describe('categorySchema', () => {
+    test('should validate a category name', () => {
+      expect(categorySchema.validate({ name: 'Development' }).error).toBeUndefined();
+    });
+
+    test('should reject a missing name', () => {
+      expect(categorySchema.validate({}).error).toBeDefined();
+    });
+
+    test('should reject an empty name', () => {
+      expect(categorySchema.validate({ name: '   ' }).error).toBeDefined();
+    });
+  });
+
+  describe('updateCategorySchema', () => {
+    test('should validate a category name update', () => {
+      expect(updateCategorySchema.validate({ name: 'Updated' }).error).toBeUndefined();
+    });
+
+    test('should reject an empty update', () => {
+      expect(updateCategorySchema.validate({}).error).toBeDefined();
+    });
+  });
+
   describe('clientSchema', () => {
     test('should validate valid client data', () => {
       const validClient = {
@@ -96,6 +122,50 @@ describe('Validation Schemas', () => {
 
       const { error } = workEntrySchema.validate(validEntry);
       expect(error).toBeUndefined();
+    });
+
+    test('should accept valid category IDs', () => {
+      const { error } = workEntrySchema.validate({
+        clientId: 1,
+        hours: 5,
+        date: '2024-01-15',
+        categoryIds: [1, 2]
+      });
+      expect(error).toBeUndefined();
+    });
+
+    test.each([
+      ['non-integer', [1, 1.5]],
+      ['negative', [1, -2]],
+      ['duplicate', [1, 1]]
+    ])('should reject %s category IDs', (_label, categoryIds) => {
+      const { error } = workEntrySchema.validate({
+        clientId: 1,
+        hours: 5,
+        date: '2024-01-15',
+        categoryIds
+      });
+      expect(error).toBeDefined();
+    });
+
+    test('should accept an empty category ID array', () => {
+      const { error } = workEntrySchema.validate({
+        clientId: 1,
+        hours: 5,
+        date: '2024-01-15',
+        categoryIds: []
+      });
+      expect(error).toBeUndefined();
+    });
+
+    test('should reject more than 50 category IDs', () => {
+      const { error } = workEntrySchema.validate({
+        clientId: 1,
+        hours: 5,
+        date: '2024-01-15',
+        categoryIds: Array.from({ length: 51 }, (_, index) => index + 1)
+      });
+      expect(error).toBeDefined();
     });
 
     test('should allow empty description', () => {
@@ -215,6 +285,22 @@ describe('Validation Schemas', () => {
 
       const { error } = updateWorkEntrySchema.validate(update);
       expect(error).toBeUndefined();
+    });
+
+    test('should allow category IDs as the only update field', () => {
+      const { error } = updateWorkEntrySchema.validate({ categoryIds: [1] });
+      expect(error).toBeUndefined();
+    });
+
+    test('should allow an empty category ID array in an update', () => {
+      const { error } = updateWorkEntrySchema.validate({ categoryIds: [] });
+      expect(error).toBeUndefined();
+    });
+
+    test('should reject non-integer, negative, and duplicate category IDs', () => {
+      for (const categoryIds of [[1.5], [-1], [1, 1]]) {
+        expect(updateWorkEntrySchema.validate({ categoryIds }).error).toBeDefined();
+      }
     });
 
     test('should validate multiple field update', () => {
