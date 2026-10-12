@@ -34,12 +34,18 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import apiClient from '../api/client';
-import { WORK_ENTRY_CATEGORIES, type WorkEntry } from '../types/api';
+import { WORK_ENTRY_CATEGORIES, type WorkEntry, type WorkEntryCategory } from '../types/api';
 
 const WorkEntriesPage: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<WorkEntry | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    clientId: number;
+    hours: string;
+    description: string;
+    category: WorkEntryCategory | '';
+    date: Date;
+  }>({
     clientId: 0,
     hours: '',
     description: '',
@@ -107,7 +113,7 @@ const WorkEntriesPage: React.FC = () => {
         clientId: entry.client_id,
         hours: entry.hours.toString(),
         description: entry.description || '',
-        category: entry.category || '',
+        category: (entry.category || '') as WorkEntryCategory | '',
         date: new Date(entry.date),
       });
     } else {
@@ -325,7 +331,10 @@ const WorkEntriesPage: React.FC = () => {
                   labelId="category-label"
                   label="Category"
                   value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    category: e.target.value as WorkEntryCategory | '',
+                  })}
                   disabled={createMutation.isPending || updateMutation.isPending}
                 >
                   <MenuItem value="">None</MenuItem>

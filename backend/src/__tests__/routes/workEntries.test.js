@@ -81,8 +81,28 @@ describe('Work Entry Routes', () => {
       await request(app).get('/api/work-entries?category=Development');
     });
 
+    test('should ignore an empty category filter', async () => {
+      mockDb.all.mockImplementation((query, params, callback) => {
+        expect(query).not.toContain('we.category = ?');
+        expect(params).toEqual(['test@example.com']);
+        callback(null, []);
+      });
+
+      const response = await request(app).get('/api/work-entries?category=');
+
+      expect(response.status).toBe(200);
+    });
+
     test('should reject an invalid category filter', async () => {
       const response = await request(app).get('/api/work-entries?category=Lunch');
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Invalid category' });
+      expect(mockDb.all).not.toHaveBeenCalled();
+    });
+
+    test('should reject repeated category filter values', async () => {
+      const response = await request(app).get('/api/work-entries?category=Development&category=Meeting');
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({ error: 'Invalid category' });

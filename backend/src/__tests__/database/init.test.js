@@ -105,6 +105,43 @@ describe('Database Initialization', () => {
       expect(queries.some(q => q.includes('CREATE INDEX IF NOT EXISTS idx_work_entries_category'))).toBe(true);
     });
 
+    test('should issue the category column upgrade', async () => {
+      const db = getDatabase();
+      await initializeDatabase();
+
+      expect(db.run).toHaveBeenCalledWith(
+        'ALTER TABLE work_entries ADD COLUMN category TEXT',
+        expect.any(Function)
+      );
+    });
+
+    test('should ignore a duplicate category column error', async () => {
+      const db = getDatabase();
+      db.run
+        .mockImplementationOnce(() => {})
+        .mockImplementationOnce(() => {})
+        .mockImplementationOnce(() => {})
+        .mockImplementationOnce((query, callback) => callback(new Error('duplicate column name: category')));
+
+      await initializeDatabase();
+
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+    });
+
+    test('should log other category column upgrade errors', async () => {
+      const db = getDatabase();
+      const error = new Error('database is locked');
+      db.run
+        .mockImplementationOnce(() => {})
+        .mockImplementationOnce(() => {})
+        .mockImplementationOnce(() => {})
+        .mockImplementationOnce((query, callback) => callback(error));
+
+      await initializeDatabase();
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Error adding category column:', error);
+    });
+
     test('should log success message', async () => {
       await initializeDatabase();
       

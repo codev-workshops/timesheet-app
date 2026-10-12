@@ -67,6 +67,12 @@ async function initializeDatabase() {
         )
       `);
 
+      database.run('ALTER TABLE work_entries ADD COLUMN category TEXT', (err) => {
+        if (err && !/duplicate column name/i.test(err.message)) {
+          console.error('Error adding category column:', err);
+        }
+      });
+
       // Create indexes for better performance
       database.run(`CREATE INDEX IF NOT EXISTS idx_clients_user_email ON clients (user_email)`);
       database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_client_id ON work_entries (client_id)`);

@@ -8,7 +8,7 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticateUser);
 
-// Get all work entries for authenticated user (with optional client filter)
+// Get all work entries for authenticated user (with optional client and category filters)
 router.get('/', (req, res) => {
   const { clientId, category } = req.query;
   const db = getDatabase();
@@ -32,7 +32,7 @@ router.get('/', (req, res) => {
     params.push(clientIdNum);
   }
 
-  if (category !== undefined) {
+  if (category) {
     if (!WORK_ENTRY_CATEGORIES.includes(category)) {
       return res.status(400).json({ error: 'Invalid category' });
     }
