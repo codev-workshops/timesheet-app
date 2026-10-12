@@ -34,7 +34,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import apiClient from '../api/client';
-import { type WorkEntry } from '../types/api';
+import { type Category, type CreateWorkEntryRequest, type UpdateWorkEntryRequest, type WorkEntry } from '../types/api';
 
 const WorkEntriesPage: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -44,6 +44,7 @@ const WorkEntriesPage: React.FC = () => {
     hours: '',
     description: '',
     date: new Date(),
+    categoryIds: [] as number[],
   });
   const [error, setError] = useState('');
 
@@ -59,8 +60,13 @@ const WorkEntriesPage: React.FC = () => {
     queryFn: () => apiClient.getClients(),
   });
 
+  const { data: categoriesData, isLoading: categoriesLoading } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => apiClient.getCategories(),
+  });
+
   const createMutation = useMutation({
-    mutationFn: (entryData: { clientId: number; hours: number; description?: string; date: string }) =>
+    mutationFn: (entryData: CreateWorkEntryRequest) =>
       apiClient.createWorkEntry(entryData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workEntries'] });
@@ -73,7 +79,7 @@ const WorkEntriesPage: React.FC = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { clientId?: number; hours?: number; description?: string; date?: string } }) =>
+    mutationFn: ({ id, data }: { id: number; data: UpdateWorkEntryRequest }) =>
       apiClient.updateWorkEntry(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workEntries'] });
@@ -98,6 +104,7 @@ const WorkEntriesPage: React.FC = () => {
 
   const workEntries = workEntriesData?.workEntries || [];
   const clients = clientsData?.clients || [];
+  const categories: Category[] = categoriesData?.categories || [];
 
   const handleOpen = (entry?: WorkEntry) => {
     if (entry) {
@@ -107,6 +114,7 @@ const WorkEntriesPage: React.FC = () => {
         hours: entry.hours.toString(),
         description: entry.description || '',
         date: new Date(entry.date),
+        categoryIds: entry.categories?.map((category) => category.id) || [],
       });
     } else {
       setEditingEntry(null);
@@ -115,6 +123,7 @@ const WorkEntriesPage: React.FC = () => {
         hours: '',
         description: '',
         date: new Date(),
+        categoryIds: [],
       });
     }
     setError('');
@@ -129,6 +138,7 @@ const WorkEntriesPage: React.FC = () => {
       hours: '',
       description: '',
       date: new Date(),
+      categoryIds: [],
     });
     setError('');
   };
@@ -158,6 +168,7 @@ const WorkEntriesPage: React.FC = () => {
       hours,
       description: formData.description || undefined,
       date: formData.date.toISOString().split('T')[0],
+      categoryIds: formData.categoryIds,
     };
 
     if (editingEntry) {
@@ -176,7 +187,7 @@ const WorkEntriesPage: React.FC = () => {
     }
   };
 
-  if (entriesLoading || clientsLoading) {
+  if (entriesLoading || clientsLoading || categoriesLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
         <CircularProgress />
@@ -219,6 +230,7 @@ const WorkEntriesPage: React.FC = () => {
                     <TableCell>Date</TableCell>
                     <TableCell>Hours</TableCell>
                     <TableCell>Description</TableCell>
+                    <TableCell>Categories</TableCell>
                     <TableCell align="right">Actions</TableCell>
                   </TableRow>
                 </TableHead>
@@ -252,6 +264,17 @@ const WorkEntriesPage: React.FC = () => {
                             <Chip label="No description" size="small" variant="outlined" />
                           )}
                         </TableCell>
+                        <TableCell>
+                          {entry.categories && entry.categories.length > 0 ? (
+                            <Box display="flex" gap={0.5} flexWrap="wrap">
+                              {entry.categories.map((category) => (
+                                <Chip key={category.id} label={category.name} size="small" />
+                              ))}
+                            </Box>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">—</Typography>
+                          )}
+                        </TableCell>
                         <TableCell align="right">
                           <IconButton
                             onClick={() => handleOpen(entry)}
@@ -272,7 +295,7 @@ const WorkEntriesPage: React.FC = () => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={5} align="center">
+                      <TableCell colSpan={6} align="center">
                         <Typography color="text.secondary" sx={{ py: 3 }}>
                           No work entries found. Add your first work entry to get started.
                         </Typography>
@@ -303,6 +326,46 @@ const WorkEntriesPage: React.FC = () => {
                       {client.name}
                     </MenuItem>
                   ))}
+                </Select>
+              </FormControl>
+
+              <FormControl fullWidth margin="dense">
+                <InputLabel id="work-entry-categories-label">Categories</InputLabel>
+                <Select<number[]>
+                  labelId="work-entry-categories-label"
+                  multiple
+                  value={formData.categoryIds}
+                  label="Categories"
+                  onChange={(event) => {
+                    const selectedIds = event.target.value;
+                    setFormData({
+                      ...formData,
+                      categoryIds: typeof selectedIds === 'string'
+                        ? selectedIds.split(',').map(Number)
+                        : selectedIds as number[],
+                    });
+                  }}
+                  renderValue={(selected) => (
+                    <Box display="flex" gap={0.5} flexWrap="wrap">
+                      {selected.map((categoryId) => {
+                        const category = categories.find((item) => item.id === categoryId);
+                        return <Chip key={categoryId} label={category?.name || categoryId} size="small" />;
+                      })}
+                    </Box>
+                  )}
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                >
+                  {categories.length === 0 ? (
+                    <MenuItem disabled value="">
+                      No categories — create one on the Categories page
+                    </MenuItem>
+                  ) : (
+                    categories.map((category) => (
+                      <MenuItem key={category.id} value={category.id}>
+                        {category.name}
+                      </MenuItem>
+                    ))
+                  )}
                 </Select>
               </FormControl>
 

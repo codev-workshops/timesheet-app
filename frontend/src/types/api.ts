@@ -13,6 +13,18 @@ export interface Client {
   updated_at: string;
 }
 
+export interface Category {
+  id: number;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CategorySummary {
+  id: number;
+  name: string;
+}
+
 export interface WorkEntry {
   id: number;
   client_id: number;
@@ -22,6 +34,7 @@ export interface WorkEntry {
   created_at: string;
   updated_at: string;
   client_name?: string;
+  categories?: CategorySummary[];
 }
 
 export interface WorkEntryWithClient extends WorkEntry {
@@ -49,11 +62,20 @@ export interface UpdateClientRequest {
   email?: string;
 }
 
+export interface CreateCategoryRequest {
+  name: string;
+}
+
+export interface UpdateCategoryRequest {
+  name?: string;
+}
+
 export interface CreateWorkEntryRequest {
   clientId: number;
   hours: number;
   description?: string;
   date: string;
+  categoryIds?: number[];
 }
 
 export interface UpdateWorkEntryRequest {
@@ -61,6 +83,7 @@ export interface UpdateWorkEntryRequest {
   hours?: number;
   description?: string;
   date?: string;
+  categoryIds?: number[];
 }
 
 export interface LoginRequest {
