@@ -20,7 +20,7 @@ jest.mock('pdfkit', () => {
     lineTo: jest.fn().mockReturnThis(),
     stroke: jest.fn().mockReturnThis(),
     addPage: jest.fn().mockReturnThis(),
-    pipe: jest.fn(),
+    pipe: jest.fn((response) => response.end()),
     end: jest.fn(),
     y: 100
   }));
@@ -36,6 +36,13 @@ jest.mock('../../middleware/auth', () => ({
 
 const app = express();
 app.use(express.json());
+app.use('/api/reports', (req, res, next) => {
+  res.download = (filePath, filename, callback) => {
+    res.status(200).send('CSV report');
+    callback(null);
+  };
+  next();
+});
 app.use('/api/reports', reportRoutes);
 
 describe('Report Routes', () => {
@@ -62,7 +69,7 @@ describe('Report Routes', () => {
     test('should return client report with work entries', async () => {
       const mockClient = { id: 1, name: 'Test Client' };
       const mockWorkEntries = [
-        { id: 1, hours: 5.5, description: 'Work 1', date: '2024-01-01' },
+        { id: 1, hours: 5.5, category: 'Development', description: 'Work 1', date: '2024-01-01' },
         { id: 2, hours: 3.0, description: 'Work 2', date: '2024-01-02' }
       ];
 
@@ -81,6 +88,8 @@ describe('Report Routes', () => {
       expect(response.body.workEntries).toEqual(mockWorkEntries);
       expect(response.body.totalHours).toBe(8.5);
       expect(response.body.entryCount).toBe(2);
+      expect(response.body.workEntries[0].category).toBe('Development');
+      expect(mockDb.all.mock.calls[0][0]).toContain('category');
     });
 
     test('should return report with zero hours for client with no entries', async () => {
@@ -302,6 +311,32 @@ describe('Report Routes', () => {
   });
 
   describe('CSV Export Success Path', () => {
+    test('should export category data with a Category CSV column', async () => {
+      const workEntries = [
+        { date: '2024-01-01', hours: 5, category: 'Design', description: 'Design work', created_at: '2024-01-01' }
+      ];
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, name: 'Test Client' });
+      });
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, workEntries);
+      });
+
+      const csvWriter = require('csv-writer');
+      const writeRecords = jest.fn().mockResolvedValue(undefined);
+      csvWriter.createObjectCsvWriter.mockReturnValue({ writeRecords });
+
+      const response = await request(app).get('/api/reports/export/csv/1');
+
+      expect(response.status).toBe(200);
+      expect(mockDb.all.mock.calls[0][0]).toContain('hours, category, description');
+      expect(csvWriter.createObjectCsvWriter.mock.calls[0][0].header).toContainEqual({
+        id: 'category',
+        title: 'Category'
+      });
+      expect(writeRecords).toHaveBeenCalledWith(workEntries);
+    });
+
     test('should handle CSV write error', async () => {
       const mockClient = { id: 1, name: 'Test Client' };
       const mockWorkEntries = [
@@ -405,6 +440,27 @@ describe('Report Routes', () => {
 
 
   describe('PDF Export Success Path', () => {
+    test('should export category data in the PDF table', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, name: 'Test Client' });
+      });
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, [
+          { date: '2024-01-01', hours: 5, category: 'Design', description: 'Design work' },
+          { date: '2024-01-02', hours: 2, category: null, description: 'Other work' }
+        ]);
+      });
+
+      const response = await request(app).get('/api/reports/export/pdf/1');
+
+      expect(response.status).toBe(200);
+      expect(mockDb.all.mock.calls[0][0]).toContain('hours, category, description');
+      const pdfDocument = require('pdfkit');
+      const document = pdfDocument.mock.results[pdfDocument.mock.results.length - 1].value;
+      expect(document.text).toHaveBeenCalledWith('Design', 195, 100, { width: 100 });
+      expect(document.text).toHaveBeenCalledWith('-', 195, 100, { width: 100 });
+    });
+
     test('should handle database error when fetching work entries for PDF', async () => {
       mockDb.get.mockImplementation((query, params, callback) => {
         callback(null, { id: 1, name: 'Test Client' });

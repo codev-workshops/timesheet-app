@@ -25,7 +25,7 @@ A Node.js/Express backend API for employee time tracking application with SQLite
 - `DELETE /api/clients/:id` - Delete client
 
 ### Work Entries
-- `GET /api/work-entries` - Get all work entries (with optional client filter)
+- `GET /api/work-entries?clientId=&category=` - Get all work entries (with optional client and category filters)
 - `POST /api/work-entries` - Create new work entry
 - `GET /api/work-entries/:id` - Get specific work entry
 - `PUT /api/work-entries/:id` - Update work entry
@@ -87,6 +87,7 @@ x-user-email: user@company.com
 - `user_email` (TEXT, FOREIGN KEY)
 - `hours` (DECIMAL)
 - `description` (TEXT)
+- `category` (TEXT, nullable; one of Development/Meeting/Design/Testing/Other; automatically added to existing databases on startup)
 - `date` (DATE)
 - `created_at` (DATETIME)
 - `updated_at` (DATETIME)

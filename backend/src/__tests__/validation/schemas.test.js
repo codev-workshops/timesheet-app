@@ -1,5 +1,6 @@
 const {
   clientSchema,
+  WORK_ENTRY_CATEGORIES,
   workEntrySchema,
   updateWorkEntrySchema,
   updateClientSchema,
@@ -110,6 +111,40 @@ describe('Validation Schemas', () => {
       expect(error).toBeUndefined();
     });
 
+    test.each(WORK_ENTRY_CATEGORIES)('should accept category %s', (category) => {
+      const { error } = workEntrySchema.validate({
+        clientId: 1,
+        hours: 5,
+        date: '2024-01-15',
+        category
+      });
+
+      expect(error).toBeUndefined();
+    });
+
+    test.each(['', undefined])('should accept category %s', (category) => {
+      const entry = {
+        clientId: 1,
+        hours: 5,
+        date: '2024-01-15'
+      };
+      if (category !== undefined) entry.category = category;
+
+      const { error } = workEntrySchema.validate(entry);
+      expect(error).toBeUndefined();
+    });
+
+    test.each(['Lunch', 'development'])('should reject invalid category %s', (category) => {
+      const { error } = workEntrySchema.validate({
+        clientId: 1,
+        hours: 5,
+        date: '2024-01-15',
+        category
+      });
+
+      expect(error).toBeDefined();
+    });
+
     test('should reject missing clientId', () => {
       const entry = {
         hours: 5,
@@ -214,6 +249,26 @@ describe('Validation Schemas', () => {
       };
 
       const { error } = updateWorkEntrySchema.validate(update);
+      expect(error).toBeUndefined();
+    });
+
+    test.each(WORK_ENTRY_CATEGORIES)('should accept category %s', (category) => {
+      const { error } = updateWorkEntrySchema.validate({ category });
+      expect(error).toBeUndefined();
+    });
+
+    test('should accept an empty category and omitted category', () => {
+      expect(updateWorkEntrySchema.validate({ category: '' }).error).toBeUndefined();
+      expect(updateWorkEntrySchema.validate({ hours: 8 }).error).toBeUndefined();
+    });
+
+    test.each(['Lunch', 'development'])('should reject invalid category %s', (category) => {
+      const { error } = updateWorkEntrySchema.validate({ category });
+      expect(error).toBeDefined();
+    });
+
+    test('should allow category as the only update field', () => {
+      const { error } = updateWorkEntrySchema.validate({ category: 'Design' });
       expect(error).toBeUndefined();
     });
 
