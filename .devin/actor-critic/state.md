@@ -6,7 +6,7 @@ Loop cap: 3
 
 ## Current loop
 - Loop: 1 / 3
-- Phase: actor (pending)
+- Phase: actor running — https://codev.devinenterprise.com/sessions/041663ed42bb468393e0e1eab5640e99
 
 ## Actor task spec
 Implement `categories` + `work_entry_categories` junction (no change to `work_entries`), Joi schemas
