@@ -27,6 +27,8 @@ async function initializeDatabase() {
   
   return new Promise((resolve, reject) => {
     database.serialize(() => {
+      database.run('PRAGMA foreign_keys = ON');
+
       // Create users table
       database.run(`
         CREATE TABLE IF NOT EXISTS users (
@@ -66,11 +68,35 @@ async function initializeDatabase() {
         )
       `);
 
+      database.run(`
+        CREATE TABLE IF NOT EXISTS categories (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          user_email TEXT NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_email) REFERENCES users (email) ON DELETE CASCADE
+        )
+      `);
+
+      database.run(`
+        CREATE TABLE IF NOT EXISTS work_entry_categories (
+          work_entry_id INTEGER NOT NULL,
+          category_id INTEGER NOT NULL,
+          PRIMARY KEY (work_entry_id, category_id),
+          FOREIGN KEY (work_entry_id) REFERENCES work_entries (id) ON DELETE CASCADE,
+          FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE CASCADE
+        )
+      `);
+
       // Create indexes for better performance
       database.run(`CREATE INDEX IF NOT EXISTS idx_clients_user_email ON clients (user_email)`);
       database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_client_id ON work_entries (client_id)`);
       database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_user_email ON work_entries (user_email)`);
       database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_date ON work_entries (date)`);
+      database.run(`CREATE INDEX IF NOT EXISTS idx_categories_user_email ON categories (user_email)`);
+      database.run(`CREATE INDEX IF NOT EXISTS idx_work_entry_categories_work_entry_id ON work_entry_categories (work_entry_id)`);
+      database.run(`CREATE INDEX IF NOT EXISTS idx_work_entry_categories_category_id ON work_entry_categories (category_id)`);
 
       console.log('Database tables created successfully');
       resolve();

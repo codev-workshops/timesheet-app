@@ -8,6 +8,96 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticateUser);
 
+function verifyCategories(db, userEmail, categoryIds, callback) {
+  if (categoryIds === undefined || categoryIds.length === 0) {
+    return callback(null, true);
+  }
+
+  const placeholders = categoryIds.map(() => '?').join(', ');
+  db.all(
+    `SELECT id FROM categories WHERE user_email = ? AND id IN (${placeholders})`,
+    [userEmail, ...categoryIds],
+    (err, rows) => {
+      if (err) {
+        return callback(err);
+      }
+      callback(null, rows.length === categoryIds.length);
+    }
+  );
+}
+
+function replaceEntryCategories(db, userEmail, workEntryId, categoryIds, callback) {
+  db.run(
+    'DELETE FROM work_entry_categories WHERE work_entry_id IN (SELECT id FROM work_entries WHERE id = ? AND user_email = ?)',
+    [workEntryId, userEmail],
+    (err) => {
+      if (err) {
+        return callback(err);
+      }
+
+      if (!categoryIds || categoryIds.length === 0) {
+        return callback(null);
+      }
+
+      const placeholders = categoryIds.map(() => '?').join(', ');
+      db.run(
+        `INSERT INTO work_entry_categories (work_entry_id, category_id) SELECT ?, id FROM categories WHERE user_email = ? AND id IN (${placeholders})`,
+        [workEntryId, userEmail, ...categoryIds],
+        (err) => callback(err)
+      );
+    }
+  );
+}
+
+function attachCategories(db, userEmail, entries, clientIdFilter, callback) {
+  if (entries.length === 0) {
+    return callback(null, entries);
+  }
+
+  entries.forEach((entry) => {
+    entry.categories = [];
+  });
+
+  const isSingleEntry = entries.length === 1 && clientIdFilter === undefined;
+  let query = `
+    SELECT wec.work_entry_id, c.id, c.name
+    FROM work_entry_categories wec
+    JOIN categories c ON c.id = wec.category_id
+    JOIN work_entries we ON we.id = wec.work_entry_id
+    WHERE `;
+  const params = [];
+
+  if (isSingleEntry) {
+    query += 'wec.work_entry_id = ? AND we.user_email = ? AND c.user_email = ?';
+    params.push(entries[0].id, userEmail, userEmail);
+  } else {
+    query += 'we.user_email = ? AND c.user_email = ?';
+    params.push(userEmail, userEmail);
+    if (clientIdFilter !== undefined) {
+      query += ' AND we.client_id = ?';
+      params.push(clientIdFilter);
+    }
+  }
+
+  query += ' ORDER BY c.name';
+
+  db.all(query, params, (err, rows) => {
+    if (err) {
+      return callback(err);
+    }
+
+    const entriesById = new Map(entries.map((entry) => [entry.id, entry]));
+    rows.forEach((row) => {
+      const entry = entriesById.get(row.work_entry_id);
+      if (entry) {
+        entry.categories.push({ id: row.id, name: row.name });
+      }
+    });
+
+    callback(null, entries);
+  });
+}
+
 // Get all work entries for authenticated user (with optional client filter)
 router.get('/', (req, res) => {
   const { clientId } = req.query;
@@ -40,7 +130,14 @@ router.get('/', (req, res) => {
       return res.status(500).json({ error: 'Internal server error' });
     }
     
-    res.json({ workEntries: rows });
+    attachCategories(db, req.userEmail, rows, clientId ? parseInt(clientId) : undefined, (err, workEntries) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+
+      res.json({ workEntries });
+    });
   });
 });
 
@@ -71,7 +168,14 @@ router.get('/:id', (req, res) => {
         return res.status(404).json({ error: 'Work entry not found' });
       }
       
-      res.json({ workEntry: row });
+      attachCategories(db, req.userEmail, [row], undefined, (err, workEntries) => {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Internal server error' });
+        }
+
+        res.json({ workEntry: workEntries[0] });
+      });
     }
   );
 });
@@ -84,7 +188,7 @@ router.post('/', (req, res, next) => {
       return next(error);
     }
 
-    const { clientId, hours, description, date } = value;
+    const { clientId, hours, description, date, categoryIds } = value;
     const db = getDatabase();
 
     // Verify client exists and belongs to user
@@ -101,38 +205,62 @@ router.post('/', (req, res, next) => {
           return res.status(400).json({ error: 'Client not found or does not belong to user' });
         }
 
-        // Create work entry
-        db.run(
-          'INSERT INTO work_entries (client_id, user_email, hours, description, date) VALUES (?, ?, ?, ?, ?)',
-          [clientId, req.userEmail, hours, description || null, date],
-          function(err) {
-            if (err) {
-              console.error('Database error:', err);
-              return res.status(500).json({ error: 'Failed to create work entry' });
-            }
+        verifyCategories(db, req.userEmail, categoryIds, (categoryErr, categoriesValid) => {
+          if (categoryErr) {
+            console.error('Database error:', categoryErr);
+            return res.status(500).json({ error: 'Internal server error' });
+          }
 
-            // Return the created work entry with client name
-            db.get(
-              `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-                      we.created_at, we.updated_at, c.name as client_name
-               FROM work_entries we
-               JOIN clients c ON we.client_id = c.id
-               WHERE we.id = ?`,
-              [this.lastID],
-              (err, row) => {
-                if (err) {
-                  console.error('Database error:', err);
-                  return res.status(500).json({ error: 'Work entry created but failed to retrieve' });
+          if (!categoriesValid) {
+            return res.status(400).json({ error: 'One or more categories not found or do not belong to user' });
+          }
+
+          db.run(
+            'INSERT INTO work_entries (client_id, user_email, hours, description, date) VALUES (?, ?, ?, ?, ?)',
+            [clientId, req.userEmail, hours, description || null, date],
+            function(err) {
+              if (err) {
+                console.error('Database error:', err);
+                return res.status(500).json({ error: 'Failed to create work entry' });
+              }
+
+              const workEntryId = this.lastID;
+              replaceEntryCategories(db, req.userEmail, workEntryId, categoryIds, (replaceErr) => {
+                if (replaceErr) {
+                  console.error('Database error:', replaceErr);
+                  return res.status(500).json({ error: 'Failed to assign categories' });
                 }
 
-                res.status(201).json({
-                  message: 'Work entry created successfully',
-                  workEntry: row
-                });
-              }
-            );
-          }
-        );
+                db.get(
+                  `SELECT we.id, we.client_id, we.hours, we.description, we.date,
+                          we.created_at, we.updated_at, c.name as client_name
+                   FROM work_entries we
+                   JOIN clients c ON we.client_id = c.id
+                   WHERE we.id = ? AND we.user_email = ?`,
+                  [workEntryId, req.userEmail],
+                  (err, createdEntry) => {
+                    if (err) {
+                      console.error('Database error:', err);
+                      return res.status(500).json({ error: 'Work entry created but failed to retrieve' });
+                    }
+
+                    attachCategories(db, req.userEmail, [createdEntry], undefined, (attachErr, workEntries) => {
+                      if (attachErr) {
+                        console.error('Database error:', attachErr);
+                        return res.status(500).json({ error: 'Internal server error' });
+                      }
+
+                      res.status(201).json({
+                        message: 'Work entry created successfully',
+                        workEntry: workEntries[0]
+                      });
+                    });
+                  }
+                );
+              });
+            }
+          );
+        });
       }
     );
   } catch (error) {
@@ -185,11 +313,30 @@ router.put('/:id', (req, res, next) => {
                 return res.status(400).json({ error: 'Client not found or does not belong to user' });
               }
 
-              performUpdate();
+              verifyUpdateCategories();
             }
           );
         } else {
-          performUpdate();
+          verifyUpdateCategories();
+        }
+
+        function verifyUpdateCategories() {
+          if (value.categoryIds === undefined) {
+            return performUpdate();
+          }
+
+          verifyCategories(db, req.userEmail, value.categoryIds, (categoryErr, categoriesValid) => {
+            if (categoryErr) {
+              console.error('Database error:', categoryErr);
+              return res.status(500).json({ error: 'Internal server error' });
+            }
+
+            if (!categoriesValid) {
+              return res.status(400).json({ error: 'One or more categories not found or do not belong to user' });
+            }
+
+            performUpdate();
+          });
         }
 
         function performUpdate() {
@@ -228,26 +375,46 @@ router.put('/:id', (req, res, next) => {
               return res.status(500).json({ error: 'Failed to update work entry' });
             }
 
-            // Return updated work entry with client name
-            db.get(
-              `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-                      we.created_at, we.updated_at, c.name as client_name
-               FROM work_entries we
-               JOIN clients c ON we.client_id = c.id
-               WHERE we.id = ?`,
-              [workEntryId],
-              (err, row) => {
-                if (err) {
-                  console.error('Database error:', err);
-                  return res.status(500).json({ error: 'Work entry updated but failed to retrieve' });
-                }
+            const returnUpdatedEntry = () => {
+              db.get(
+                `SELECT we.id, we.client_id, we.hours, we.description, we.date,
+                        we.created_at, we.updated_at, c.name as client_name
+                 FROM work_entries we
+                 JOIN clients c ON we.client_id = c.id
+                 WHERE we.id = ? AND we.user_email = ?`,
+                [workEntryId, req.userEmail],
+                (err, updatedEntry) => {
+                  if (err) {
+                    console.error('Database error:', err);
+                    return res.status(500).json({ error: 'Work entry updated but failed to retrieve' });
+                  }
 
-                res.json({
-                  message: 'Work entry updated successfully',
-                  workEntry: row
-                });
-              }
-            );
+                  attachCategories(db, req.userEmail, [updatedEntry], undefined, (attachErr, workEntries) => {
+                    if (attachErr) {
+                      console.error('Database error:', attachErr);
+                      return res.status(500).json({ error: 'Internal server error' });
+                    }
+
+                    res.json({
+                      message: 'Work entry updated successfully',
+                      workEntry: workEntries[0]
+                    });
+                  });
+                }
+              );
+            };
+
+            if (value.categoryIds !== undefined) {
+              replaceEntryCategories(db, req.userEmail, workEntryId, value.categoryIds, (replaceErr) => {
+                if (replaceErr) {
+                  console.error('Database error:', replaceErr);
+                  return res.status(500).json({ error: 'Failed to assign categories' });
+                }
+                returnUpdatedEntry();
+              });
+            } else {
+              returnUpdatedEntry();
+            }
           });
         }
       }
