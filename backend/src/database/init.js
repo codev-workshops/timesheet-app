@@ -22,6 +22,10 @@ function getDatabase() {
   return db;
 }
 
+function isDuplicateColumnError(err) {
+  return /duplicate column name/i.test(err.message || '');
+}
+
 async function initializeDatabase() {
   const database = getDatabase();
   
@@ -59,6 +63,7 @@ async function initializeDatabase() {
           hours DECIMAL(5,2) NOT NULL,
           description TEXT,
           date DATE NOT NULL,
+          category TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE,
@@ -72,8 +77,26 @@ async function initializeDatabase() {
       database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_user_email ON work_entries (user_email)`);
       database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_date ON work_entries (date)`);
 
-      console.log('Database tables created successfully');
-      resolve();
+      // CREATE TABLE IF NOT EXISTS does not alter existing database files
+      let migrationError = null;
+      database.run('ALTER TABLE work_entries ADD COLUMN category TEXT', (err) => {
+        if (err && !isDuplicateColumnError(err)) {
+          console.error('Error adding category column:', err);
+          migrationError = err;
+        }
+      });
+
+      // Must run after the ALTER so it works on pre-existing databases
+      database.run(
+        'CREATE INDEX IF NOT EXISTS idx_work_entries_category ON work_entries (category)',
+        (err) => {
+          if (migrationError || err) {
+            return reject(migrationError || err);
+          }
+          console.log('Database tables created successfully');
+          resolve();
+        }
+      );
     });
   });
 }
