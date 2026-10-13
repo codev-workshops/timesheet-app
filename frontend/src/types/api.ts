@@ -13,12 +13,22 @@ export interface Client {
   updated_at: string;
 }
 
+export type WorkEntryCategory = 'billable' | 'non-billable' | 'internal' | 'overtime';
+
+export const WORK_ENTRY_CATEGORIES: readonly WorkEntryCategory[] = [
+  'billable',
+  'non-billable',
+  'internal',
+  'overtime',
+];
+
 export interface WorkEntry {
   id: number;
   client_id: number;
   hours: number;
   description: string | null;
   date: string;
+  category?: WorkEntryCategory | null;
   created_at: string;
   updated_at: string;
   client_name?: string;
@@ -54,6 +64,7 @@ export interface CreateWorkEntryRequest {
   hours: number;
   description?: string;
   date: string;
+  category?: WorkEntryCategory | null;
 }
 
 export interface UpdateWorkEntryRequest {
@@ -61,6 +72,7 @@ export interface UpdateWorkEntryRequest {
   hours?: number;
   description?: string;
   date?: string;
+  category?: WorkEntryCategory | null;
 }
 
 export interface LoginRequest {

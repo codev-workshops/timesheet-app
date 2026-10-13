@@ -34,24 +34,55 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import apiClient from '../api/client';
-import { type WorkEntry } from '../types/api';
+import {
+  WORK_ENTRY_CATEGORIES,
+  type CreateWorkEntryRequest,
+  type UpdateWorkEntryRequest,
+  type WorkEntry,
+  type WorkEntryCategory,
+} from '../types/api';
+
+const CATEGORY_LABELS: Record<WorkEntryCategory, string> = {
+  billable: 'Billable',
+  'non-billable': 'Non-billable',
+  internal: 'Internal',
+  overtime: 'Overtime',
+};
+
+const isWorkEntryCategory = (value: string): value is WorkEntryCategory =>
+  (WORK_ENTRY_CATEGORIES as readonly string[]).includes(value);
+
+const toCategory = (value: string): WorkEntryCategory | '' =>
+  isWorkEntryCategory(value) ? value : '';
+
+interface WorkEntryFormData {
+  clientId: number;
+  hours: string;
+  description: string;
+  date: Date;
+  category: WorkEntryCategory | '';
+}
+
+const emptyFormData = (): WorkEntryFormData => ({
+  clientId: 0,
+  hours: '',
+  description: '',
+  date: new Date(),
+  category: '',
+});
 
 const WorkEntriesPage: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<WorkEntry | null>(null);
-  const [formData, setFormData] = useState({
-    clientId: 0,
-    hours: '',
-    description: '',
-    date: new Date(),
-  });
+  const [formData, setFormData] = useState<WorkEntryFormData>(emptyFormData);
+  const [categoryFilter, setCategoryFilter] = useState<WorkEntryCategory | ''>('');
   const [error, setError] = useState('');
 
   const queryClient = useQueryClient();
 
   const { data: workEntriesData, isLoading: entriesLoading } = useQuery({
-    queryKey: ['workEntries'],
-    queryFn: () => apiClient.getWorkEntries(),
+    queryKey: ['workEntries', { category: categoryFilter || null }],
+    queryFn: () => apiClient.getWorkEntries(undefined, categoryFilter || undefined),
   });
 
   const { data: clientsData, isLoading: clientsLoading } = useQuery({
@@ -60,7 +91,7 @@ const WorkEntriesPage: React.FC = () => {
   });
 
   const createMutation = useMutation({
-    mutationFn: (entryData: { clientId: number; hours: number; description?: string; date: string }) =>
+    mutationFn: (entryData: CreateWorkEntryRequest) =>
       apiClient.createWorkEntry(entryData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workEntries'] });
@@ -73,7 +104,7 @@ const WorkEntriesPage: React.FC = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { clientId?: number; hours?: number; description?: string; date?: string } }) =>
+    mutationFn: ({ id, data }: { id: number; data: UpdateWorkEntryRequest }) =>
       apiClient.updateWorkEntry(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workEntries'] });
@@ -107,15 +138,11 @@ const WorkEntriesPage: React.FC = () => {
         hours: entry.hours.toString(),
         description: entry.description || '',
         date: new Date(entry.date),
+        category: entry.category ?? '',
       });
     } else {
       setEditingEntry(null);
-      setFormData({
-        clientId: 0,
-        hours: '',
-        description: '',
-        date: new Date(),
-      });
+      setFormData(emptyFormData());
     }
     setError('');
     setOpen(true);
@@ -124,12 +151,7 @@ const WorkEntriesPage: React.FC = () => {
   const handleClose = () => {
     setOpen(false);
     setEditingEntry(null);
-    setFormData({
-      clientId: 0,
-      hours: '',
-      description: '',
-      date: new Date(),
-    });
+    setFormData(emptyFormData());
     setError('');
   };
 
@@ -153,11 +175,12 @@ const WorkEntriesPage: React.FC = () => {
       return;
     }
 
-    const entryData = {
+    const entryData: CreateWorkEntryRequest = {
       clientId: formData.clientId,
       hours,
       description: formData.description || undefined,
       date: formData.date.toISOString().split('T')[0],
+      category: formData.category || null,
     };
 
     if (editingEntry) {
@@ -211,6 +234,24 @@ const WorkEntriesPage: React.FC = () => {
           </Paper>
         ) : (
           <Paper>
+            <Box p={2}>
+              <FormControl size="small" sx={{ minWidth: 200 }}>
+                <InputLabel id="category-filter-label">Filter by category</InputLabel>
+                <Select
+                  labelId="category-filter-label"
+                  label="Filter by category"
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(toCategory(e.target.value))}
+                >
+                  <MenuItem value="">All categories</MenuItem>
+                  {WORK_ENTRY_CATEGORIES.map((category) => (
+                    <MenuItem key={category} value={category}>
+                      {CATEGORY_LABELS[category]}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
             <TableContainer>
               <Table>
                 <TableHead>
@@ -218,6 +259,7 @@ const WorkEntriesPage: React.FC = () => {
                     <TableCell>Client</TableCell>
                     <TableCell>Date</TableCell>
                     <TableCell>Hours</TableCell>
+                    <TableCell>Category</TableCell>
                     <TableCell>Description</TableCell>
                     <TableCell align="right">Actions</TableCell>
                   </TableRow>
@@ -242,6 +284,15 @@ const WorkEntriesPage: React.FC = () => {
                             color="primary" 
                             variant="outlined" 
                           />
+                        </TableCell>
+                        <TableCell>
+                          {entry.category ? (
+                            <Chip label={CATEGORY_LABELS[entry.category]} size="small" />
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">
+                              -
+                            </Typography>
+                          )}
                         </TableCell>
                         <TableCell>
                           {entry.description ? (
@@ -272,9 +323,11 @@ const WorkEntriesPage: React.FC = () => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={5} align="center">
+                      <TableCell colSpan={6} align="center">
                         <Typography color="text.secondary" sx={{ py: 3 }}>
-                          No work entries found. Add your first work entry to get started.
+                          {categoryFilter
+                            ? 'No work entries match this category.'
+                            : 'No work entries found. Add your first work entry to get started.'}
                         </Typography>
                       </TableCell>
                     </TableRow>
@@ -331,6 +384,26 @@ const WorkEntriesPage: React.FC = () => {
                   },
                 }}
               />
+
+              <FormControl fullWidth margin="dense">
+                <InputLabel id="category-select-label">Category</InputLabel>
+                <Select
+                  labelId="category-select-label"
+                  label="Category"
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: toCategory(e.target.value) })}
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                >
+                  <MenuItem value="">
+                    <em>None</em>
+                  </MenuItem>
+                  {WORK_ENTRY_CATEGORIES.map((category) => (
+                    <MenuItem key={category} value={category}>
+                      {CATEGORY_LABELS[category]}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
 
               <TextField
                 margin="dense"
