@@ -11,12 +11,30 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticateUser);
 
+// Parse optional categoryId query filter
+function parseCategoryFilter(req) {
+  const { categoryId } = req.query;
+  if (categoryId) {
+    const categoryIdNum = parseInt(categoryId);
+    if (isNaN(categoryIdNum)) {
+      return { error: { status: 400, body: { error: 'Invalid category ID' } } };
+    }
+    return { value: categoryIdNum };
+  }
+  return { value: undefined };
+}
+
 // Get hourly report for specific client
 router.get('/client/:clientId', (req, res) => {
   const clientId = parseInt(req.params.clientId);
   
   if (isNaN(clientId)) {
     return res.status(400).json({ error: 'Invalid client ID' });
+  }
+
+  const categoryFilter = parseCategoryFilter(req);
+  if (categoryFilter.error) {
+    return res.status(categoryFilter.error.status).json(categoryFilter.error.body);
   }
   
   const db = getDatabase();
@@ -36,12 +54,22 @@ router.get('/client/:clientId', (req, res) => {
       }
       
       // Get work entries for this client
+      let query = `
+        SELECT we.id, we.hours, we.description, we.date, we.created_at, we.updated_at,
+               we.category_id, cat.name as category_name
+        FROM work_entries we
+        LEFT JOIN categories cat ON we.category_id = cat.id AND cat.user_email = we.user_email
+        WHERE we.client_id = ? AND we.user_email = ?`;
+      const params = [clientId, req.userEmail];
+      if (categoryFilter.value !== undefined) {
+        query += ' AND we.category_id = ?';
+        params.push(categoryFilter.value);
+      }
+      query += ' ORDER BY we.date DESC';
+
       db.all(
-        `SELECT id, hours, description, date, created_at, updated_at
-         FROM work_entries 
-         WHERE client_id = ? AND user_email = ? 
-         ORDER BY date DESC`,
-        [clientId, req.userEmail],
+        query,
+        params,
         (err, workEntries) => {
           if (err) {
             console.error('Database error:', err);
@@ -70,6 +98,11 @@ router.get('/export/csv/:clientId', (req, res) => {
   if (isNaN(clientId)) {
     return res.status(400).json({ error: 'Invalid client ID' });
   }
+
+  const categoryFilter = parseCategoryFilter(req);
+  if (categoryFilter.error) {
+    return res.status(categoryFilter.error.status).json(categoryFilter.error.body);
+  }
   
   const db = getDatabase();
   
@@ -88,12 +121,22 @@ router.get('/export/csv/:clientId', (req, res) => {
       }
       
       // Get work entries
+      let query = `
+        SELECT we.hours, we.description, we.date, we.created_at,
+               we.category_id, cat.name as category_name
+        FROM work_entries we
+        LEFT JOIN categories cat ON we.category_id = cat.id AND cat.user_email = we.user_email
+        WHERE we.client_id = ? AND we.user_email = ?`;
+      const params = [clientId, req.userEmail];
+      if (categoryFilter.value !== undefined) {
+        query += ' AND we.category_id = ?';
+        params.push(categoryFilter.value);
+      }
+      query += ' ORDER BY we.date DESC';
+
       db.all(
-        `SELECT hours, description, date, created_at
-         FROM work_entries 
-         WHERE client_id = ? AND user_email = ? 
-         ORDER BY date DESC`,
-        [clientId, req.userEmail],
+        query,
+        params,
         (err, workEntries) => {
           if (err) {
             console.error('Database error:', err);
@@ -116,12 +159,18 @@ router.get('/export/csv/:clientId', (req, res) => {
             header: [
               { id: 'date', title: 'Date' },
               { id: 'hours', title: 'Hours' },
+              { id: 'category_name', title: 'Category' },
               { id: 'description', title: 'Description' },
               { id: 'created_at', title: 'Created At' }
             ]
           });
           
-          csvWriter.writeRecords(workEntries)
+          const records = workEntries.map((entry) => ({
+            ...entry,
+            category_name: entry.category_name || ''
+          }));
+
+          csvWriter.writeRecords(records)
             .then(() => {
               // Send file and clean up
               res.download(tempPath, filename, (err) => {
@@ -153,6 +202,11 @@ router.get('/export/pdf/:clientId', (req, res) => {
   if (isNaN(clientId)) {
     return res.status(400).json({ error: 'Invalid client ID' });
   }
+
+  const categoryFilter = parseCategoryFilter(req);
+  if (categoryFilter.error) {
+    return res.status(categoryFilter.error.status).json(categoryFilter.error.body);
+  }
   
   const db = getDatabase();
   
@@ -171,12 +225,22 @@ router.get('/export/pdf/:clientId', (req, res) => {
       }
       
       // Get work entries
+      let query = `
+        SELECT we.hours, we.description, we.date, we.created_at,
+               we.category_id, cat.name as category_name
+        FROM work_entries we
+        LEFT JOIN categories cat ON we.category_id = cat.id AND cat.user_email = we.user_email
+        WHERE we.client_id = ? AND we.user_email = ?`;
+      const params = [clientId, req.userEmail];
+      if (categoryFilter.value !== undefined) {
+        query += ' AND we.category_id = ?';
+        params.push(categoryFilter.value);
+      }
+      query += ' ORDER BY we.date DESC';
+
       db.all(
-        `SELECT hours, description, date, created_at
-         FROM work_entries 
-         WHERE client_id = ? AND user_email = ? 
-         ORDER BY date DESC`,
-        [clientId, req.userEmail],
+        query,
+        params,
         (err, workEntries) => {
           if (err) {
             console.error('Database error:', err);
@@ -208,7 +272,8 @@ router.get('/export/pdf/:clientId', (req, res) => {
           // Add table header
           doc.fontSize(12).text('Date', 50, doc.y, { width: 100 });
           doc.text('Hours', 150, doc.y - 15, { width: 80 });
-          doc.text('Description', 230, doc.y - 15, { width: 300 });
+          doc.text('Category', 210, doc.y - 15, { width: 100 });
+          doc.text('Description', 310, doc.y - 15, { width: 220 });
           doc.moveDown();
           
           // Add horizontal line
@@ -226,7 +291,8 @@ router.get('/export/pdf/:clientId', (req, res) => {
             
             doc.text(entry.date, 50, doc.y, { width: 100 });
             doc.text(entry.hours.toString(), 150, y, { width: 80 });
-            doc.text(entry.description || 'No description', 230, y, { width: 300 });
+            doc.text(entry.category_name || 'Uncategorized', 210, y, { width: 100 });
+            doc.text(entry.description || 'No description', 310, y, { width: 220 });
             doc.moveDown();
             
             // Add separator line every 5 entries
