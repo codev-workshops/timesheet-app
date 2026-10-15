@@ -851,5 +851,46 @@ describe('Work Entry Routes', () => {
         expect.any(Function)
       );
     });
+
+    test('should scope POST re-read by user email', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1 });
+      });
+
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        this.lastID = 7;
+        callback.call(this, null);
+      });
+
+      await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 5, date: '2024-01-15' });
+
+      const reReadCall = mockDb.get.mock.calls.find((call) =>
+        call[0].includes('FROM work_entries we')
+      );
+      expect(reReadCall[0]).toContain('AND we.user_email = ?');
+      expect(reReadCall[1]).toEqual([7, 'test@example.com']);
+    });
+
+    test('should scope PUT re-read by user email', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1 });
+      });
+
+      mockDb.run.mockImplementation((query, params, callback) => {
+        callback(null);
+      });
+
+      await request(app)
+        .put('/api/work-entries/1')
+        .send({ hours: 8 });
+
+      const reReadCall = mockDb.get.mock.calls.find((call) =>
+        call[0].includes('FROM work_entries we')
+      );
+      expect(reReadCall[0]).toContain('AND we.user_email = ?');
+      expect(reReadCall[1]).toEqual([1, 'test@example.com']);
+    });
   });
 });

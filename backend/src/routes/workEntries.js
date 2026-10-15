@@ -152,8 +152,8 @@ router.post('/', (req, res, next) => {
                  FROM work_entries we
                  JOIN clients c ON we.client_id = c.id
                  LEFT JOIN categories cat ON we.category_id = cat.id AND cat.user_email = we.user_email
-                 WHERE we.id = ?`,
-                [this.lastID],
+                 WHERE we.id = ? AND we.user_email = ?`,
+                [this.lastID, req.userEmail],
                 (err, row) => {
                   if (err) {
                     console.error('Database error:', err);
@@ -300,8 +300,8 @@ router.put('/:id', (req, res, next) => {
                FROM work_entries we
                JOIN clients c ON we.client_id = c.id
                LEFT JOIN categories cat ON we.category_id = cat.id AND cat.user_email = we.user_email
-               WHERE we.id = ?`,
-              [workEntryId],
+               WHERE we.id = ? AND we.user_email = ?`,
+              [workEntryId, req.userEmail],
               (err, row) => {
                 if (err) {
                   console.error('Database error:', err);

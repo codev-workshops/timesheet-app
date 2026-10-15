@@ -305,20 +305,17 @@ describe('Report Routes', () => {
       });
 
       mockDb.all.mockImplementation((query, params, callback) => {
-        callback(null, []);
+        callback(new Error('Database error'), null);
       });
 
-      // The mocked PDF document never ends the response, so fire and abort
-      const pending = request(app).get('/api/reports/export/pdf/1?categoryId=3');
-      pending.end(() => {});
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      const response = await request(app).get('/api/reports/export/pdf/1?categoryId=3');
 
+      expect(response.status).toBe(500);
       expect(mockDb.all).toHaveBeenCalledWith(
         expect.stringContaining('AND we.category_id = ?'),
         [1, 'test@example.com', 3],
         expect.any(Function)
       );
-      pending.abort();
     });
 
     test('should return 400 for invalid category ID on PDF export', async () => {
@@ -338,17 +335,15 @@ describe('Report Routes', () => {
       });
 
       const csvWriter = require('csv-writer');
-      const writeRecords = jest.fn().mockResolvedValue(undefined);
-      csvWriter.createObjectCsvWriter.mockReturnValue({ writeRecords });
+      csvWriter.createObjectCsvWriter.mockReturnValue({
+        writeRecords: jest.fn().mockRejectedValue(new Error('Write failed'))
+      });
 
-      // The mocked fs/res.download never ends the response, so fire and abort
-      const pending = request(app).get('/api/reports/export/csv/1');
-      pending.end(() => {});
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      const response = await request(app).get('/api/reports/export/csv/1');
 
+      expect(response.status).toBe(500);
       const writerConfig = csvWriter.createObjectCsvWriter.mock.calls[0][0];
       expect(writerConfig.header).toContainEqual({ id: 'category_name', title: 'Category' });
-      pending.abort();
     });
   });
 
