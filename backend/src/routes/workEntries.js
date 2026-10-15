@@ -10,14 +10,15 @@ router.use(authenticateUser);
 
 // Get all work entries for authenticated user (with optional client filter)
 router.get('/', (req, res) => {
-  const { clientId } = req.query;
+  const { clientId, categoryId } = req.query;
   const db = getDatabase();
   
   let query = `
-    SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-           we.created_at, we.updated_at, c.name as client_name
+    SELECT we.id, we.client_id, we.category_id, we.hours, we.description, we.date, 
+           we.created_at, we.updated_at, c.name as client_name, cat.name as category_name
     FROM work_entries we
     JOIN clients c ON we.client_id = c.id
+    LEFT JOIN categories cat ON we.category_id = cat.id AND cat.user_email = we.user_email
     WHERE we.user_email = ?
   `;
   
@@ -30,6 +31,15 @@ router.get('/', (req, res) => {
     }
     query += ' AND we.client_id = ?';
     params.push(clientIdNum);
+  }
+
+  if (categoryId) {
+    const categoryIdNum = parseInt(categoryId);
+    if (isNaN(categoryIdNum)) {
+      return res.status(400).json({ error: 'Invalid category ID' });
+    }
+    query += ' AND we.category_id = ?';
+    params.push(categoryIdNum);
   }
   
   query += ' ORDER BY we.date DESC, we.created_at DESC';
@@ -55,10 +65,11 @@ router.get('/:id', (req, res) => {
   const db = getDatabase();
   
   db.get(
-    `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-            we.created_at, we.updated_at, c.name as client_name
+    `SELECT we.id, we.client_id, we.category_id, we.hours, we.description, we.date, 
+            we.created_at, we.updated_at, c.name as client_name, cat.name as category_name
      FROM work_entries we
      JOIN clients c ON we.client_id = c.id
+     LEFT JOIN categories cat ON we.category_id = cat.id AND cat.user_email = we.user_email
      WHERE we.id = ? AND we.user_email = ?`,
     [workEntryId, req.userEmail],
     (err, row) => {
@@ -84,7 +95,7 @@ router.post('/', (req, res, next) => {
       return next(error);
     }
 
-    const { clientId, hours, description, date } = value;
+    const { clientId, categoryId, hours, description, date } = value;
     const db = getDatabase();
 
     // Verify client exists and belongs to user
@@ -101,38 +112,63 @@ router.post('/', (req, res, next) => {
           return res.status(400).json({ error: 'Client not found or does not belong to user' });
         }
 
-        // Create work entry
-        db.run(
-          'INSERT INTO work_entries (client_id, user_email, hours, description, date) VALUES (?, ?, ?, ?, ?)',
-          [clientId, req.userEmail, hours, description || null, date],
-          function(err) {
-            if (err) {
-              console.error('Database error:', err);
-              return res.status(500).json({ error: 'Failed to create work entry' });
-            }
-
-            // Return the created work entry with client name
-            db.get(
-              `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-                      we.created_at, we.updated_at, c.name as client_name
-               FROM work_entries we
-               JOIN clients c ON we.client_id = c.id
-               WHERE we.id = ?`,
-              [this.lastID],
-              (err, row) => {
-                if (err) {
-                  console.error('Database error:', err);
-                  return res.status(500).json({ error: 'Work entry created but failed to retrieve' });
-                }
-
-                res.status(201).json({
-                  message: 'Work entry created successfully',
-                  workEntry: row
-                });
+        // If a category is provided, verify it exists and belongs to user
+        if (typeof categoryId === 'number') {
+          db.get(
+            'SELECT id FROM categories WHERE id = ? AND user_email = ?',
+            [categoryId, req.userEmail],
+            (err, categoryRow) => {
+              if (err) {
+                console.error('Database error:', err);
+                return res.status(500).json({ error: 'Internal server error' });
               }
-            );
-          }
-        );
+
+              if (!categoryRow) {
+                return res.status(400).json({ error: 'Category not found or does not belong to user' });
+              }
+
+              insertEntry();
+            }
+          );
+        } else {
+          insertEntry();
+        }
+
+        function insertEntry() {
+          // Create work entry
+          db.run(
+            'INSERT INTO work_entries (client_id, category_id, user_email, hours, description, date) VALUES (?, ?, ?, ?, ?, ?)',
+            [clientId, categoryId ?? null, req.userEmail, hours, description || null, date],
+            function(err) {
+              if (err) {
+                console.error('Database error:', err);
+                return res.status(500).json({ error: 'Failed to create work entry' });
+              }
+
+              // Return the created work entry with client name
+              db.get(
+                `SELECT we.id, we.client_id, we.category_id, we.hours, we.description, we.date, 
+                        we.created_at, we.updated_at, c.name as client_name, cat.name as category_name
+                 FROM work_entries we
+                 JOIN clients c ON we.client_id = c.id
+                 LEFT JOIN categories cat ON we.category_id = cat.id AND cat.user_email = we.user_email
+                 WHERE we.id = ?`,
+                [this.lastID],
+                (err, row) => {
+                  if (err) {
+                    console.error('Database error:', err);
+                    return res.status(500).json({ error: 'Work entry created but failed to retrieve' });
+                  }
+
+                  res.status(201).json({
+                    message: 'Work entry created successfully',
+                    workEntry: row
+                  });
+                }
+              );
+            }
+          );
+        }
       }
     );
   } catch (error) {
@@ -185,11 +221,35 @@ router.put('/:id', (req, res, next) => {
                 return res.status(400).json({ error: 'Client not found or does not belong to user' });
               }
 
-              performUpdate();
+              checkCategory();
             }
           );
         } else {
-          performUpdate();
+          checkCategory();
+        }
+
+        // If categoryId is being updated, verify it belongs to user (null clears it)
+        function checkCategory() {
+          if (value.categoryId !== undefined && value.categoryId !== null) {
+            db.get(
+              'SELECT id FROM categories WHERE id = ? AND user_email = ?',
+              [value.categoryId, req.userEmail],
+              (err, categoryRow) => {
+                if (err) {
+                  console.error('Database error:', err);
+                  return res.status(500).json({ error: 'Internal server error' });
+                }
+
+                if (!categoryRow) {
+                  return res.status(400).json({ error: 'Category not found or does not belong to user' });
+                }
+
+                performUpdate();
+              }
+            );
+          } else {
+            performUpdate();
+          }
         }
 
         function performUpdate() {
@@ -200,6 +260,11 @@ router.put('/:id', (req, res, next) => {
           if (value.clientId !== undefined) {
             updates.push('client_id = ?');
             values.push(value.clientId);
+          }
+
+          if (value.categoryId !== undefined) {
+            updates.push('category_id = ?');
+            values.push(value.categoryId);
           }
 
           if (value.hours !== undefined) {
@@ -230,10 +295,11 @@ router.put('/:id', (req, res, next) => {
 
             // Return updated work entry with client name
             db.get(
-              `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-                      we.created_at, we.updated_at, c.name as client_name
+              `SELECT we.id, we.client_id, we.category_id, we.hours, we.description, we.date, 
+                      we.created_at, we.updated_at, c.name as client_name, cat.name as category_name
                FROM work_entries we
                JOIN clients c ON we.client_id = c.id
+               LEFT JOIN categories cat ON we.category_id = cat.id AND cat.user_email = we.user_email
                WHERE we.id = ?`,
               [workEntryId],
               (err, row) => {
