@@ -1,0 +1,24 @@
+# https://docs.devin.ai/onboard-devin/environment-yaml
+# React 19 + Node.js/Express + SQLite timesheet app.
+# One-time setup (e.g., install system tools, global CLIs).
+initialize: |
+  cp backend/.env.example backend/.env
+  cp frontend/.env.example frontend/.env
+# Install project dependencies (runs during builds, surfaced to agent at session start).
+maintenance: |
+  (cd backend && npm install)
+  (cd frontend && npm install)
+knowledge:
+  - name: lint
+    contents: |
+      cd frontend && npm run lint
+  - name: test
+    contents: |
+      cd backend && npm test
+  - name: build
+    contents: |
+      cd frontend && npm run build
+  - name: startup
+    contents: |
+      # Backend: cd backend && npm run dev  (runs on port 3001)
+      # Frontend: cd frontend && npm run dev  (runs on port 5173)
