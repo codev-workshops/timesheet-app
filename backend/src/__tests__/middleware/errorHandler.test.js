@@ -1,3 +1,9 @@
+const mockLog = { error: jest.fn() };
+
+jest.mock('../../observability/logger', () => ({
+  createLogger: () => mockLog
+}));
+
 const { errorHandler } = require('../../middleware/errorHandler');
 
 describe('Error Handler Middleware', () => {
@@ -11,8 +17,7 @@ describe('Error Handler Middleware', () => {
     };
     next = jest.fn();
     
-    // Mock console.error to avoid cluttering test output
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+    mockLog.error.mockClear();
   });
 
   afterEach(() => {
@@ -126,13 +131,16 @@ describe('Error Handler Middleware', () => {
     });
   });
 
-  describe('Console Logging', () => {
-    test('should log error to console', () => {
+  describe('Structured Logging', () => {
+    test('should log request errors with request metadata', () => {
       const error = new Error('Test error');
       
       errorHandler(error, req, res, next);
 
-      expect(console.error).toHaveBeenCalledWith('Error:', error);
+      expect(mockLog.error).toHaveBeenCalledWith(
+        expect.objectContaining({ err: error }),
+        'Unhandled request error'
+      );
     });
   });
 });

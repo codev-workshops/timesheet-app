@@ -1,4 +1,7 @@
 const { getDatabase } = require('../database/init');
+const { createLogger } = require('../observability/logger');
+
+const log = createLogger('middleware/auth');
 
 // Simple email-based authentication middleware
 function authenticateUser(req, res, next) {
@@ -19,7 +22,7 @@ function authenticateUser(req, res, next) {
   // Check if user exists, create if not
   db.get('SELECT email FROM users WHERE email = ?', [userEmail], (err, row) => {
     if (err) {
-      console.error('Database error:', err);
+      log.error({ err, req_id: req.id }, 'Database error');
       return res.status(500).json({ error: 'Internal server error' });
     }
     
@@ -27,7 +30,7 @@ function authenticateUser(req, res, next) {
       // Create new user
       db.run('INSERT INTO users (email) VALUES (?)', [userEmail], (err) => {
         if (err) {
-          console.error('Error creating user:', err);
+          log.error({ err, req_id: req.id }, 'Error creating user');
           return res.status(500).json({ error: 'Failed to create user' });
         }
         
