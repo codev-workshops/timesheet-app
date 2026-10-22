@@ -2,6 +2,7 @@ const request = require('supertest');
 const express = require('express');
 const authRoutes = require('../../routes/auth');
 const { getDatabase } = require('../../database/init');
+const { createSequentialDb } = require('../helpers/sequentialDb');
 
 jest.mock('../../database/init');
 
@@ -198,5 +199,66 @@ describe('Auth Routes', () => {
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ error: 'Internal server error' });
     });
+  });
+
+
+  describe('Database contract and error logging', () => {
+    const HEADERS = { 'x-user-email': 'new@example.com' };
+    const cases = [
+      {
+        name: 'POST /login logs and returns 500 when lookup fails',
+        method: 'post', url: '/api/auth/login', body: { email: 'new@example.com' }, failAt: 1, status: 500, error: 'Internal server error', log: 'Database error:',
+        calls: [['get', 'SELECT email, created_at FROM users WHERE email = ?', ['new@example.com']]]
+      },
+      {
+        name: 'POST /login logs and returns 500 when user creation fails',
+        method: 'post', url: '/api/auth/login', body: { email: 'new@example.com' }, failAt: 2, rows: { get: null }, status: 500, error: 'Failed to create user', log: 'Error creating user:',
+        calls: [['get', 'SELECT email, created_at FROM users WHERE email = ?', ['new@example.com']], ['run', 'INSERT INTO users (email) VALUES (?)', ['new@example.com']]]
+      },
+      {
+        name: 'GET /me logs and returns 500 when auth middleware lookup fails',
+        method: 'get', url: '/api/auth/me', failAt: 1, status: 500, error: 'Internal server error', log: 'Database error:',
+        calls: [['get', 'SELECT email FROM users WHERE email = ?', ['new@example.com']]]
+      },
+      {
+        name: 'GET /me logs and returns 500 when auth middleware user creation fails',
+        method: 'get', url: '/api/auth/me', failAt: 2, rows: { get: null }, status: 500, error: 'Failed to create user', log: 'Error creating user:',
+        calls: [['get', 'SELECT email FROM users WHERE email = ?', ['new@example.com']], ['run', 'INSERT INTO users (email) VALUES (?)', ['new@example.com']]]
+      },
+      {
+        name: 'GET /me logs and returns 500 when user lookup fails',
+        method: 'get', url: '/api/auth/me', failAt: 2, status: 500, error: 'Internal server error', log: 'Database error:',
+        calls: [['get', 'SELECT email FROM users WHERE email = ?', ['new@example.com']], ['get', 'SELECT email, created_at FROM users WHERE email = ?', ['new@example.com']]]
+      }
+    ];
+
+    let consoleErrorSpy;
+
+    beforeEach(() => {
+      consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      consoleErrorSpy.mockRestore();
+    });
+
+    test.each(cases)('$name', async ({ method, url, body, failAt, rows, calls, status, error, log }) => {
+      const dbError = new Error('Database error');
+      const db = createSequentialDb({ failAt, error: dbError, rows });
+      getDatabase.mockReturnValue(db);
+
+      let req = request(app)[method](url);
+      if (HEADERS) {
+        req = req.set(HEADERS);
+      }
+      const response = await (body ? req.send(body) : req);
+
+      expect(response.status).toBe(status);
+      expect(response.body).toEqual({ error });
+      expect(db.calls).toEqual(calls);
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(log, dbError);
+    });
+
   });
 });

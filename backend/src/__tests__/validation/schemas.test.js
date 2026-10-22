@@ -325,4 +325,95 @@ describe('Validation Schemas', () => {
       expect(error).toBeUndefined();
     });
   });
+
+
+  describe('hours boundaries', () => {
+    const base = { clientId: 1, date: '2024-01-15' };
+
+    test.each([
+      [0, false],
+      [0.01, true],
+      [24, true],
+      [24.01, false]
+    ])('workEntrySchema hours=%p valid=%p', (hours, valid) => {
+      const { error } = workEntrySchema.validate({ ...base, hours });
+      expect(error === undefined).toBe(valid);
+    });
+
+    test.each([
+      [0, false],
+      [24, true],
+      [24.01, false]
+    ])('updateWorkEntrySchema hours=%p valid=%p', (hours, valid) => {
+      const { error } = updateWorkEntrySchema.validate({ hours });
+      expect(error === undefined).toBe(valid);
+    });
+
+    test('rounds hours to 2 decimal places', () => {
+      const { value } = workEntrySchema.validate({ ...base, hours: 7.555 });
+      expect(value.hours).toBe(7.56);
+    });
+  });
+
+
+  describe('string field rules', () => {
+    const workBase = { clientId: 1, hours: 1, date: '2024-01-15' };
+    const cases = [
+      // [schema label, schema, base payload, field, max length, allows empty]
+      ['clientSchema', clientSchema, { name: 'Client' }, 'name', 255, false],
+      ['clientSchema', clientSchema, { name: 'Client' }, 'description', 1000, true],
+      ['clientSchema', clientSchema, { name: 'Client' }, 'department', 255, true],
+      ['updateClientSchema', updateClientSchema, {}, 'name', 255, false],
+      ['updateClientSchema', updateClientSchema, {}, 'description', 1000, true],
+      ['updateClientSchema', updateClientSchema, {}, 'department', 255, true],
+      ['workEntrySchema', workEntrySchema, workBase, 'description', 1000, true],
+      ['updateWorkEntrySchema', updateWorkEntrySchema, {}, 'description', 1000, true]
+    ];
+
+    describe.each(cases)('%s.%s', (label, schema, base, field, maxLength, allowsEmpty) => {
+      test('trims surrounding whitespace', () => {
+        const { error, value } = schema.validate({ ...base, [field]: '  ab  ' });
+        expect(error).toBeUndefined();
+        expect(value[field]).toBe('ab');
+      });
+
+      test(`accepts a short value and exactly ${maxLength} characters`, () => {
+        expect(schema.validate({ ...base, [field]: 'ab' }).error).toBeUndefined();
+        expect(schema.validate({ ...base, [field]: 'a'.repeat(maxLength) }).error).toBeUndefined();
+      });
+
+      test(`rejects ${maxLength + 1} characters`, () => {
+        expect(schema.validate({ ...base, [field]: 'a'.repeat(maxLength + 1) }).error).toBeDefined();
+      });
+
+      test(`${allowsEmpty ? 'allows' : 'rejects'} an empty string`, () => {
+        const { error } = schema.validate({ ...base, [field]: '' });
+        expect(error === undefined).toBe(allowsEmpty);
+      });
+    });
+
+    describe.each([
+      ['clientSchema', clientSchema, { name: 'Client' }],
+      ['updateClientSchema', updateClientSchema, {}]
+    ])('%s.email', (label, schema, base) => {
+      test('trims surrounding whitespace before validating', () => {
+        const { error, value } = schema.validate({ ...base, email: '  a@b.co  ' });
+        expect(error).toBeUndefined();
+        expect(value.email).toBe('a@b.co');
+      });
+
+      test('accepts an empty string', () => {
+        expect(schema.validate({ ...base, email: '' }).error).toBeUndefined();
+      });
+
+      test('rejects an invalid email', () => {
+        expect(schema.validate({ ...base, email: 'not-an-email' }).error).toBeDefined();
+      });
+
+      test('accepts a short valid email', () => {
+        // email() already caps addresses at 254 chars, so max(255) is never the binding limit.
+        expect(schema.validate({ ...base, email: 'billing@example.com' }).error).toBeUndefined();
+      });
+    });
+  });
 });

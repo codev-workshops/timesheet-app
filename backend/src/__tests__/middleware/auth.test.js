@@ -182,4 +182,57 @@ describe('Authentication Middleware', () => {
       expect(mockDb.get).toHaveBeenCalled();
     });
   });
+
+
+  describe('Header and format guards', () => {
+    test('should return 401 when x-user-email header is empty', () => {
+      req.headers['x-user-email'] = '';
+
+      authenticateUser(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.json).toHaveBeenCalledWith({ error: 'User email required in x-user-email header' });
+      expect(getDatabase).not.toHaveBeenCalled();
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    test.each([
+      'user name@example.com',
+      'prefix user@example.com',
+      'user@example.com suffix',
+      'user@exa mple.com',
+      'user@example.c om',
+      '@example.com',
+      'user@.com',
+      'user@example.',
+      'user@@example.com',
+      'user@exam@ple.com'
+    ])('should return 400 for invalid email %p without touching the database', (email) => {
+      req.headers['x-user-email'] = email;
+
+      authenticateUser(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Invalid email format' });
+      expect(getDatabase).not.toHaveBeenCalled();
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    test('should look up the user by email', () => {
+      req.headers['x-user-email'] = 'a@b.co';
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { email: 'a@b.co' });
+      });
+
+      authenticateUser(req, res, next);
+
+      expect(mockDb.get).toHaveBeenCalledWith(
+        'SELECT email FROM users WHERE email = ?',
+        ['a@b.co'],
+        expect.any(Function)
+      );
+      expect(mockDb.run).not.toHaveBeenCalled();
+      expect(next).toHaveBeenCalledTimes(1);
+    });
+  });
 });
