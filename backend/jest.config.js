@@ -9,6 +9,9 @@ module.exports = {
   ],
   coverageReporters: ['text', 'lcov', 'html'],
   testMatch: ['**/__tests__/**/*.test.js'],
+  // Stryker copies the project into .stryker-tmp/ sandboxes; keep them out of normal runs.
+  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/.stryker-tmp/'],
+  modulePathIgnorePatterns: ['<rootDir>/.stryker-tmp/'],
   coverageThreshold: {
     global: {
       branches: 60,
