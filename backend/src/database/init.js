@@ -50,11 +50,26 @@ async function initializeDatabase() {
         )
       `);
 
+      // Create categories table
+      database.run(`
+        CREATE TABLE IF NOT EXISTS categories (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          description TEXT,
+          color TEXT,
+          user_email TEXT NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_email) REFERENCES users (email) ON DELETE CASCADE
+        )
+      `);
+
       // Create work_entries table
       database.run(`
         CREATE TABLE IF NOT EXISTS work_entries (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           client_id INTEGER NOT NULL,
+          category_id INTEGER REFERENCES categories (id) ON DELETE SET NULL,
           user_email TEXT NOT NULL,
           hours DECIMAL(5,2) NOT NULL,
           description TEXT,
@@ -68,6 +83,8 @@ async function initializeDatabase() {
 
       // Create indexes for better performance
       database.run(`CREATE INDEX IF NOT EXISTS idx_clients_user_email ON clients (user_email)`);
+      database.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_user_email_name ON categories (user_email, name)`);
+      database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_category_id ON work_entries (category_id)`);
       database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_client_id ON work_entries (client_id)`);
       database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_user_email ON work_entries (user_email)`);
       database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_date ON work_entries (date)`);

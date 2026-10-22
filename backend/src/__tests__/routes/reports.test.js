@@ -158,7 +158,7 @@ describe('Report Routes', () => {
       await request(app).get('/api/reports/client/1');
 
       expect(mockDb.all).toHaveBeenCalledWith(
-        expect.stringContaining('WHERE client_id = ? AND user_email = ?'),
+        expect.stringContaining('WHERE we.client_id = ? AND we.user_email = ?'),
         [1, 'test@example.com'],
         expect.any(Function)
       );
@@ -239,6 +239,111 @@ describe('Report Routes', () => {
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ error: 'Internal server error' });
+    });
+  });
+
+  describe('Category filtering', () => {
+    test('should filter report entries by category ID', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, name: 'Test Client' });
+      });
+
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, []);
+      });
+
+      const response = await request(app).get('/api/reports/client/1?categoryId=3');
+
+      expect(response.status).toBe(200);
+      expect(mockDb.all).toHaveBeenCalledWith(
+        expect.stringContaining('AND we.category_id = ?'),
+        [1, 'test@example.com', 3],
+        expect.any(Function)
+      );
+    });
+
+    test('should return 400 for invalid category ID on report', async () => {
+      const response = await request(app).get('/api/reports/client/1?categoryId=abc');
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Invalid category ID' });
+    });
+
+    test('should filter CSV export entries by category ID', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, name: 'Test Client' });
+      });
+
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, []);
+      });
+
+      const csvWriter = require('csv-writer');
+      csvWriter.createObjectCsvWriter.mockReturnValue({
+        writeRecords: jest.fn().mockRejectedValue(new Error('Write failed'))
+      });
+
+      await request(app).get('/api/reports/export/csv/1?categoryId=3');
+
+      expect(mockDb.all).toHaveBeenCalledWith(
+        expect.stringContaining('AND we.category_id = ?'),
+        [1, 'test@example.com', 3],
+        expect.any(Function)
+      );
+    });
+
+    test('should return 400 for invalid category ID on CSV export', async () => {
+      const response = await request(app).get('/api/reports/export/csv/1?categoryId=abc');
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Invalid category ID' });
+    });
+
+    test('should filter PDF export entries by category ID', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, name: 'Test Client' });
+      });
+
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(new Error('Database error'), null);
+      });
+
+      const response = await request(app).get('/api/reports/export/pdf/1?categoryId=3');
+
+      expect(response.status).toBe(500);
+      expect(mockDb.all).toHaveBeenCalledWith(
+        expect.stringContaining('AND we.category_id = ?'),
+        [1, 'test@example.com', 3],
+        expect.any(Function)
+      );
+    });
+
+    test('should return 400 for invalid category ID on PDF export', async () => {
+      const response = await request(app).get('/api/reports/export/pdf/1?categoryId=abc');
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Invalid category ID' });
+    });
+
+    test('should include Category column in CSV header', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, name: 'Test Client' });
+      });
+
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, []);
+      });
+
+      const csvWriter = require('csv-writer');
+      csvWriter.createObjectCsvWriter.mockReturnValue({
+        writeRecords: jest.fn().mockRejectedValue(new Error('Write failed'))
+      });
+
+      const response = await request(app).get('/api/reports/export/csv/1');
+
+      expect(response.status).toBe(500);
+      const writerConfig = csvWriter.createObjectCsvWriter.mock.calls[0][0];
+      expect(writerConfig.header).toContainEqual({ id: 'category_name', title: 'Category' });
     });
   });
 

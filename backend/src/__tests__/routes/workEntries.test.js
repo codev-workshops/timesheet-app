@@ -585,4 +585,312 @@ describe('Work Entry Routes', () => {
       expect(response.body.message).toBe('Work entry updated successfully');
     });
   });
+
+  describe('Categories', () => {
+    test('should create work entry with owned category', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        if (query.includes('FROM categories')) {
+          expect(params).toEqual([2, 'test@example.com']);
+          callback(null, { id: 2 });
+        } else if (query.includes('work_entries we')) {
+          callback(null, { id: 1, category_id: 2, category_name: 'Dev' });
+        } else {
+          callback(null, { id: 1 });
+        }
+      });
+
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        this.lastID = 1;
+        callback.call(this, null);
+      });
+
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, categoryId: 2, hours: 5, date: '2024-01-15' });
+
+      expect(response.status).toBe(201);
+      expect(mockDb.run).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO work_entries (client_id, category_id, user_email, hours, description, date)'),
+        [1, 2, 'test@example.com', 5, null, new Date('2024-01-15')],
+        expect.any(Function)
+      );
+      expect(response.body.workEntry.category_name).toBe('Dev');
+    });
+
+    test('should return 400 for foreign category on create', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        if (query.includes('FROM categories')) {
+          callback(null, null);
+        } else {
+          callback(null, { id: 1 });
+        }
+      });
+
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, categoryId: 999, hours: 5, date: '2024-01-15' });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Category not found or does not belong to user' });
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('should create work entry with null categoryId without category lookup', async () => {
+      const getQueries = [];
+      mockDb.get.mockImplementation((query, params, callback) => {
+        getQueries.push(query);
+        callback(null, { id: 1 });
+      });
+
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        this.lastID = 1;
+        callback.call(this, null);
+      });
+
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, categoryId: null, hours: 5, date: '2024-01-15' });
+
+      expect(response.status).toBe(201);
+      expect(getQueries.some((q) => q.includes('FROM categories'))).toBe(false);
+      expect(mockDb.run.mock.calls[0][1][1]).toBeNull();
+    });
+
+    test('should create work entry without categoryId', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1 });
+      });
+
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        this.lastID = 1;
+        callback.call(this, null);
+      });
+
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 5, date: '2024-01-15' });
+
+      expect(response.status).toBe(201);
+      expect(mockDb.run.mock.calls[0][1][1]).toBeNull();
+    });
+
+    test('should handle category check database error on create', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        if (query.includes('FROM categories')) {
+          callback(new Error('Database error'), null);
+        } else {
+          callback(null, { id: 1 });
+        }
+      });
+
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, categoryId: 2, hours: 5, date: '2024-01-15' });
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Internal server error' });
+    });
+
+    test('should update work entry with owned categoryId', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        if (query.includes('FROM categories')) {
+          expect(params).toEqual([2, 'test@example.com']);
+          callback(null, { id: 2 });
+        } else {
+          callback(null, { id: 1 });
+        }
+      });
+
+      mockDb.run.mockImplementation((query, params, callback) => {
+        callback(null);
+      });
+
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ categoryId: 2 });
+
+      expect(response.status).toBe(200);
+      expect(mockDb.run).toHaveBeenCalledWith(
+        expect.stringContaining('category_id = ?'),
+        expect.arrayContaining([2]),
+        expect.any(Function)
+      );
+    });
+
+    test('should clear category with null without category lookup', async () => {
+      const getQueries = [];
+      mockDb.get.mockImplementation((query, params, callback) => {
+        getQueries.push(query);
+        callback(null, { id: 1 });
+      });
+
+      mockDb.run.mockImplementation((query, params, callback) => {
+        callback(null);
+      });
+
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ categoryId: null });
+
+      expect(response.status).toBe(200);
+      expect(getQueries.some((q) => q.includes('FROM categories'))).toBe(false);
+      const runCall = mockDb.run.mock.calls[0];
+      expect(runCall[0]).toContain('category_id = ?');
+      expect(runCall[1]).toContain(null);
+    });
+
+    test('should return 400 for foreign category on update', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        if (query.includes('FROM categories')) {
+          callback(null, null);
+        } else {
+          callback(null, { id: 1 });
+        }
+      });
+
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ categoryId: 999 });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Category not found or does not belong to user' });
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('should update client and category together', async () => {
+      const order = [];
+      mockDb.get.mockImplementation((query, params, callback) => {
+        if (query.includes('FROM categories')) {
+          order.push('category');
+          callback(null, { id: 3 });
+        } else if (query.includes('FROM clients')) {
+          order.push('client');
+          callback(null, { id: 2 });
+        } else {
+          callback(null, { id: 1 });
+        }
+      });
+
+      mockDb.run.mockImplementation((query, params, callback) => {
+        callback(null);
+      });
+
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ clientId: 2, categoryId: 3 });
+
+      expect(response.status).toBe(200);
+      expect(order).toEqual(['client', 'category']);
+      const runCall = mockDb.run.mock.calls[0];
+      expect(runCall[0]).toContain('client_id = ?');
+      expect(runCall[0]).toContain('category_id = ?');
+    });
+
+    test('should handle category check database error on update', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        if (query.includes('FROM categories')) {
+          callback(new Error('Database error'), null);
+        } else {
+          callback(null, { id: 1 });
+        }
+      });
+
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ categoryId: 2 });
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Internal server error' });
+    });
+
+    test('should filter by category ID when provided', async () => {
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, []);
+      });
+
+      await request(app).get('/api/work-entries?categoryId=3');
+
+      expect(mockDb.all).toHaveBeenCalledWith(
+        expect.stringContaining('AND we.category_id = ?'),
+        ['test@example.com', 3],
+        expect.any(Function)
+      );
+    });
+
+    test('should combine client and category filters', async () => {
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, []);
+      });
+
+      await request(app).get('/api/work-entries?clientId=1&categoryId=3');
+
+      expect(mockDb.all).toHaveBeenCalledWith(
+        expect.stringContaining('AND we.category_id = ?'),
+        ['test@example.com', 1, 3],
+        expect.any(Function)
+      );
+    });
+
+    test('should return 400 for invalid category ID filter', async () => {
+      const response = await request(app).get('/api/work-entries?categoryId=abc');
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Invalid category ID' });
+    });
+
+    test('should join categories in work entry queries', async () => {
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, []);
+      });
+
+      await request(app).get('/api/work-entries');
+
+      expect(mockDb.all).toHaveBeenCalledWith(
+        expect.stringContaining('LEFT JOIN categories cat'),
+        ['test@example.com'],
+        expect.any(Function)
+      );
+    });
+
+    test('should scope POST re-read by user email', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1 });
+      });
+
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        this.lastID = 7;
+        callback.call(this, null);
+      });
+
+      await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 5, date: '2024-01-15' });
+
+      const reReadCall = mockDb.get.mock.calls.find((call) =>
+        call[0].includes('FROM work_entries we')
+      );
+      expect(reReadCall[0]).toContain('AND we.user_email = ?');
+      expect(reReadCall[1]).toEqual([7, 'test@example.com']);
+    });
+
+    test('should scope PUT re-read by user email', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1 });
+      });
+
+      mockDb.run.mockImplementation((query, params, callback) => {
+        callback(null);
+      });
+
+      await request(app)
+        .put('/api/work-entries/1')
+        .send({ hours: 8 });
+
+      const reReadCall = mockDb.get.mock.calls.find((call) =>
+        call[0].includes('FROM work_entries we')
+      );
+      expect(reReadCall[0]).toContain('AND we.user_email = ?');
+      expect(reReadCall[1]).toEqual([1, 'test@example.com']);
+    });
+  });
 });

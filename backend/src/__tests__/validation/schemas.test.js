@@ -3,6 +3,8 @@ const {
   workEntrySchema,
   updateWorkEntrySchema,
   updateClientSchema,
+  categorySchema,
+  updateCategorySchema,
   emailSchema
 } = require('../../validation/schemas');
 
@@ -287,6 +289,95 @@ describe('Validation Schemas', () => {
 
       const { error } = updateClientSchema.validate(update);
       expect(error).toBeUndefined();
+    });
+  });
+
+  describe('categorySchema', () => {
+    test('should validate valid category', () => {
+      const { error } = categorySchema.validate({
+        name: 'Development',
+        description: 'Dev work',
+        color: '#FF0000'
+      });
+      expect(error).toBeUndefined();
+    });
+
+    test('should reject missing name', () => {
+      const { error } = categorySchema.validate({ description: 'No name' });
+      expect(error).toBeDefined();
+    });
+
+    test('should reject invalid color', () => {
+      const { error } = categorySchema.validate({ name: 'Cat', color: 'red' });
+      expect(error).toBeDefined();
+    });
+
+    test('should accept valid hex color', () => {
+      const { error } = categorySchema.validate({ name: 'Cat', color: '#a1B2c3' });
+      expect(error).toBeUndefined();
+    });
+
+    test('should allow empty string color', () => {
+      const { error } = categorySchema.validate({ name: 'Cat', color: '' });
+      expect(error).toBeUndefined();
+    });
+  });
+
+  describe('updateCategorySchema', () => {
+    test('should reject empty update', () => {
+      const { error } = updateCategorySchema.validate({});
+      expect(error).toBeDefined();
+    });
+
+    test('should validate single field update', () => {
+      const { error } = updateCategorySchema.validate({ color: '#00FF00' });
+      expect(error).toBeUndefined();
+    });
+  });
+
+  describe('workEntrySchema categoryId', () => {
+    const baseEntry = { clientId: 1, hours: 5, date: '2024-01-15' };
+
+    test('should accept null categoryId', () => {
+      const { error } = workEntrySchema.validate({ ...baseEntry, categoryId: null });
+      expect(error).toBeUndefined();
+    });
+
+    test('should accept positive categoryId', () => {
+      const { error } = workEntrySchema.validate({ ...baseEntry, categoryId: 3 });
+      expect(error).toBeUndefined();
+    });
+
+    test('should reject negative categoryId', () => {
+      const { error } = workEntrySchema.validate({ ...baseEntry, categoryId: -1 });
+      expect(error).toBeDefined();
+    });
+
+    test('should reject zero categoryId', () => {
+      const { error } = workEntrySchema.validate({ ...baseEntry, categoryId: 0 });
+      expect(error).toBeDefined();
+    });
+
+    test('should reject non-integer categoryId', () => {
+      const { error } = workEntrySchema.validate({ ...baseEntry, categoryId: 1.5 });
+      expect(error).toBeDefined();
+    });
+  });
+
+  describe('updateWorkEntrySchema categoryId', () => {
+    test('should accept null categoryId', () => {
+      const { error } = updateWorkEntrySchema.validate({ categoryId: null });
+      expect(error).toBeUndefined();
+    });
+
+    test('should accept positive categoryId', () => {
+      const { error } = updateWorkEntrySchema.validate({ categoryId: 3 });
+      expect(error).toBeUndefined();
+    });
+
+    test('should reject invalid categoryId', () => {
+      const { error } = updateWorkEntrySchema.validate({ categoryId: 1.5 });
+      expect(error).toBeDefined();
     });
   });
 
