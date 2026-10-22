@@ -2,8 +2,10 @@ const express = require('express');
 const { getDatabase } = require('../database/init');
 const { authenticateUser } = require('../middleware/auth');
 const { workEntrySchema, updateWorkEntrySchema } = require('../validation/schemas');
+const { createLogger } = require('../observability/logger');
 
 const router = express.Router();
+const log = createLogger('routes/workEntries');
 
 // All routes require authentication
 router.use(authenticateUser);
@@ -36,7 +38,7 @@ router.get('/', (req, res) => {
   
   db.all(query, params, (err, rows) => {
     if (err) {
-      console.error('Database error:', err);
+      log.error({ err, req_id: req.id }, 'Database error');
       return res.status(500).json({ error: 'Internal server error' });
     }
     
@@ -63,7 +65,7 @@ router.get('/:id', (req, res) => {
     [workEntryId, req.userEmail],
     (err, row) => {
       if (err) {
-        console.error('Database error:', err);
+        log.error({ err, req_id: req.id }, 'Database error');
         return res.status(500).json({ error: 'Internal server error' });
       }
       
@@ -93,7 +95,7 @@ router.post('/', (req, res, next) => {
       [clientId, req.userEmail],
       (err, row) => {
         if (err) {
-          console.error('Database error:', err);
+          log.error({ err, req_id: req.id }, 'Database error');
           return res.status(500).json({ error: 'Internal server error' });
         }
 
@@ -107,7 +109,7 @@ router.post('/', (req, res, next) => {
           [clientId, req.userEmail, hours, description || null, date],
           function(err) {
             if (err) {
-              console.error('Database error:', err);
+              log.error({ err, req_id: req.id }, 'Database error');
               return res.status(500).json({ error: 'Failed to create work entry' });
             }
 
@@ -121,7 +123,7 @@ router.post('/', (req, res, next) => {
               [this.lastID],
               (err, row) => {
                 if (err) {
-                  console.error('Database error:', err);
+                  log.error({ err, req_id: req.id }, 'Database error');
                   return res.status(500).json({ error: 'Work entry created but failed to retrieve' });
                 }
 
@@ -162,7 +164,7 @@ router.put('/:id', (req, res, next) => {
       [workEntryId, req.userEmail],
       (err, row) => {
         if (err) {
-          console.error('Database error:', err);
+          log.error({ err, req_id: req.id }, 'Database error');
           return res.status(500).json({ error: 'Internal server error' });
         }
 
@@ -177,7 +179,7 @@ router.put('/:id', (req, res, next) => {
             [value.clientId, req.userEmail],
             (err, clientRow) => {
               if (err) {
-                console.error('Database error:', err);
+                log.error({ err, req_id: req.id }, 'Database error');
                 return res.status(500).json({ error: 'Internal server error' });
               }
 
@@ -224,7 +226,7 @@ router.put('/:id', (req, res, next) => {
 
           db.run(query, values, function(err) {
             if (err) {
-              console.error('Database error:', err);
+              log.error({ err, req_id: req.id }, 'Database error');
               return res.status(500).json({ error: 'Failed to update work entry' });
             }
 
@@ -238,7 +240,7 @@ router.put('/:id', (req, res, next) => {
               [workEntryId],
               (err, row) => {
                 if (err) {
-                  console.error('Database error:', err);
+                  log.error({ err, req_id: req.id }, 'Database error');
                   return res.status(500).json({ error: 'Work entry updated but failed to retrieve' });
                 }
 
@@ -273,7 +275,7 @@ router.delete('/:id', (req, res) => {
     [workEntryId, req.userEmail],
     (err, row) => {
       if (err) {
-        console.error('Database error:', err);
+        log.error({ err, req_id: req.id }, 'Database error');
         return res.status(500).json({ error: 'Internal server error' });
       }
       
@@ -287,7 +289,7 @@ router.delete('/:id', (req, res) => {
         [workEntryId, req.userEmail],
         function(err) {
           if (err) {
-            console.error('Database error:', err);
+            log.error({ err, req_id: req.id }, 'Database error');
             return res.status(500).json({ error: 'Failed to delete work entry' });
           }
           

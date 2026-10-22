@@ -1,5 +1,14 @@
+const { createLogger } = require('../observability/logger');
+
+const log = createLogger('middleware/errorHandler');
+
 function errorHandler(err, req, res, next) {
-  console.error('Error:', err);
+  log.error({
+    err,
+    req_id: req.id,
+    method: req.method,
+    url: req.originalUrl
+  }, 'Unhandled request error');
 
   // Joi validation errors
   if (err.isJoi) {
