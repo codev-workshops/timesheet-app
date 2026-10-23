@@ -1,10 +1,21 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import {
+  Profiler,
+  type ComponentProps,
+  type ProfilerOnRenderCallback,
+  type ReactNode,
+} from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import apiClient from '../../api/client';
+import WorkEntriesTable from '../../components/WorkEntriesTable';
 import { usePredictDuration } from '../../hooks/usePredictDuration';
 import WorkEntriesPage from '../WorkEntriesPage';
+
+type WorkEntriesTableMemo = {
+  type: (props: ComponentProps<typeof WorkEntriesTable>) => ReactNode;
+};
 
 vi.mock('../../api/client', () => ({
   default: {
@@ -78,4 +89,59 @@ describe('WorkEntriesPage prediction suggestions', () => {
     await user.click(screen.getByRole('button', { name: 'Apply suggestion' }));
     expect(screen.getByRole('spinbutton', { name: 'Hours' })).toHaveValue(3.25);
   });
+
+  it('profiles description typing with 1500 work entries', async () => {
+    const workEntries = Array.from({ length: 1500 }, (_, index) => ({
+      id: index + 1,
+      client_id: 1,
+      hours: 1.5,
+      description: 'Performance sample',
+      date: '2025-01-01',
+      created_at: '2025-01-01T00:00:00.000Z',
+      updated_at: '2025-01-01T00:00:00.000Z',
+      client_name: 'Example Client',
+    }));
+    vi.mocked(apiClient.getWorkEntries).mockResolvedValue({ workEntries });
+
+    const user = userEvent.setup();
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    let isTyping = false;
+    const profileDurations: number[] = [];
+    const onRender: ProfilerOnRenderCallback = (_id, phase, actualDuration) => {
+      if (isTyping && phase === 'update') {
+        profileDurations.push(actualDuration);
+      }
+    };
+    const tableRenderSpy = vi.spyOn(
+      WorkEntriesTable as unknown as WorkEntriesTableMemo,
+      'type',
+    );
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <Profiler id="work-entries-page" onRender={onRender}>
+          <WorkEntriesPage />
+        </Profiler>
+      </QueryClientProvider>,
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'Add Work Entry' }));
+    const tableRendersBeforeTyping = tableRenderSpy.mock.calls.length;
+    const description = screen.getByRole('textbox', { name: 'Description' });
+    isTyping = true;
+    const startedAt = performance.now();
+    await user.type(description, 'abcdefghijklmnopqrst');
+    const elapsed = performance.now() - startedAt;
+    isTyping = false;
+
+    console.info(
+      `WORK_ENTRIES_TYPING_PROFILE after entries=1500 chars=20 elapsedMs=${elapsed.toFixed(1)} profilerCommits=${profileDurations.length} profilerActualMs=${profileDurations.reduce((total, duration) => total + duration, 0).toFixed(1)} tableRenders=${tableRenderSpy.mock.calls.length}`,
+    );
+    expect(description).toHaveValue('abcdefghijklmnopqrst');
+    expect(tableRendersBeforeTyping).toBe(1);
+    expect(tableRenderSpy).toHaveBeenCalledTimes(1);
+    tableRenderSpy.mockRestore();
+  }, 90_000);
 });

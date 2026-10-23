@@ -1,16 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Box,
   Typography,
   Button,
   Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -23,12 +16,9 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Chip,
 } from '@mui/material';
 import {
   Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -37,6 +27,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import apiClient from '../api/client';
 import { type WorkEntry } from '../types/api';
 import { usePredictDuration } from '../hooks/usePredictDuration';
+import WorkEntriesTable from '../components/WorkEntriesTable';
 
 const WorkEntriesPage: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -104,6 +95,7 @@ const WorkEntriesPage: React.FC = () => {
       setError(error.response?.data?.error || 'Failed to delete work entry');
     },
   });
+  const deleteWorkEntry = deleteMutation.mutate;
 
   useEffect(() => {
     const trimmedDescription = formData.description.trim();
@@ -131,7 +123,7 @@ const WorkEntriesPage: React.FC = () => {
   const workEntries = workEntriesData?.workEntries || [];
   const clients = clientsData?.clients || [];
 
-  const handleOpen = (entry?: WorkEntry) => {
+  const handleOpen = useCallback((entry?: WorkEntry) => {
     resetPrediction();
     if (entry) {
       setEditingEntry(entry);
@@ -152,7 +144,7 @@ const WorkEntriesPage: React.FC = () => {
     }
     setError('');
     setOpen(true);
-  };
+  }, [resetPrediction]);
 
   const handleClose = () => {
     resetPrediction();
@@ -206,11 +198,11 @@ const WorkEntriesPage: React.FC = () => {
     }
   };
 
-  const handleDelete = (entry: WorkEntry) => {
+  const handleDelete = useCallback((entry: WorkEntry) => {
     if (window.confirm(`Are you sure you want to delete this ${entry.hours} hour entry for ${entry.client_name}?`)) {
-      deleteMutation.mutate(entry.id);
+      deleteWorkEntry(entry.id);
     }
-  };
+  }, [deleteWorkEntry]);
 
   if (entriesLoading || clientsLoading) {
     return (
@@ -246,79 +238,11 @@ const WorkEntriesPage: React.FC = () => {
             </Button>
           </Paper>
         ) : (
-          <Paper>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Client</TableCell>
-                    <TableCell>Date</TableCell>
-                    <TableCell>Hours</TableCell>
-                    <TableCell>Description</TableCell>
-                    <TableCell align="right">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {workEntries.length > 0 ? (
-                    workEntries.map((entry: WorkEntry) => (
-                      <TableRow key={entry.id}>
-                        <TableCell>
-                          <Typography variant="subtitle1" fontWeight="medium">
-                            {entry.client_name}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">
-                            {new Date(entry.date).toLocaleDateString()}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={`${entry.hours} hours`} 
-                            color="primary" 
-                            variant="outlined" 
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {entry.description ? (
-                            <Typography variant="body2" color="text.secondary">
-                              {entry.description}
-                            </Typography>
-                          ) : (
-                            <Chip label="No description" size="small" variant="outlined" />
-                          )}
-                        </TableCell>
-                        <TableCell align="right">
-                          <IconButton
-                            onClick={() => handleOpen(entry)}
-                            color="primary"
-                            size="small"
-                          >
-                            <EditIcon />
-                          </IconButton>
-                          <IconButton
-                            onClick={() => handleDelete(entry)}
-                            color="error"
-                            size="small"
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={5} align="center">
-                        <Typography color="text.secondary" sx={{ py: 3 }}>
-                          No work entries found. Add your first work entry to get started.
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
+          <WorkEntriesTable
+            workEntries={workEntries}
+            onEdit={handleOpen}
+            onDelete={handleDelete}
+          />
         )}
 
         <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
