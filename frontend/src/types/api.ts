@@ -63,6 +63,16 @@ export interface UpdateWorkEntryRequest {
   date?: string;
 }
 
+export interface PredictDurationRequest {
+  clientId: number;
+  description?: string;
+  date?: string;
+}
+
+export interface PredictDurationResponse {
+  predictedHours: number;
+}
+
 export interface LoginRequest {
   email: string;
 }

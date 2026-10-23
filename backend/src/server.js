@@ -8,8 +8,9 @@ const authRoutes = require('./routes/auth');
 const clientRoutes = require('./routes/clients');
 const workEntryRoutes = require('./routes/workEntries');
 const reportRoutes = require('./routes/reports');
+const predictionRoutes = require('./routes/predictions');
 
-const { initializeDatabase } = require('./database/init');
+const { initializeDatabase, getDatabase } = require('./database/init');
 const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -46,6 +47,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/work-entries', workEntryRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/predictions', predictionRoutes);
 
 // Error handling
 app.use(errorHandler);
@@ -59,6 +61,11 @@ app.use('*', (req, res) => {
 async function startServer() {
   try {
     await initializeDatabase();
+    if (process.env.SEED_USER_EMAIL) {
+      const { seedDatabase } = require('./database/seed');
+      const counts = await seedDatabase(getDatabase(), { userEmail: process.env.SEED_USER_EMAIL });
+      console.log('Database seed complete:', counts);
+    }
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
       console.log(`Health check: http://localhost:${PORT}/health`);

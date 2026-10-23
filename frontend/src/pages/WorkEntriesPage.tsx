@@ -1,16 +1,9 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Box,
   Typography,
   Button,
   Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -18,16 +11,14 @@ import {
   TextField,
   Alert,
   CircularProgress,
+  FormHelperText,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  Chip,
 } from '@mui/material';
 import {
   Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -35,6 +26,8 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import apiClient from '../api/client';
 import { type WorkEntry } from '../types/api';
+import { usePredictDuration } from '../hooks/usePredictDuration';
+import WorkEntriesTable from '../components/WorkEntriesTable';
 
 const WorkEntriesPage: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -48,6 +41,13 @@ const WorkEntriesPage: React.FC = () => {
   const [error, setError] = useState('');
 
   const queryClient = useQueryClient();
+  const {
+    mutate: predictDuration,
+    reset: resetPrediction,
+    data: prediction,
+    isPending: predictionPending,
+    isError: predictionError,
+  } = usePredictDuration();
 
   const { data: workEntriesData, isLoading: entriesLoading } = useQuery({
     queryKey: ['workEntries'],
@@ -95,11 +95,36 @@ const WorkEntriesPage: React.FC = () => {
       setError(error.response?.data?.error || 'Failed to delete work entry');
     },
   });
+  const deleteWorkEntry = deleteMutation.mutate;
+
+  useEffect(() => {
+    const trimmedDescription = formData.description.trim();
+    if (!open || formData.clientId <= 0 || !trimmedDescription) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      predictDuration({
+        clientId: formData.clientId,
+        description: trimmedDescription,
+        date: formData.date.toISOString().split('T')[0],
+      });
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [
+    open,
+    formData.clientId,
+    formData.description,
+    formData.date,
+    predictDuration,
+  ]);
 
   const workEntries = workEntriesData?.workEntries || [];
   const clients = clientsData?.clients || [];
 
-  const handleOpen = (entry?: WorkEntry) => {
+  const handleOpen = useCallback((entry?: WorkEntry) => {
+    resetPrediction();
     if (entry) {
       setEditingEntry(entry);
       setFormData({
@@ -119,9 +144,10 @@ const WorkEntriesPage: React.FC = () => {
     }
     setError('');
     setOpen(true);
-  };
+  }, [resetPrediction]);
 
   const handleClose = () => {
+    resetPrediction();
     setOpen(false);
     setEditingEntry(null);
     setFormData({
@@ -132,6 +158,8 @@ const WorkEntriesPage: React.FC = () => {
     });
     setError('');
   };
+
+  const predictedHours = prediction?.predictedHours;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -170,11 +198,11 @@ const WorkEntriesPage: React.FC = () => {
     }
   };
 
-  const handleDelete = (entry: WorkEntry) => {
+  const handleDelete = useCallback((entry: WorkEntry) => {
     if (window.confirm(`Are you sure you want to delete this ${entry.hours} hour entry for ${entry.client_name}?`)) {
-      deleteMutation.mutate(entry.id);
+      deleteWorkEntry(entry.id);
     }
-  };
+  }, [deleteWorkEntry]);
 
   if (entriesLoading || clientsLoading) {
     return (
@@ -210,79 +238,11 @@ const WorkEntriesPage: React.FC = () => {
             </Button>
           </Paper>
         ) : (
-          <Paper>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Client</TableCell>
-                    <TableCell>Date</TableCell>
-                    <TableCell>Hours</TableCell>
-                    <TableCell>Description</TableCell>
-                    <TableCell align="right">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {workEntries.length > 0 ? (
-                    workEntries.map((entry: WorkEntry) => (
-                      <TableRow key={entry.id}>
-                        <TableCell>
-                          <Typography variant="subtitle1" fontWeight="medium">
-                            {entry.client_name}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">
-                            {new Date(entry.date).toLocaleDateString()}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={`${entry.hours} hours`} 
-                            color="primary" 
-                            variant="outlined" 
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {entry.description ? (
-                            <Typography variant="body2" color="text.secondary">
-                              {entry.description}
-                            </Typography>
-                          ) : (
-                            <Chip label="No description" size="small" variant="outlined" />
-                          )}
-                        </TableCell>
-                        <TableCell align="right">
-                          <IconButton
-                            onClick={() => handleOpen(entry)}
-                            color="primary"
-                            size="small"
-                          >
-                            <EditIcon />
-                          </IconButton>
-                          <IconButton
-                            onClick={() => handleDelete(entry)}
-                            color="error"
-                            size="small"
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={5} align="center">
-                        <Typography color="text.secondary" sx={{ py: 3 }}>
-                          No work entries found. Add your first work entry to get started.
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
+          <WorkEntriesTable
+            workEntries={workEntries}
+            onEdit={handleOpen}
+            onDelete={handleDelete}
+          />
         )}
 
         <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
@@ -292,9 +252,11 @@ const WorkEntriesPage: React.FC = () => {
           <form onSubmit={handleSubmit}>
             <DialogContent>
               <FormControl fullWidth margin="dense" required>
-                <InputLabel>Client</InputLabel>
+                <InputLabel id="client-label">Client</InputLabel>
                 <Select
-                  value={formData.clientId}
+                  labelId="client-label"
+                  label="Client"
+                  value={formData.clientId || ''}
                   onChange={(e) => setFormData({ ...formData, clientId: Number(e.target.value) })}
                   disabled={createMutation.isPending || updateMutation.isPending}
                 >
@@ -342,6 +304,28 @@ const WorkEntriesPage: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 disabled={createMutation.isPending || updateMutation.isPending}
               />
+
+              {predictionPending && (
+                <CircularProgress size={16} aria-label="Loading suggestion" sx={{ mt: 1 }} />
+              )}
+              {predictedHours !== undefined && (
+                <Box display="flex" alignItems="center" gap={1}>
+                  <FormHelperText>Suggested: {predictedHours} hours</FormHelperText>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => setFormData((current) => ({
+                      ...current,
+                      hours: String(predictedHours),
+                    }))}
+                  >
+                    Apply suggestion
+                  </Button>
+                </Box>
+              )}
+              {predictionError && (
+                <FormHelperText error>No suggestion available</FormHelperText>
+              )}
             </DialogContent>
             <DialogActions>
               <Button onClick={handleClose} disabled={createMutation.isPending || updateMutation.isPending}>
