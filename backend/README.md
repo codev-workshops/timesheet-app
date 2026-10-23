@@ -100,3 +100,14 @@ x-user-email: user@company.com
 ## Health Check
 
 The API includes a health check endpoint at `/health` that returns server status and timestamp.
+
+## Hours prediction (ML)
+
+`POST /api/predictions` (`x-user-email` required) with `{ clientId, description?, date? }` returns `{ predictedHours }`, used by the work-entry form's "Apply suggestion" button.
+
+- `src/database/seed.js` — deterministic synthetic dataset (`hours = archetype base + client effect + weekday effect + noise`, with empty descriptions, outliers, client imbalance, weekday clustering). `npm run seed:dump -- data.csv` writes a dump; starting the server with `SEED_USER_EMAIL=you@example.com` seeds the in-memory DB for that user.
+- `src/ml/features.js` — pure feature engineering (client/department one-hot, weekday, month, description length and keyword flags).
+- `src/ml/train.js` — `npm run ml:train [-- --data dump.csv]`: time-based split, ridge regression, comparison against `src/ml/baseline.js` (per-client / global mean), writes `src/ml/model.json` and `src/ml/EVALUATION.md`. Exits non-zero (and keeps the old model) if it doesn't beat the per-client-mean MAE.
+- `src/ml/predict.js` — loads `model.json` once; `predictHours(input)` returns hours clipped to [0.25, 24].
+
+The data is synthetic, so evaluation only shows the pipeline recovers the injected rules, not real-world accuracy.
