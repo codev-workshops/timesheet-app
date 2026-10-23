@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Typography,
@@ -18,6 +18,7 @@ import {
   TextField,
   Alert,
   CircularProgress,
+  FormHelperText,
   FormControl,
   InputLabel,
   Select,
@@ -35,6 +36,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import apiClient from '../api/client';
 import { type WorkEntry } from '../types/api';
+import { usePredictDuration } from '../hooks/usePredictDuration';
 
 const WorkEntriesPage: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -48,6 +50,13 @@ const WorkEntriesPage: React.FC = () => {
   const [error, setError] = useState('');
 
   const queryClient = useQueryClient();
+  const {
+    mutate: predictDuration,
+    reset: resetPrediction,
+    data: prediction,
+    isPending: predictionPending,
+    isError: predictionError,
+  } = usePredictDuration();
 
   const { data: workEntriesData, isLoading: entriesLoading } = useQuery({
     queryKey: ['workEntries'],
@@ -96,10 +105,34 @@ const WorkEntriesPage: React.FC = () => {
     },
   });
 
+  useEffect(() => {
+    const trimmedDescription = formData.description.trim();
+    if (!open || formData.clientId <= 0 || !trimmedDescription) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      predictDuration({
+        clientId: formData.clientId,
+        description: trimmedDescription,
+        date: formData.date.toISOString().split('T')[0],
+      });
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [
+    open,
+    formData.clientId,
+    formData.description,
+    formData.date,
+    predictDuration,
+  ]);
+
   const workEntries = workEntriesData?.workEntries || [];
   const clients = clientsData?.clients || [];
 
   const handleOpen = (entry?: WorkEntry) => {
+    resetPrediction();
     if (entry) {
       setEditingEntry(entry);
       setFormData({
@@ -122,6 +155,7 @@ const WorkEntriesPage: React.FC = () => {
   };
 
   const handleClose = () => {
+    resetPrediction();
     setOpen(false);
     setEditingEntry(null);
     setFormData({
@@ -132,6 +166,8 @@ const WorkEntriesPage: React.FC = () => {
     });
     setError('');
   };
+
+  const predictedHours = prediction?.predictedHours;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -292,9 +328,11 @@ const WorkEntriesPage: React.FC = () => {
           <form onSubmit={handleSubmit}>
             <DialogContent>
               <FormControl fullWidth margin="dense" required>
-                <InputLabel>Client</InputLabel>
+                <InputLabel id="client-label">Client</InputLabel>
                 <Select
-                  value={formData.clientId}
+                  labelId="client-label"
+                  label="Client"
+                  value={formData.clientId || ''}
                   onChange={(e) => setFormData({ ...formData, clientId: Number(e.target.value) })}
                   disabled={createMutation.isPending || updateMutation.isPending}
                 >
@@ -342,6 +380,28 @@ const WorkEntriesPage: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 disabled={createMutation.isPending || updateMutation.isPending}
               />
+
+              {predictionPending && (
+                <CircularProgress size={16} aria-label="Loading suggestion" sx={{ mt: 1 }} />
+              )}
+              {predictedHours !== undefined && (
+                <Box display="flex" alignItems="center" gap={1}>
+                  <FormHelperText>Suggested: {predictedHours} hours</FormHelperText>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => setFormData((current) => ({
+                      ...current,
+                      hours: String(predictedHours),
+                    }))}
+                  >
+                    Apply suggestion
+                  </Button>
+                </Box>
+              )}
+              {predictionError && (
+                <FormHelperText error>No suggestion available</FormHelperText>
+              )}
             </DialogContent>
             <DialogActions>
               <Button onClick={handleClose} disabled={createMutation.isPending || updateMutation.isPending}>

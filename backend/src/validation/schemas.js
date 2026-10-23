@@ -14,6 +14,12 @@ const workEntrySchema = Joi.object({
   date: Joi.date().iso().required()
 });
 
+const predictionSchema = Joi.object({
+  clientId: Joi.number().integer().positive().required(),
+  description: Joi.string().trim().max(1000).optional().allow(''),
+  date: Joi.date().iso().optional()
+});
+
 const updateWorkEntrySchema = Joi.object({
   clientId: Joi.number().integer().positive().optional(),
   hours: Joi.number().positive().max(24).precision(2).optional(),
@@ -35,6 +41,7 @@ const emailSchema = Joi.object({
 module.exports = {
   clientSchema,
   workEntrySchema,
+  predictionSchema,
   updateWorkEntrySchema,
   updateClientSchema,
   emailSchema

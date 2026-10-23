@@ -3,7 +3,8 @@ const {
   workEntrySchema,
   updateWorkEntrySchema,
   updateClientSchema,
-  emailSchema
+  emailSchema,
+  predictionSchema
 } = require('../../validation/schemas');
 
 describe('Validation Schemas', () => {
@@ -203,6 +204,49 @@ describe('Validation Schemas', () => {
       };
 
       const { error } = workEntrySchema.validate(entry);
+      expect(error).toBeDefined();
+    });
+  });
+
+  describe('predictionSchema', () => {
+    test('should reject missing clientId', () => {
+      const { error } = predictionSchema.validate({});
+      expect(error).toBeDefined();
+    });
+
+    test('should reject non-positive or non-integer clientId', () => {
+      for (const clientId of [0, -1, 1.5]) {
+        const { error } = predictionSchema.validate({ clientId });
+        expect(error).toBeDefined();
+      }
+    });
+
+    test('should accept clientId alone', () => {
+      const { error } = predictionSchema.validate({ clientId: 1 });
+      expect(error).toBeUndefined();
+    });
+
+    test('should accept empty or non-empty description and an ISO date', () => {
+      for (const description of ['', 'Development work']) {
+        const { error } = predictionSchema.validate({
+          clientId: 1,
+          description,
+          date: '2024-01-15'
+        });
+        expect(error).toBeUndefined();
+      }
+    });
+
+    test('should reject an invalid date', () => {
+      const { error } = predictionSchema.validate({ clientId: 1, date: '01/15/2024' });
+      expect(error).toBeDefined();
+    });
+
+    test('should reject description longer than 1000 characters', () => {
+      const { error } = predictionSchema.validate({
+        clientId: 1,
+        description: 'a'.repeat(1001)
+      });
       expect(error).toBeDefined();
     });
   });

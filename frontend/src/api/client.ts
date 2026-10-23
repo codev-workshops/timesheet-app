@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios';
+import type { PredictDurationRequest, PredictDurationResponse } from '../types/api';
 
 // Use empty string to make requests relative to the current origin
 // Vite proxy will forward /api requests to the backend
@@ -110,6 +111,11 @@ class ApiClient {
 
   async deleteWorkEntry(id: number) {
     const response = await this.client.delete(`/api/work-entries/${id}`);
+    return response.data;
+  }
+
+  async predictDuration(input: PredictDurationRequest): Promise<PredictDurationResponse> {
+    const response = await this.client.post('/api/predictions', input);
     return response.data;
   }
 
