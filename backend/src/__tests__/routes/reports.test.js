@@ -3,6 +3,7 @@ const express = require('express');
 const { getDatabase } = require('../../database/init');
 const fs = require('fs');
 const path = require('path');
+const csvWriter = require('csv-writer');
 
 jest.mock('../../database/init');
 jest.mock('fs');
@@ -52,6 +53,12 @@ describe('Report Routes', () => {
     fs.existsSync = jest.fn().mockReturnValue(true);
     fs.mkdirSync = jest.fn();
     fs.unlink = jest.fn((path, callback) => callback(null));
+
+    // clearAllMocks does not reset implementations set via mockReturnValue,
+    // so restore the default CSV writer before each test.
+    csvWriter.createObjectCsvWriter.mockImplementation(() => ({
+      writeRecords: jest.fn().mockResolvedValue(undefined)
+    }));
   });
 
   afterEach(() => {
@@ -316,7 +323,6 @@ describe('Report Routes', () => {
         callback(null, mockWorkEntries);
       });
 
-      const csvWriter = require('csv-writer');
       csvWriter.createObjectCsvWriter.mockReturnValue({
         writeRecords: jest.fn().mockRejectedValue(new Error('Write failed'))
       });
@@ -338,7 +344,6 @@ describe('Report Routes', () => {
         callback(null, []);
       });
 
-      const csvWriter = require('csv-writer');
       csvWriter.createObjectCsvWriter.mockReturnValue({
         writeRecords: jest.fn().mockRejectedValue(new Error('Write failed'))
       });
@@ -368,7 +373,6 @@ describe('Report Routes', () => {
 
       fs.existsSync.mockReturnValue(false);
 
-      const csvWriter = require('csv-writer');
       csvWriter.createObjectCsvWriter.mockReturnValue({
         writeRecords: jest.fn().mockRejectedValue(new Error('Write failed'))
       });
@@ -392,7 +396,6 @@ describe('Report Routes', () => {
 
       fs.existsSync.mockReturnValue(true);
 
-      const csvWriter = require('csv-writer');
       csvWriter.createObjectCsvWriter.mockReturnValue({
         writeRecords: jest.fn().mockRejectedValue(new Error('Write failed'))
       });
