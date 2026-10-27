@@ -11,14 +11,14 @@ A full-stack web application for tracking and reporting employee hourly work acr
 - For production use, modify `backend/src/database/init.js` to use file-based SQLite instead of `:memory:`
 
 ### Authentication
-- Email-only authentication with JWT tokens
-- No password required - assumes trusted internal network
-- Anyone with a valid email can create an account and log in
-- Consider integrating with company SSO for production use
+- Accounts use an email address and password, with passwords stored as scrypt hashes
+- Registration and login return a signed JWT sent as `Authorization: Bearer <token>`
+- `JWT_SECRET` must be set to at least 32 characters in production
+- Existing accounts without a password hash cannot log in or re-register that email
 
 ## Features
 
-- ✅ User authentication (email-based with JWT tokens)
+- ✅ User authentication (email/password with signed JWT tokens)
 - ✅ Add, edit, and delete clients
 - ✅ Add, edit, and delete hourly work entries for each client
 - ✅ View hourly reports for each client
@@ -115,6 +115,8 @@ FRONTEND_URL=http://localhost:5173
 JWT_SECRET=your-secure-secret-key-change-this
 ```
 
+`JWT_SECRET` is required in production and must be at least 32 characters.
+
 5. Start the development server:
 ```bash
 npm run dev
@@ -154,14 +156,15 @@ Frontend will be running at `http://localhost:5173`
 ## Usage
 
 1. Open `http://localhost:5173` in your browser
-2. Enter any email address to log in (no password required)
+2. Register with an email address and password, or log in to an existing account
 3. Start adding clients and tracking work hours
 4. View reports and export data as CSV or PDF
 
 ## API Endpoints
 
 ### Authentication
-- `POST /api/auth/login` - Login with email, returns JWT token
+- `POST /api/auth/register` - Register with `{ "email": "...", "password": "..." }`, returns a JWT
+- `POST /api/auth/login` - Login with email and password, returns a JWT
 - `GET /api/auth/me` - Get current user info (requires auth)
 
 ### Clients
@@ -188,7 +191,7 @@ All authenticated endpoints require `Authorization: Bearer <token>` header.
 ## Security Features
 
 - JWT-based authentication with 24-hour token expiration
-- Rate limiting on authentication endpoints (5 attempts per 15 minutes)
+- Rate limiting on authentication endpoints (20 attempts per 15 minutes)
 - CORS protection
 - Helmet security headers
 - Input validation with Joi schemas
@@ -260,7 +263,7 @@ npm run preview  # Preview production build
 See `backend/DEPLOYMENT.md` for detailed production deployment instructions.
 
 ### Quick Production Checklist
-- [ ] Set strong `JWT_SECRET` in environment variables
+- [ ] Set `JWT_SECRET` to a strong value of at least 32 characters (required in production)
 - [ ] Configure proper `FRONTEND_URL` for CORS
 - [ ] Consider switching to file-based SQLite for data persistence
 - [ ] Set up HTTPS/SSL certificates
@@ -272,7 +275,7 @@ See `backend/DEPLOYMENT.md` for detailed production deployment instructions.
 ## Known Limitations
 
 1. **In-memory database** - All data is lost on server restart
-2. **Email-only auth** - No password protection, assumes trusted network
+2. **Existing accounts** - Accounts created before password authentication have no password hash and cannot log in or be re-claimed
 3. **No user roles** - All users have equal access to all data
 4. **Single-server architecture** - Not designed for horizontal scaling
 5. **No real-time updates** - Changes require page refresh
