@@ -14,9 +14,11 @@ import { useNavigate } from 'react-router-dom';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, register } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,11 +27,15 @@ const LoginPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await login(email);
+      if (isRegistering) {
+        await register(email, password);
+      } else {
+        await login(email, password);
+      }
       navigate('/dashboard');
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
-      setError(error.response?.data?.error || 'Login failed. Please try again.');
+      setError(error.response?.data?.error || `${isRegistering ? 'Registration' : 'Login'} failed. Please try again.`);
     } finally {
       setIsLoading(false);
     }
@@ -51,11 +57,8 @@ const LoginPage: React.FC = () => {
           Time Tracker
         </Typography>
         <Typography variant="body2" align="center" color="text.secondary" sx={{ mb: 2 }}>
-          Enter your email to log in
+          {isRegistering ? 'Create an account with your email and password' : 'Log in with your email and password'}
         </Typography>
-        <Alert severity="info" sx={{ mb: 2 }}>
-          This app intentionally does not have a password field.
-        </Alert>
         
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
@@ -77,16 +80,40 @@ const LoginPage: React.FC = () => {
             onChange={(e) => setEmail(e.target.value)}
             disabled={isLoading}
           />
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            id="password"
+            label="Password"
+            name="password"
+            type="password"
+            autoComplete={isRegistering ? 'new-password' : 'current-password'}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={isLoading}
+            helperText={isRegistering ? 'Use at least 8 characters.' : undefined}
+          />
           <Button
             type="submit"
             fullWidth
             variant="contained"
             sx={{ mt: 2, mb: 1 }}
-            disabled={isLoading || !email}
+            disabled={isLoading || !email || !password}
           >
-            {isLoading ? <CircularProgress size={24} /> : 'Log In'}
+            {isLoading ? <CircularProgress size={24} /> : isRegistering ? 'Create account' : 'Log In'}
           </Button>
         </Box>
+        <Button
+          fullWidth
+          onClick={() => {
+            setIsRegistering(!isRegistering);
+            setError('');
+          }}
+          disabled={isLoading}
+        >
+          {isRegistering ? 'Already have an account? Log In' : 'Create account'}
+        </Button>
       </Paper>
     </Box>
     </Container>

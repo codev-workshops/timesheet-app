@@ -1,6 +1,7 @@
 const FINAL_SCHEMA = {
   users: `CREATE TABLE IF NOT EXISTS users (
     email TEXT PRIMARY KEY,
+    password_hash TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`,
   clients: `CREATE TABLE IF NOT EXISTS clients (
@@ -105,6 +106,13 @@ async function createIndexes(db) {
   await run(db, `CREATE INDEX IF NOT EXISTS idx_work_entries_date ON work_entries (date)`);
 }
 
+async function ensureUsersPasswordHash(db) {
+  const columns = await all(db, `PRAGMA table_info(users)`);
+  if (!columns.some(c => c.name === 'password_hash')) {
+    await run(db, `ALTER TABLE users ADD COLUMN password_hash TEXT`);
+  }
+}
+
 async function needsClientsRebuild(db) {
   const columns = await all(db, `PRAGMA table_info(clients)`);
   return (
@@ -193,6 +201,7 @@ async function migrateSchema(db) {
   await run(db, `PRAGMA foreign_keys = ON`);
 
   await createTables(db);
+  await ensureUsersPasswordHash(db);
 
   const clientsNeedsRebuild = await needsClientsRebuild(db);
   const workEntriesNeedsRebuild = await needsWorkEntriesRebuild(db);
