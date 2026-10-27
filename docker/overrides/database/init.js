@@ -46,6 +46,7 @@ async function initializeDatabase() {
       database.run(`
         CREATE TABLE IF NOT EXISTS users (
           email TEXT PRIMARY KEY,
+          password_hash TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
       `);
@@ -85,8 +86,14 @@ async function initializeDatabase() {
       database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_user_email ON work_entries (user_email)`);
       database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_date ON work_entries (date)`);
 
-      console.log('Database tables created successfully');
-      resolve();
+      database.run('ALTER TABLE users ADD COLUMN password_hash TEXT', (err) => {
+        if (err && !err.message.includes('duplicate column name')) {
+          reject(err);
+          return;
+        }
+        console.log('Database tables created successfully');
+        resolve();
+      });
     });
   });
 }

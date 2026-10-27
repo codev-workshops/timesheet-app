@@ -4,7 +4,7 @@ A Node.js/Express backend API for employee time tracking application with SQLite
 
 ## Features
 
-- **User Authentication**: Simple email-based authentication
+- **User Authentication**: Password-based registration/login with signed JWTs
 - **Client Management**: CRUD operations for clients
 - **Work Entry Management**: Track hourly work for different clients
 - **Reporting**: Generate and export reports in CSV/PDF formats
@@ -14,7 +14,8 @@ A Node.js/Express backend API for employee time tracking application with SQLite
 ## API Endpoints
 
 ### Authentication
-- `POST /api/auth/login` - User login with email
+- `POST /api/auth/register` - Register with email and password
+- `POST /api/auth/login` - Login with email and password
 - `GET /api/auth/me` - Get current user info
 
 ### Clients
@@ -60,17 +61,21 @@ npm start
 
 ## Authentication
 
-The API uses simple email-based authentication. Include the user's email in the `x-user-email` header for all authenticated requests.
+Register or log in with an email address and password to receive a signed JWT. Send the token as a bearer token on authenticated requests.
 
 Example:
 ```
-x-user-email: user@company.com
+Authorization: Bearer <token>
 ```
+
+`JWT_SECRET` is required in production and must be at least 32 characters.
+Legacy users with no password hash cannot log in or register that email again.
 
 ## Database Schema
 
 ### Users
 - `email` (TEXT, PRIMARY KEY)
+- `password_hash` (TEXT, scrypt hash)
 - `created_at` (DATETIME)
 
 ### Clients

@@ -12,6 +12,7 @@ const reportRoutes = require('./routes/reports');
 
 const { initializeDatabase } = require('./database/init');
 const { errorHandler } = require('./middleware/errorHandler');
+const { assertJwtConfig } = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -88,6 +89,7 @@ if (process.env.NODE_ENV === 'production') {
 // Initialize database and start server
 async function startServer() {
   try {
+    assertJwtConfig();
     await initializeDatabase();
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);

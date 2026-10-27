@@ -9,9 +9,9 @@
 - For production, consider switching to file-based SQLite or a proper database
 
 ### Authentication Security
-- Email-only authentication assumes trusted network environment
-- No password protection - anyone with a valid company email can access
-- Consider integrating with company SSO for production use
+- Users register and log in with email and password; passwords are stored as scrypt hashes
+- Authenticated requests use `Authorization: Bearer <token>` with an HS256-signed JWT
+- `JWT_SECRET` is required in production and must be at least 32 characters
 - JWT tokens expire after 24 hours
 
 ## Environment Configuration
@@ -23,7 +23,7 @@ cp .env.example .env
 
 2. **Set strong JWT secret:**
 ```bash
-# Generate a secure random secret (32+ characters recommended)
+# Generate a secure random secret (production requires at least 32 characters)
 JWT_SECRET=$(openssl rand -base64 32)
 ```
 
@@ -34,6 +34,8 @@ PORT=3001
 FRONTEND_URL=https://your-frontend-domain.com
 JWT_SECRET=your-generated-secret-key-here
 ```
+
+Use the generated value for `JWT_SECRET`; a missing or shorter secret prevents production startup.
 
 ## Production Deployment Steps
 
