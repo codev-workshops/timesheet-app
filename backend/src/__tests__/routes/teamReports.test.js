@@ -138,6 +138,21 @@ describe('Team report routes', () => {
   });
 
   describe('GET /team/summary', () => {
+    test('excludes entries whose client no longer exists, matching by-project', async () => {
+      const url = `/api/reports/team/summary?start_date=${RANGE.start_date}&end_date=${RANGE.end_date}`;
+      const before = await asManager(url);
+      const orphan = await run(
+        'INSERT INTO work_entries (client_id, user_email, hours, description, date) VALUES (?, ?, ?, ?, ?)',
+        [999999, 'emp1@example.com', 8, 'Deleted client work', '2026-09-09']
+      );
+      try {
+        const after = await asManager(url);
+        expect(after.body.summary).toEqual(before.body.summary);
+      } finally {
+        await run('DELETE FROM work_entries WHERE id = ?', [orphan.lastID]);
+      }
+    });
+
     test('defaults to weekly buckets (Monday-start %Y-%W)', async () => {
       const response = await asManager(
         `/api/reports/team/summary?start_date=${RANGE.start_date}&end_date=${RANGE.end_date}`

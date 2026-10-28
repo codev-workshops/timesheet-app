@@ -315,6 +315,7 @@ router.get('/team/summary', validateQuery(teamSummarySchema), (req, res) => {
             strftime(?, ${ENTRY_DAY_SQL}) AS period,
             ROUND(SUM(we.hours), 2) AS total_hours
      FROM work_entries we
+     JOIN clients c ON c.id = we.client_id AND c.user_email = we.user_email
      WHERE we.user_email IN (${MANAGED_EMPLOYEES_SQL})
        AND ${ENTRY_DAY_SQL} BETWEEN ? AND ?
      GROUP BY we.user_email, period
