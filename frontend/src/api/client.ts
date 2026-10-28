@@ -1,4 +1,12 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios';
+import type {
+  TeamByProjectResponse,
+  TeamDateRange,
+  TeamEmployeeReport,
+  TeamEmployeesResponse,
+  TeamGroupBy,
+  TeamSummaryResponse,
+} from '../types/api';
 
 // Use empty string to make requests relative to the current origin
 // Vite proxy will forward /api requests to the backend
@@ -128,6 +136,40 @@ class ApiClient {
 
   async exportClientReportPdf(clientId: number) {
     const response = await this.client.get(`/api/reports/export/pdf/${clientId}`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  }
+
+  // Team (manager) report endpoints
+  async getTeamEmployees(): Promise<TeamEmployeesResponse> {
+    const response = await this.client.get('/api/reports/team/employees');
+    return response.data;
+  }
+
+  async getTeamSummary(range: TeamDateRange, groupBy: TeamGroupBy): Promise<TeamSummaryResponse> {
+    const response = await this.client.get('/api/reports/team/summary', {
+      params: { ...range, group_by: groupBy },
+    });
+    return response.data;
+  }
+
+  async getTeamByProject(range: TeamDateRange): Promise<TeamByProjectResponse> {
+    const response = await this.client.get('/api/reports/team/by-project', { params: range });
+    return response.data;
+  }
+
+  async getTeamEmployeeReport(email: string, range: TeamDateRange): Promise<TeamEmployeeReport> {
+    const response = await this.client.get(
+      `/api/reports/team/employee/${encodeURIComponent(email)}`,
+      { params: range }
+    );
+    return response.data;
+  }
+
+  async exportTeamReport(format: 'csv' | 'pdf', range: TeamDateRange): Promise<Blob> {
+    const response = await this.client.get(`/api/reports/team/export/${format}`, {
+      params: range,
       responseType: 'blob',
     });
     return response.data;

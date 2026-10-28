@@ -23,6 +23,7 @@ A full-stack web application for tracking and reporting employee hourly work acr
 - ✅ Add, edit, and delete hourly work entries for each client
 - ✅ View hourly reports for each client
 - ✅ Export hourly reports to CSV or PDF
+- ✅ Manager team reports (per-period summary, by-project rollup, per-employee drill-down, CSV/PDF export)
 
 ## Tech Stack
 
@@ -185,6 +186,53 @@ Frontend will be running at `http://localhost:5173`
 
 All authenticated endpoints require `Authorization: Bearer <token>` header.
 
+### Team Reports (managers)
+
+Managers are defined by the `manager_employees` table:
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `manager_email` | TEXT, FK → `users.email` | Part of the primary key |
+| `employee_email` | TEXT, FK → `users.email` | Part of the primary key |
+| `created_at` | DATETIME | Defaults to `CURRENT_TIMESTAMP` |
+
+Indexed by `idx_manager_employees_manager (manager_email)`. All team endpoints sit behind
+`authenticateUser` + `requireManager` (`backend/src/middleware/managerAuth.js`): a caller who manages
+nobody gets `403 { "error": "Manager access required" }`, and results only ever include the caller's
+mapped employees.
+
+| Endpoint | Query params | Response |
+|----------|--------------|----------|
+| `GET /api/reports/team/employees` | – | `{ employees: [{ email }] }` |
+| `GET /api/reports/team/summary` | `start_date`, `end_date`, `group_by` (`week` default \| `month`) | `{ startDate, endDate, groupBy, summary: [{ employee_email, period, total_hours }] }` |
+| `GET /api/reports/team/by-project` | `start_date`, `end_date` | `{ startDate, endDate, byProject: [{ client_name, employee_email, total_hours }], projectTotals: [{ client_name, total_hours }] }` |
+| `GET /api/reports/team/employee/:email` | `start_date`, `end_date` | `{ employee_email, startDate, endDate, workEntries, totalHours, entryCount }` (`403` if `:email` is not managed by the caller) |
+| `GET /api/reports/team/export/csv` | `start_date`, `end_date` | CSV download (`Employee, Date, Client, Hours, Description`) |
+| `GET /api/reports/team/export/pdf` | `start_date`, `end_date` | PDF download (totals per employee + entry table) |
+
+Parameter rules:
+- `start_date` and `end_date` are required, must be real calendar dates in `YYYY-MM-DD` format, are
+  inclusive, and `start_date` must be on or before `end_date`. Violations (and unknown query params)
+  return `400 { "error": ... }`.
+- `group_by` accepts only `week` or `month`; anything else returns `400`.
+- **Week convention:** weekly buckets use SQLite `strftime('%Y-%W', date)` — weeks start on **Monday**,
+  numbered `00`–`53`; days before the first Monday of a year fall into week `00`. Monthly buckets use
+  `strftime('%Y-%m', date)`.
+- By-project rollups group by client **name** (client rows are per-user), so the same client name used
+  by several employees appears once per employee in `byProject` and is merged in `projectTotals`.
+
+The frontend exposes this at `/team-reports` ("Team Reports" in the nav, shown only to users who manage
+at least one employee).
+
+#### Demo seed data
+
+Outside `NODE_ENV=production`, `initializeDatabase()` seeds demo data (each table only when it is empty):
+manager `pm@example.com` managing `emp1@example.com` and `emp2@example.com`, their clients
+(`Acme Corp`, `Globex`, `Initech`) and work entries across September–October 2026, plus an unmanaged
+`outsider@example.com` whose hours never appear in `pm@example.com`'s reports. Log in as
+`pm@example.com` and pick a date range covering 2026-09-01 – 2026-10-31 to see them. Because the
+database is in-memory, `manager_employees` and all seed data are reset on every backend restart.
+
 ## Security Features
 
 - JWT-based authentication with 24-hour token expiration
@@ -273,7 +321,7 @@ See `backend/DEPLOYMENT.md` for detailed production deployment instructions.
 
 1. **In-memory database** - All data is lost on server restart
 2. **Email-only auth** - No password protection, assumes trusted network
-3. **No user roles** - All users have equal access to all data
+3. **Minimal roles** - The only role concept is the manager → employee mapping in `manager_employees` (no admin UI to manage it)
 4. **Single-server architecture** - Not designed for horizontal scaling
 5. **No real-time updates** - Changes require page refresh
 

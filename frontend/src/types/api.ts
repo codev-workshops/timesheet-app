@@ -77,3 +77,59 @@ export interface ApiResponse<T> {
   error?: string;
   message?: string;
 }
+
+export type TeamGroupBy = 'week' | 'month';
+
+export interface TeamDateRange {
+  start_date: string;
+  end_date: string;
+}
+
+export interface TeamEmployeesResponse {
+  employees: { email: string }[];
+}
+
+export interface TeamSummaryRow {
+  employee_email: string;
+  period: string;
+  total_hours: number;
+}
+
+export interface TeamSummaryResponse {
+  startDate: string;
+  endDate: string;
+  groupBy: TeamGroupBy;
+  summary: TeamSummaryRow[];
+}
+
+export interface TeamByProjectRow {
+  client_name: string;
+  employee_email: string;
+  total_hours: number;
+}
+
+export interface TeamByProjectResponse {
+  startDate: string;
+  endDate: string;
+  byProject: TeamByProjectRow[];
+  projectTotals: { client_name: string; total_hours: number }[];
+}
+
+export interface TeamEmployeeEntry {
+  id: number;
+  date: string;
+  hours: number;
+  description: string | null;
+  client_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TeamEmployeeReport {
+  employee_email: string;
+  startDate: string;
+  endDate: string;
+  workEntries: TeamEmployeeEntry[];
+  totalHours: number;
+  entryCount: number;
+}

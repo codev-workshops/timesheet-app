@@ -32,7 +32,34 @@ const emailSchema = Joi.object({
   email: Joi.string().email().required()
 });
 
+const reportDateSchema = Joi.string()
+  .pattern(/^\d{4}-\d{2}-\d{2}$/)
+  .custom((value, helpers) => {
+    const parsed = new Date(`${value}T00:00:00Z`);
+    if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
+      return helpers.error('string.pattern.base', { regex: 'YYYY-MM-DD' });
+    }
+    return value;
+  })
+  .messages({ 'string.pattern.base': '{{#label}} must be a valid date in YYYY-MM-DD format' });
+
+const teamDateRangeSchema = Joi.object({
+  start_date: reportDateSchema.required(),
+  end_date: reportDateSchema.required()
+}).custom((value, helpers) => {
+  if (value.start_date > value.end_date) {
+    return helpers.message('"start_date" must be on or before "end_date"');
+  }
+  return value;
+});
+
+const teamSummarySchema = teamDateRangeSchema.keys({
+  group_by: Joi.string().valid('week', 'month').default('week')
+});
+
 module.exports = {
+  teamDateRangeSchema,
+  teamSummarySchema,
   clientSchema,
   workEntrySchema,
   updateWorkEntrySchema,
