@@ -11,7 +11,10 @@
     "test:coverage": "jest --coverage",
     "test:coverage:html": "jest --coverage && open coverage/index.html",
     "test:verbose": "jest --verbose",
-    "test:ci": "jest --coverage --ci --maxWorkers=2"
+    "test:ci": "jest --coverage --ci --maxWorkers=2",
+    "db:migrate": "knex migrate:latest --knexfile knexfile.js",
+    "db:rollback": "knex migrate:rollback --knexfile knexfile.js",
+    "db:migrate:make": "knex migrate:make --knexfile knexfile.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -21,6 +24,7 @@
     "helmet": "^7.1.0",
     "joi": "^17.11.0",
     "jsonwebtoken": "^9.0.2",
+    "knex": "^3.3.0",
     "morgan": "^1.10.0",
     "pdfkit": "^0.13.0",
     "sqlite3": "^5.1.6"
