@@ -292,6 +292,18 @@ function sumHours(entries) {
   return Math.round(entries.reduce((sum, entry) => sum + parseFloat(entry.hours), 0) * 100) / 100;
 }
 
+function neutralizeSpreadsheetFormula(value) {
+  return typeof value === 'string' && /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+}
+
+function toTeamCsvRecord(entry) {
+  return {
+    ...entry,
+    client_name: neutralizeSpreadsheetFormula(entry.client_name),
+    description: neutralizeSpreadsheetFormula(entry.description)
+  };
+}
+
 function teamReportFilename(startDate, endDate, extension) {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   return `team_report_${startDate}_${endDate}_${timestamp}.${extension}`;
@@ -443,7 +455,7 @@ router.get('/team/export/csv', validateQuery(teamDateRangeSchema), (req, res) =>
       ]
     });
 
-    csvWriter.writeRecords(entries)
+    csvWriter.writeRecords(entries.map(toTeamCsvRecord))
       .then(() => {
         res.download(tempPath, filename, (downloadErr) => {
           if (downloadErr) {

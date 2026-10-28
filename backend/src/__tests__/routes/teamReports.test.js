@@ -286,6 +286,26 @@ describe('Team report routes', () => {
       expect(response.text).not.toContain('outsider@example.com');
     });
 
+    test('CSV export neutralizes spreadsheet formulas in text fields', async () => {
+      const client = await run('INSERT INTO clients (name, user_email) VALUES (?, ?)', ['=HYPERLINK("x")', 'emp1@example.com']);
+      const entry = await run(
+        'INSERT INTO work_entries (client_id, user_email, hours, description, date) VALUES (?, ?, ?, ?, ?)',
+        [client.lastID, 'emp1@example.com', 1, '@SUM(A1)', '2026-09-09']
+      );
+      try {
+        const response = await asManager(
+          `/api/reports/team/export/csv?start_date=${RANGE.start_date}&end_date=${RANGE.end_date}`
+        );
+        expect(response.status).toBe(200);
+        expect(response.text).toContain(`'=HYPERLINK(""x"")`);
+        expect(response.text).toContain("'@SUM(A1)");
+        expect(response.text).not.toMatch(/(^|,)"?[=@]/m);
+      } finally {
+        await run('DELETE FROM work_entries WHERE id = ?', [entry.lastID]);
+        await run('DELETE FROM clients WHERE id = ?', [client.lastID]);
+      }
+    });
+
     test('PDF export returns a PDF document', async () => {
       const response = await asManager(
         `/api/reports/team/export/pdf?start_date=${RANGE.start_date}&end_date=${RANGE.end_date}`
