@@ -2,7 +2,7 @@ const express = require('express');
 const { getDatabase } = require('../database/init');
 const { authenticateUser } = require('../middleware/auth');
 const { requireManager } = require('../middleware/managerAuth');
-const { teamDateRangeSchema, teamSummarySchema } = require('../validation/schemas');
+const { teamEmployeesSchema, teamDateRangeSchema, teamSummarySchema } = require('../validation/schemas');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const PDFDocument = require('pdfkit');
 const path = require('path');
@@ -300,7 +300,7 @@ function teamReportFilename(startDate, endDate, extension) {
 router.use('/team', requireManager);
 
 // List employees managed by the caller
-router.get('/team/employees', (req, res) => {
+router.get('/team/employees', validateQuery(teamEmployeesSchema), (req, res) => {
   res.json({
     employees: req.managedEmployees.map((email) => ({ email }))
   });

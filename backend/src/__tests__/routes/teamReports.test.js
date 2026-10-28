@@ -104,6 +104,12 @@ describe('Team report routes', () => {
       expect(response.body).toEqual({ error: 'Internal server error' });
     });
 
+    test('rejects unknown query params with 400', async () => {
+      const response = await asManager('/api/reports/team/employees?unexpected=1');
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: '"unexpected" is not allowed' });
+    });
+
     test('lists managed employees for a manager', async () => {
       const response = await asManager('/api/reports/team/employees');
       expect(response.status).toBe(200);

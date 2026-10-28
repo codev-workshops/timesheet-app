@@ -57,7 +57,10 @@ const teamSummarySchema = teamDateRangeSchema.keys({
   group_by: Joi.string().valid('week', 'month').default('week')
 });
 
+const teamEmployeesSchema = Joi.object({});
+
 module.exports = {
+  teamEmployeesSchema,
   teamDateRangeSchema,
   teamSummarySchema,
   clientSchema,
