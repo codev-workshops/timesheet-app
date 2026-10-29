@@ -1,7 +1,8 @@
 const express = require('express');
 const { getDatabase } = require('../database/init');
 const { authenticateUser } = require('../middleware/auth');
-const { workEntrySchema, updateWorkEntrySchema } = require('../validation/schemas');
+const { workEntrySchema, updateWorkEntrySchema, workEntryEstimateQuerySchema } = require('../validation/schemas');
+const mlClient = require('../services/mlClient');
 
 const router = express.Router();
 
@@ -42,6 +43,49 @@ router.get('/', (req, res) => {
     
     res.json({ workEntries: rows });
   });
+});
+
+// Estimate hours for a prospective work entry via the ML service
+router.get('/estimate', (req, res) => {
+  const { error, value } = workEntryEstimateQuerySchema.validate(req.query);
+  if (error) {
+    return res.status(400).json({
+      error: 'Validation error',
+      details: error.details.map(detail => detail.message)
+    });
+  }
+
+  const { clientId, description, date } = value;
+  const db = getDatabase();
+
+  db.get(
+    'SELECT id, department FROM clients WHERE id = ? AND user_email = ?',
+    [clientId, req.userEmail],
+    async (err, client) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+
+      if (!client) {
+        return res.status(404).json({ error: 'Client not found' });
+      }
+
+      try {
+        const estimate = await mlClient.predictHours({
+          clientId,
+          description,
+          userEmail: req.userEmail,
+          date: date.toISOString().split('T')[0],
+          department: client.department
+        });
+        res.json(estimate);
+      } catch (mlErr) {
+        console.error('Hours estimate failed:', mlErr.code || '', mlErr.message);
+        res.status(503).json({ error: 'Hours estimate service unavailable' });
+      }
+    }
+  );
 });
 
 // Get specific work entry

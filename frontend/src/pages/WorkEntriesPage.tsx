@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Typography,
@@ -23,18 +23,29 @@ import {
   Select,
   MenuItem,
   Chip,
+  InputAdornment,
+  Tooltip,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
+  AutoAwesome as SuggestedIcon,
 } from '@mui/icons-material';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import apiClient from '../api/client';
-import { type WorkEntry } from '../types/api';
+import { type WorkEntry, type WorkEntryEstimate } from '../types/api';
+
+const ESTIMATE_DEBOUNCE_MS = 400;
+
+const roundToQuarterHour = (hours: number) => Math.max(0.25, Math.round(hours * 4) / 4);
+
+const toIsoDate = (date: Date | null) =>
+  date && !isNaN(date.getTime()) ? date.toISOString().split('T')[0] : '';
+
 
 const WorkEntriesPage: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -46,8 +57,41 @@ const WorkEntriesPage: React.FC = () => {
     date: new Date(),
   });
   const [error, setError] = useState('');
+  const [hoursTouched, setHoursTouched] = useState(false);
+  const [debouncedDescription, setDebouncedDescription] = useState('');
+  const [lastEstimate, setLastEstimate] = useState<WorkEntryEstimate | null>(null);
 
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedDescription(formData.description), ESTIMATE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [formData.description]);
+
+  const estimateDate = toIsoDate(formData.date);
+  const estimateEnabled =
+    open && !editingEntry && !hoursTouched && formData.clientId > 0 && estimateDate !== '';
+
+  const { data: estimateData } = useQuery({
+    queryKey: ['workEntryEstimate', formData.clientId, debouncedDescription, estimateDate],
+    queryFn: ({ signal }) =>
+      apiClient.getWorkEntryEstimate(
+        { clientId: formData.clientId, description: debouncedDescription, date: estimateDate },
+        signal,
+      ),
+    enabled: estimateEnabled,
+    placeholderData: keepPreviousData,
+    retry: false,
+    staleTime: 60_000,
+  });
+
+  if (estimateEnabled && estimateData && estimateData !== lastEstimate) {
+    setLastEstimate(estimateData);
+  }
+
+  const suggestion = !editingEntry && !hoursTouched ? lastEstimate : null;
+  const suggestedHours = suggestion ? roundToQuarterHour(suggestion.estimatedHours).toString() : null;
+  const hoursValue = suggestedHours ?? formData.hours;
 
   const { data: workEntriesData, isLoading: entriesLoading } = useQuery({
     queryKey: ['workEntries'],
@@ -118,6 +162,9 @@ const WorkEntriesPage: React.FC = () => {
       });
     }
     setError('');
+    setHoursTouched(false);
+    setLastEstimate(null);
+    setDebouncedDescription(entry?.description || '');
     setOpen(true);
   };
 
@@ -142,7 +189,7 @@ const WorkEntriesPage: React.FC = () => {
       return;
     }
 
-    const hours = parseFloat(formData.hours);
+    const hours = parseFloat(hoursValue);
     if (!hours || hours <= 0 || hours > 24) {
       setError('Hours must be between 0 and 24');
       return;
@@ -312,10 +359,27 @@ const WorkEntriesPage: React.FC = () => {
                 type="number"
                 fullWidth
                 required
-                inputProps={{ min: 0.01, max: 24, step: 0.01 }}
-                value={formData.hours}
-                onChange={(e) => setFormData({ ...formData, hours: e.target.value })}
+                value={hoursValue}
+                onChange={(e) => {
+                  setHoursTouched(true);
+                  setFormData({ ...formData, hours: e.target.value });
+                }}
                 disabled={createMutation.isPending || updateMutation.isPending}
+                helperText={suggestion ? 'Suggested by model' : undefined}
+                slotProps={{
+                  htmlInput: { min: 0.01, max: 24, step: 0.01 },
+                  input: suggestion
+                    ? {
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <Tooltip title={`Model: ${suggestion.modelVersion}`}>
+                              <SuggestedIcon color="primary" fontSize="small" aria-label="Suggested by model" />
+                            </Tooltip>
+                          </InputAdornment>
+                        ),
+                      }
+                    : undefined,
+                }}
               />
 
               <DatePicker

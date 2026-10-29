@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios';
+import type { WorkEntryEstimate, WorkEntryEstimateParams } from '../types/api';
 
 // Use empty string to make requests relative to the current origin
 // Vite proxy will forward /api requests to the backend
@@ -90,6 +91,11 @@ class ApiClient {
   async getWorkEntries(clientId?: number) {
     const params = clientId ? { clientId } : {};
     const response = await this.client.get('/api/work-entries', { params });
+    return response.data;
+  }
+
+  async getWorkEntryEstimate(params: WorkEntryEstimateParams, signal?: AbortSignal): Promise<WorkEntryEstimate> {
+    const response = await this.client.get('/api/work-entries/estimate', { params, signal });
     return response.data;
   }
 

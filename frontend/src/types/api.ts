@@ -63,6 +63,17 @@ export interface UpdateWorkEntryRequest {
   date?: string;
 }
 
+export interface WorkEntryEstimateParams {
+  clientId: number;
+  description: string;
+  date: string;
+}
+
+export interface WorkEntryEstimate {
+  estimatedHours: number;
+  modelVersion: string;
+}
+
 export interface LoginRequest {
   email: string;
 }
