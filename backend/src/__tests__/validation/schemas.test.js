@@ -3,6 +3,8 @@ const {
   workEntrySchema,
   updateWorkEntrySchema,
   updateClientSchema,
+  categorySchema,
+  updateCategorySchema,
   emailSchema
 } = require('../../validation/schemas');
 
@@ -250,6 +252,75 @@ describe('Validation Schemas', () => {
 
       const { error } = updateWorkEntrySchema.validate(update);
       expect(error).toBeUndefined();
+    });
+  });
+
+  describe('categoryId on work entry schemas', () => {
+    const base = { clientId: 1, hours: 2, date: '2024-01-15' };
+
+    test.each([[3], [null]])('workEntrySchema accepts categoryId %p', (categoryId) => {
+      const { error, value } = workEntrySchema.validate({ ...base, categoryId });
+      expect(error).toBeUndefined();
+      expect(value.categoryId).toBe(categoryId);
+    });
+
+    test('workEntrySchema keeps categoryId optional', () => {
+      expect(workEntrySchema.validate(base).error).toBeUndefined();
+    });
+
+    test.each([[0], [-1], [1.5], ['abc']])('workEntrySchema rejects categoryId %p', (categoryId) => {
+      expect(workEntrySchema.validate({ ...base, categoryId }).error).toBeDefined();
+    });
+
+    test.each([[3], [null]])('updateWorkEntrySchema accepts categoryId %p alone', (categoryId) => {
+      expect(updateWorkEntrySchema.validate({ categoryId }).error).toBeUndefined();
+    });
+
+    test('updateWorkEntrySchema rejects invalid categoryId', () => {
+      expect(updateWorkEntrySchema.validate({ categoryId: 0 }).error).toBeDefined();
+    });
+  });
+
+  describe('categorySchema', () => {
+    test('accepts name with optional description and active', () => {
+      const { error, value } = categorySchema.validate({ name: '  Dev  ', description: 'Coding', active: false });
+      expect(error).toBeUndefined();
+      expect(value).toEqual({ name: 'Dev', description: 'Coding', active: false });
+    });
+
+    test.each([
+      ['missing name', {}],
+      ['empty name', { name: '   ' }],
+      ['long name', { name: 'a'.repeat(256) }],
+      ['long description', { name: 'Dev', description: 'a'.repeat(1001) }],
+      ['non-boolean active', { name: 'Dev', active: 'yes' }],
+      ['unknown field', { name: 'Dev', color: 'red' }]
+    ])('rejects %s', (_label, body) => {
+      expect(categorySchema.validate(body).error).toBeDefined();
+    });
+
+    test('allows empty or null description', () => {
+      expect(categorySchema.validate({ name: 'Dev', description: '' }).error).toBeUndefined();
+      expect(categorySchema.validate({ name: 'Dev', description: null }).error).toBeUndefined();
+    });
+  });
+
+  describe('updateCategorySchema', () => {
+    test.each([
+      [{ name: 'New' }],
+      [{ description: 'Only description' }],
+      [{ active: true }],
+      [{ name: 'New', description: '', active: false }]
+    ])('accepts %p', (body) => {
+      expect(updateCategorySchema.validate(body).error).toBeUndefined();
+    });
+
+    test.each([
+      ['empty update', {}],
+      ['empty name', { name: '' }],
+      ['non-boolean active', { active: 'nope' }]
+    ])('rejects %s', (_label, body) => {
+      expect(updateCategorySchema.validate(body).error).toBeDefined();
     });
   });
 

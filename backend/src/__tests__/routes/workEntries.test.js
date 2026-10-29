@@ -1,11 +1,14 @@
 const request = require('supertest');
 const { createApp, USER, OTHER_USER } = require('../helpers/app');
 const {
-  db, resetDatabase, insertUsers, insertClient, insertWorkEntry, breakTable, failOn
+  db, resetDatabase, insertUsers, insertClient, insertWorkEntry, insertCategory, breakTable, failOn
 } = require('../helpers/db');
 
 const app = createApp();
-const ENTRY_KEYS = ['client_id', 'client_name', 'created_at', 'date', 'description', 'hours', 'id', 'updated_at'];
+const ENTRY_KEYS = [
+  'category_id', 'category_name', 'client_id', 'client_name', 'created_at', 'date', 'description', 'hours', 'id',
+  'updated_at'
+];
 
 const asUser = (req, email = USER) => req.set('x-user-email', email);
 
@@ -334,6 +337,137 @@ describe('Work Entry Routes', () => {
       expect(res.status).toBe(500);
       expect(res.body).toEqual({ error: 'Failed to delete work entry' });
       expect(await db('work_entries').where({ id: entry.id }).first()).toBeDefined();
+    });
+  });
+
+  describe('categories on work entries', () => {
+    let dev;
+    let meetings;
+    let retired;
+
+    beforeEach(async () => {
+      dev = await insertCategory({ name: 'Development' });
+      meetings = await insertCategory({ name: 'Meetings' });
+      retired = await insertCategory({ name: 'Retired', active: 0 });
+    });
+
+    const valid = (extra = {}) => ({ clientId: clientA.id, hours: 2, date: '2024-01-15', ...extra });
+
+    test('entries without a category return null category_id and category_name', async () => {
+      const entry = await insertWorkEntry(USER, clientA.id);
+      const res = await asUser(request(app).get(`/api/work-entries/${entry.id}`));
+      expect(res.status).toBe(200);
+      expect(res.body.workEntry).toMatchObject({ category_id: null, category_name: null });
+    });
+
+    test('creates an entry with an active category', async () => {
+      const res = await asUser(request(app).post('/api/work-entries')).send(valid({ categoryId: dev.id }));
+      expect(res.status).toBe(201);
+      expect(res.body.workEntry).toMatchObject({ category_id: dev.id, category_name: 'Development' });
+      expect((await db('work_entries').where({ id: res.body.workEntry.id }).first()).category_id).toBe(dev.id);
+    });
+
+    test('creates an entry with categoryId null', async () => {
+      const res = await asUser(request(app).post('/api/work-entries')).send(valid({ categoryId: null }));
+      expect(res.status).toBe(201);
+      expect(res.body.workEntry).toMatchObject({ category_id: null, category_name: null });
+    });
+
+    test.each([
+      ['missing', () => 999],
+      ['inactive', () => retired.id]
+    ])('create returns 400 for a %s category', async (_label, id) => {
+      const res = await asUser(request(app).post('/api/work-entries')).send(valid({ categoryId: id() }));
+      expect(res.status).toBe(400);
+      expect(res.body).toEqual({ error: 'Category not found or inactive' });
+      expect(await db('work_entries')).toHaveLength(0);
+    });
+
+    test('create returns 400 Validation error for a non-positive categoryId', async () => {
+      const res = await asUser(request(app).post('/api/work-entries')).send(valid({ categoryId: 0 }));
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('Validation error');
+    });
+
+    test('create returns 500 when the category lookup fails', async () => {
+      await breakTable('categories');
+      const res = await asUser(request(app).post('/api/work-entries')).send(valid({ categoryId: dev.id }));
+      expect(res.status).toBe(500);
+      expect(res.body).toEqual({ error: 'Internal server error' });
+      expect(console.error).toHaveBeenCalled();
+    });
+
+    test('updates category, switches it, then clears it with null', async () => {
+      const entry = await insertWorkEntry(USER, clientA.id, { hours: 5, description: 'keep' });
+
+      let res = await asUser(request(app).put(`/api/work-entries/${entry.id}`)).send({ categoryId: dev.id });
+      expect(res.status).toBe(200);
+      expect(res.body.workEntry).toMatchObject({ category_id: dev.id, category_name: 'Development', hours: 5 });
+
+      res = await asUser(request(app).put(`/api/work-entries/${entry.id}`)).send({ categoryId: meetings.id });
+      expect(res.body.workEntry).toMatchObject({ category_id: meetings.id, category_name: 'Meetings' });
+
+      res = await asUser(request(app).put(`/api/work-entries/${entry.id}`)).send({ categoryId: null });
+      expect(res.status).toBe(200);
+      expect(res.body.workEntry).toMatchObject({ category_id: null, category_name: null, description: 'keep' });
+      expect((await db('work_entries').where({ id: entry.id }).first()).category_id).toBeNull();
+    });
+
+    test('update without categoryId leaves the category unchanged', async () => {
+      const entry = await insertWorkEntry(USER, clientA.id, { category_id: dev.id });
+      const res = await asUser(request(app).put(`/api/work-entries/${entry.id}`)).send({ hours: 3 });
+      expect(res.status).toBe(200);
+      expect(res.body.workEntry).toMatchObject({ hours: 3, category_id: dev.id, category_name: 'Development' });
+    });
+
+    test.each([
+      ['missing', () => 999],
+      ['inactive', () => retired.id]
+    ])('update returns 400 for a %s category and leaves the entry untouched', async (_label, id) => {
+      const entry = await insertWorkEntry(USER, clientA.id, { category_id: dev.id });
+      const res = await asUser(request(app).put(`/api/work-entries/${entry.id}`)).send({ categoryId: id() });
+      expect(res.status).toBe(400);
+      expect(res.body).toEqual({ error: 'Category not found or inactive' });
+      expect((await db('work_entries').where({ id: entry.id }).first()).category_id).toBe(dev.id);
+    });
+
+    test('update returns 500 when the category lookup fails', async () => {
+      const entry = await insertWorkEntry(USER, clientA.id);
+      await breakTable('categories');
+      const res = await asUser(request(app).put(`/api/work-entries/${entry.id}`)).send({ categoryId: dev.id });
+      expect(res.status).toBe(500);
+      expect(res.body).toEqual({ error: 'Internal server error' });
+    });
+
+    test('a deactivated category still shows on existing entries', async () => {
+      await insertWorkEntry(USER, clientA.id, { category_id: retired.id });
+      const res = await asUser(request(app).get('/api/work-entries'));
+      expect(res.body.workEntries[0]).toMatchObject({ category_id: retired.id, category_name: 'Retired' });
+    });
+
+    test('filters the list by categoryId and stays user-scoped', async () => {
+      await insertWorkEntry(USER, clientA.id, { category_id: dev.id, description: 'dev' });
+      await insertWorkEntry(USER, clientA.id, { category_id: meetings.id, description: 'meet' });
+      await insertWorkEntry(USER, clientA.id, { description: 'none' });
+      await insertWorkEntry(OTHER_USER, otherClient.id, { category_id: dev.id, description: 'other' });
+
+      const res = await asUser(request(app).get(`/api/work-entries?categoryId=${dev.id}`));
+      expect(res.status).toBe(200);
+      expect(res.body.workEntries.map((e) => e.description)).toEqual(['dev']);
+    });
+
+    test('combines clientId and categoryId filters', async () => {
+      await insertWorkEntry(USER, clientA.id, { category_id: dev.id, description: 'a-dev' });
+      await insertWorkEntry(USER, clientB.id, { category_id: dev.id, description: 'b-dev' });
+
+      const res = await asUser(request(app).get(`/api/work-entries?clientId=${clientB.id}&categoryId=${dev.id}`));
+      expect(res.body.workEntries.map((e) => e.description)).toEqual(['b-dev']);
+    });
+
+    test('returns 400 for an invalid categoryId filter', async () => {
+      const res = await asUser(request(app).get('/api/work-entries?categoryId=abc'));
+      expect(res.status).toBe(400);
+      expect(res.body).toEqual({ error: 'Invalid category ID' });
     });
   });
 });

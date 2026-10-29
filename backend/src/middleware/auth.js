@@ -36,6 +36,26 @@ async function authenticateUser(req, res, next) {
   next();
 }
 
+// ADMIN_EMAILS is a comma-separated allowlist, read on every call so it can change at runtime.
+function isAdminEmail(email) {
+  if (!email) return false;
+  const admins = (process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return admins.includes(String(email).trim().toLowerCase());
+}
+
+// Must run after authenticateUser.
+function requireAdmin(req, res, next) {
+  if (!isAdminEmail(req.userEmail)) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  next();
+}
+
 module.exports = {
-  authenticateUser
+  authenticateUser,
+  requireAdmin,
+  isAdminEmail
 };

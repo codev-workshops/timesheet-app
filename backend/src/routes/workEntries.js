@@ -7,13 +7,40 @@ const router = express.Router();
 
 const WORK_ENTRY_COLUMNS = [
   'we.id', 'we.client_id', 'we.hours', 'we.description', 'we.date',
-  'we.created_at', 'we.updated_at', 'c.name as client_name'
+  'we.created_at', 'we.updated_at', 'c.name as client_name',
+  'we.category_id', 'cat.name as category_name'
 ];
 
 function workEntriesWithClient() {
   return db('work_entries as we')
     .join('clients as c', 'we.client_id', 'c.id')
+    .leftJoin('categories as cat', 'we.category_id', 'cat.id')
     .select(WORK_ENTRY_COLUMNS);
+}
+
+// Categories are global reference data (not user-scoped); only active ones may be assigned.
+async function findActiveCategory(categoryId) {
+  return db('categories').select('id').where({ id: categoryId, active: 1 }).first();
+}
+
+// Returns true if the response was already sent (error), false if categoryId is acceptable.
+async function rejectInvalidCategory(categoryId, res) {
+  if (categoryId === undefined || categoryId === null) {
+    return false;
+  }
+  let category;
+  try {
+    category = await findActiveCategory(categoryId);
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+    return true;
+  }
+  if (!category) {
+    res.status(400).json({ error: 'Category not found or inactive' });
+    return true;
+  }
+  return false;
 }
 
 async function findUserClient(clientId, userEmail) {
@@ -27,9 +54,9 @@ async function findUserWorkEntry(workEntryId, userEmail) {
 // All routes require authentication
 router.use(authenticateUser);
 
-// Get all work entries for authenticated user (with optional client filter)
+// Get all work entries for authenticated user (with optional client/category filters)
 router.get('/', async (req, res) => {
-  const { clientId } = req.query;
+  const { clientId, categoryId } = req.query;
 
   const query = workEntriesWithClient().where('we.user_email', req.userEmail);
 
@@ -39,6 +66,14 @@ router.get('/', async (req, res) => {
       return res.status(400).json({ error: 'Invalid client ID' });
     }
     query.andWhere('we.client_id', clientIdNum);
+  }
+
+  if (categoryId) {
+    const categoryIdNum = parseInt(categoryId);
+    if (isNaN(categoryIdNum)) {
+      return res.status(400).json({ error: 'Invalid category ID' });
+    }
+    query.andWhere('we.category_id', categoryIdNum);
   }
 
   query.orderBy([
@@ -87,7 +122,7 @@ router.post('/', async (req, res, next) => {
       return next(error);
     }
 
-    const { clientId, hours, description, date } = value;
+    const { clientId, hours, description, date, categoryId } = value;
 
     // Verify client exists and belongs to user
     let client;
@@ -102,6 +137,10 @@ router.post('/', async (req, res, next) => {
       return res.status(400).json({ error: 'Client not found or does not belong to user' });
     }
 
+    if (await rejectInvalidCategory(categoryId, res)) {
+      return;
+    }
+
     // Create work entry
     let workEntryId;
     try {
@@ -110,7 +149,8 @@ router.post('/', async (req, res, next) => {
         user_email: req.userEmail,
         hours,
         description: description || null,
-        date
+        date,
+        category_id: categoryId ?? null
       });
     } catch (err) {
       console.error('Database error:', err);
@@ -179,6 +219,10 @@ router.put('/:id', async (req, res, next) => {
       }
     }
 
+    if (await rejectInvalidCategory(value.categoryId, res)) {
+      return;
+    }
+
     const updates = {};
 
     if (value.clientId !== undefined) {
@@ -195,6 +239,10 @@ router.put('/:id', async (req, res, next) => {
 
     if (value.date !== undefined) {
       updates.date = value.date;
+    }
+
+    if (value.categoryId !== undefined) {
+      updates.category_id = value.categoryId;
     }
 
     updates.updated_at = db.fn.now();

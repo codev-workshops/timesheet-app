@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth');
 const clientRoutes = require('./routes/clients');
 const workEntryRoutes = require('./routes/workEntries');
 const reportRoutes = require('./routes/reports');
+const categoryRoutes = require('./routes/categories');
 
 const { initializeDatabase, closeDatabase } = require('./database/db');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -65,6 +66,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/work-entries', workEntryRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/categories', categoryRoutes);
 
 // Error handling for API routes
 app.use('/api', errorHandler);

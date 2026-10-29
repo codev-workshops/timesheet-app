@@ -30,6 +30,12 @@ async function insertWorkEntry(userEmail, clientId, attrs = {}) {
   return db('work_entries').where({ id }).first();
 }
 
+// Categories are global (not user-scoped), so unlike insertClient there is no userEmail argument.
+async function insertCategory(attrs = {}) {
+  const [id] = await db('categories').insert({ name: 'Category', ...attrs });
+  return db('categories').where({ id }).first();
+}
+
 // Simulates a DB failure for any query touching `table`. Restored by the next resetDatabase().
 async function breakTable(table) {
   await db.schema.renameTable(table, `${table}__broken`);
@@ -74,6 +80,7 @@ module.exports = {
   insertUsers,
   insertClient,
   insertWorkEntry,
+  insertCategory,
   breakTable,
   restoreTables,
   failOn,

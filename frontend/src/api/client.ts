@@ -1,4 +1,12 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios';
+import type {
+  CategoriesResponse,
+  CategoryResponse,
+  CreateCategoryRequest,
+  CreateWorkEntryRequest,
+  UpdateCategoryRequest,
+  UpdateWorkEntryRequest,
+} from '../types/api';
 
 // Use empty string to make requests relative to the current origin
 // Vite proxy will forward /api requests to the backend
@@ -87,8 +95,11 @@ class ApiClient {
   }
 
   // Work entry endpoints
-  async getWorkEntries(clientId?: number) {
-    const params = clientId ? { clientId } : {};
+  async getWorkEntries(clientId?: number, categoryId?: number) {
+    const params = {
+      ...(clientId ? { clientId } : {}),
+      ...(categoryId ? { categoryId } : {}),
+    };
     const response = await this.client.get('/api/work-entries', { params });
     return response.data;
   }
@@ -98,18 +109,40 @@ class ApiClient {
     return response.data;
   }
 
-  async createWorkEntry(entryData: { clientId: number; hours: number; description?: string; date: string }) {
+  async createWorkEntry(entryData: CreateWorkEntryRequest) {
     const response = await this.client.post('/api/work-entries', entryData);
     return response.data;
   }
 
-  async updateWorkEntry(id: number, entryData: { clientId?: number; hours?: number; description?: string; date?: string }) {
+  async updateWorkEntry(id: number, entryData: UpdateWorkEntryRequest) {
     const response = await this.client.put(`/api/work-entries/${id}`, entryData);
     return response.data;
   }
 
   async deleteWorkEntry(id: number) {
     const response = await this.client.delete(`/api/work-entries/${id}`);
+    return response.data;
+  }
+
+  // Category endpoints (writes require an admin)
+  async getCategories(includeInactive = false): Promise<CategoriesResponse> {
+    const params = includeInactive ? { includeInactive: true } : {};
+    const response = await this.client.get('/api/categories', { params });
+    return response.data;
+  }
+
+  async createCategory(categoryData: CreateCategoryRequest): Promise<CategoryResponse> {
+    const response = await this.client.post('/api/categories', categoryData);
+    return response.data;
+  }
+
+  async updateCategory(id: number, categoryData: UpdateCategoryRequest): Promise<CategoryResponse> {
+    const response = await this.client.put(`/api/categories/${id}`, categoryData);
+    return response.data;
+  }
+
+  async deleteCategory(id: number): Promise<{ message: string }> {
+    const response = await this.client.delete(`/api/categories/${id}`);
     return response.data;
   }
 
