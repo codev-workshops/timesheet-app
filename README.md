@@ -122,6 +122,23 @@ npm run dev
 
 Backend will be running at `http://localhost:3001`
 
+#### Hours estimate (ML service)
+
+The work-entry dialog pre-fills **Hours** with a suggestion from a separate ML service (`ml/`, FastAPI `POST /predict`). The backend calls it through `GET /api/work-entries/estimate`; if the service is down or slow, the endpoint returns `503` and the UI simply leaves the field empty. Creating work entries never depends on it.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ML_SERVICE_URL` | `http://localhost:8000` | Base URL of the ML service (`/predict` is appended) |
+| `ML_TIMEOUT_MS` | `2000` | Timeout in milliseconds for each estimate request |
+
+For local development without the real model, run the deterministic mock on port 8000:
+```bash
+cd backend
+npm run mock-ml   # PORT=8000 by default
+```
+
+With Docker, `docker compose -f docker/docker-compose.yml up --build` starts the app (port 3001) and the ML service (port 8000) with `ML_SERVICE_URL=http://ml:8000`.
+
 ### Frontend Setup
 
 1. Navigate to frontend directory:
@@ -174,6 +191,7 @@ Frontend will be running at `http://localhost:5173`
 ### Work Entries
 - `GET /api/work-entries` - Get all work entries (optional ?clientId filter)
 - `POST /api/work-entries` - Create new work entry
+- `GET /api/work-entries/estimate?clientId=&description=&date=` - Suggested hours from the ML service (`{ estimatedHours, modelVersion }`, `503` if unavailable)
 - `GET /api/work-entries/:id` - Get specific work entry
 - `PUT /api/work-entries/:id` - Update work entry
 - `DELETE /api/work-entries/:id` - Delete work entry
@@ -220,7 +238,7 @@ npm run test:watch          # Run tests in watch mode
 
 ### Test Coverage
 
-The backend has comprehensive test coverage with **161 tests** across 8 test suites:
+The backend has comprehensive test coverage with **204 tests** across 11 test suites:
 
 | File | Statements | Branches | Functions | Lines |
 |------|------------|----------|-----------|-------|

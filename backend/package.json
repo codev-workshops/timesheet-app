@@ -11,7 +11,8 @@
     "test:coverage": "jest --coverage",
     "test:coverage:html": "jest --coverage && open coverage/index.html",
     "test:verbose": "jest --verbose",
-    "test:ci": "jest --coverage --ci --maxWorkers=2"
+    "test:ci": "jest --coverage --ci --maxWorkers=2",
+    "mock-ml": "node scripts/mock-ml-server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

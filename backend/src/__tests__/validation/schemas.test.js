@@ -2,6 +2,7 @@ const {
   clientSchema,
   workEntrySchema,
   updateWorkEntrySchema,
+  workEntryEstimateQuerySchema,
   updateClientSchema,
   emailSchema
 } = require('../../validation/schemas');
@@ -250,6 +251,36 @@ describe('Validation Schemas', () => {
 
       const { error } = updateWorkEntrySchema.validate(update);
       expect(error).toBeUndefined();
+    });
+  });
+
+  describe('workEntryEstimateQuerySchema', () => {
+    test('should accept and convert valid query parameters', () => {
+      const { error, value } = workEntryEstimateQuerySchema.validate({
+        clientId: '3',
+        description: '  Code review  ',
+        date: '2026-10-29'
+      });
+      expect(error).toBeUndefined();
+      expect(value.clientId).toBe(3);
+      expect(value.description).toBe('Code review');
+      expect(value.date).toBeInstanceOf(Date);
+    });
+
+    test('should default description to empty string', () => {
+      const { error, value } = workEntryEstimateQuerySchema.validate({ clientId: '1', date: '2026-10-29' });
+      expect(error).toBeUndefined();
+      expect(value.description).toBe('');
+    });
+
+    test('should reject missing clientId or date', () => {
+      expect(workEntryEstimateQuerySchema.validate({ date: '2026-10-29' }).error).toBeDefined();
+      expect(workEntryEstimateQuerySchema.validate({ clientId: '1' }).error).toBeDefined();
+    });
+
+    test('should reject non-ISO dates and non-integer client ids', () => {
+      expect(workEntryEstimateQuerySchema.validate({ clientId: '1', date: 'tomorrow' }).error).toBeDefined();
+      expect(workEntryEstimateQuerySchema.validate({ clientId: '1.5', date: '2026-10-29' }).error).toBeDefined();
     });
   });
 
