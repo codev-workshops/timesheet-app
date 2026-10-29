@@ -1,318 +1,99 @@
 # Backend Test Suite
 
-## Overview
-Comprehensive unit test suite for the employee time tracking backend API. Tests cover all routes, middleware, database operations, and validation logic.
+Integration tests for the Express API, run against a **real in-memory SQLite database via Knex**.
+No SQL mocks: every route test drives HTTP through `supertest`, then asserts status, JSON body
+and the resulting rows in the database.
 
 ## Quick Start
 
 ```bash
-# Run all tests
-npm test
-
-# Run with coverage report
-npm run test:coverage
-
-# Run in watch mode (for development)
-npm run test:watch
-
-# Run with detailed output
-npm run test:verbose
-
-# Run for CI/CD (with coverage enforcement)
-npm run test:ci
-
-# View HTML coverage report
-npm run test:coverage:html
+npm test               # all tests
+npm run test:coverage  # with coverage
+npm run test:ci        # CI mode, enforces jest.config.js thresholds
+npm test -- clients.test.js -t "deletes existing client"
 ```
 
-## Test Structure
+## Structure
 
 ```
 __tests__/
-├── setup.js                    # Global test configuration
-│
-├── database/
-│   └── init.test.js           # Database initialization tests
-│
+├── setup.js                 # mocks database/db with a fresh in-memory Knex per test file
+├── helpers/
+│   ├── app.js               # createApp(): routes + errorHandler like server.js; USER / OTHER_USER
+│   └── db.js                # resetDatabase, insert* fixtures, failure simulators, sqlite_master queries
+├── database/init.test.js    # migrations: tables, indexes, idempotency, rollback, closeDatabase
 ├── middleware/
-│   ├── auth.test.js           # Authentication middleware
-│   └── errorHandler.test.js   # Error handling middleware
-│
+│   ├── auth.test.js         # x-user-email auth + auto user creation (real DB)
+│   └── errorHandler.test.js # pure unit tests
 ├── routes/
-│   ├── auth.test.js           # Auth endpoints
-│   ├── clients.test.js        # Client CRUD operations
-│   ├── reports.test.js        # Report generation
-│   └── workEntries.test.js    # Work entry CRUD operations
-│
-└── validation/
-    └── schemas.test.js        # Joi validation schemas
+│   ├── auth.test.js
+│   ├── clients.test.js
+│   ├── workEntries.test.js
+│   └── reports.test.js      # report aggregation, CSV/PDF exports
+└── validation/schemas.test.js
 ```
 
-## Coverage Summary
+## How the DB harness works
 
-| Module | Coverage | Tests |
-|--------|----------|-------|
-| Database | 93.1% | 8 |
-| Middleware | 100% | 19 |
-| Routes | 75.9% | 76 |
-| Validation | 100% | 38 |
-| **Total** | **79.2%** | **134** |
+- `setup.js` calls `jest.mock(require.resolve('../database/db'), factory)`. The factory builds
+  `knex({ ...require('../../knexfile'), connection: { filename: ':memory:' } })` and exposes the
+  same three exports as production: `{ db, initializeDatabase, closeDatabase }`.
+  Jest gives every test file its own module registry, so **each file gets its own empty DB**.
+- Anything that does `const { db } = require('../database/db')` (routes, middleware, helpers,
+  tests) receives that same instance.
+- `afterAll` in `setup.js` calls `db.destroy()`. `console.log/error/warn` are silenced per test
+  (they are `jest.spyOn` mocks, so you can `expect(console.error).toHaveBeenCalled()`).
+- Do **not** use `jest.resetModules()` in DB suites: it would create a second Knex instance.
 
-## Test Categories
+### Per-test lifecycle
 
-### Authentication Tests (22 tests)
-- Email validation and format checking
-- User creation and authentication
-- Header-based authentication
-- Database error handling
-
-### CRUD Operation Tests (48 tests)
-- Client management (24 tests)
-- Work entry management (24 tests)
-- Input validation
-- Authorization checks
-- Error scenarios
-
-### Validation Tests (38 tests)
-- Client schema validation
-- Work entry schema validation
-- Update schema validation
-- Email schema validation
-- Edge cases and boundary conditions
-
-### Report Tests (17 tests)
-- Report generation
-- Hours aggregation
-- Data isolation
-- Export validation (CSV/PDF)
-
-### Error Handling Tests (19 tests)
-- Joi validation errors
-- SQLite database errors
-- Generic error responses
-- Status code handling
-
-## Writing New Tests
-
-### Test Template
-```javascript
+```js
 const request = require('supertest');
-const express = require('express');
-const { getDatabase } = require('../../database/init');
+const { createApp, USER, OTHER_USER } = require('../helpers/app');
+const { db, resetDatabase, insertUsers, insertClient, insertWorkEntry } = require('../helpers/db');
 
-jest.mock('../../database/init');
+const app = createApp();
 
-describe('Feature Name', () => {
-  let mockDb;
+beforeEach(async () => {
+  await resetDatabase();                 // migrate.rollback(all) + migrate.latest()
+  await insertUsers(USER, OTHER_USER);   // fixtures
+});
 
-  beforeEach(() => {
-    mockDb = {
-      all: jest.fn(),
-      get: jest.fn(),
-      run: jest.fn()
-    };
-    getDatabase.mockReturnValue(mockDb);
-  });
-
-  afterEach(() => {
-    jest.clearAllMocks();
-  });
-
-  test('should do something', async () => {
-    // Arrange
-    mockDb.get.mockImplementation((query, params, callback) => {
-      callback(null, { id: 1 });
-    });
-
-    // Act
-    const response = await request(app).get('/api/endpoint');
-
-    // Assert
-    expect(response.status).toBe(200);
-  });
+test('creates a client', async () => {
+  const res = await request(app).post('/api/clients').set('x-user-email', USER).send({ name: 'Acme' });
+  expect(res.status).toBe(201);
+  expect(await db('clients').where({ user_email: USER })).toHaveLength(1);
 });
 ```
 
-### Best Practices
+### Simulating DB failures (500 paths)
 
-1. **Use descriptive test names**
-   ```javascript
-   ✅ test('should return 404 if client not found')
-   ❌ test('test client route')
-   ```
+No internals are mocked; the schema is broken for the current test only and `resetDatabase()`
+restores it before the next one.
 
-2. **Follow AAA pattern**
-   - Arrange: Set up test data and mocks
-   - Act: Execute the code being tested
-   - Assert: Verify the results
+| Helper | Effect | Use for |
+|---|---|---|
+| `breakTable('clients')` | renames the table to `clients__broken` | any query on that table fails (`Internal server error`) |
+| `failOn('clients', 'INSERT' \| 'UPDATE' \| 'DELETE')` | `BEFORE` trigger with `RAISE(ABORT)` | reads succeed, the write fails (`Failed to create client`, ...) |
+| `ignoreInsertsOn('users')` | `BEFORE INSERT` trigger with `RAISE(IGNORE)` | insert "succeeds" but writes nothing (e.g. `/me` 404) |
 
-3. **Mock external dependencies**
-   ```javascript
-   jest.mock('../../database/init');
-   jest.mock('../../middleware/auth');
-   ```
+Tables renamed by `breakTable` are renamed back before rollback, so migrations' `down()` can use
+plain `dropTable`.
 
-4. **Test error scenarios**
-   ```javascript
-   test('should handle database error', async () => {
-     mockDb.get.mockImplementation((query, params, callback) => {
-       callback(new Error('Database error'), null);
-     });
-     // ... test error response
-   });
-   ```
+## Extending for a new table (e.g. categories, migration `002_add_categories.js`)
 
-5. **Keep tests isolated**
-   - Use `beforeEach` and `afterEach`
-   - Clear mocks between tests
-   - Don't rely on test execution order
+1. Add the migration under `src/database/migrations/`; `resetDatabase()` picks it up automatically.
+2. In `database/init.test.js`, add the new table/indexes to `TABLES` / `INDEXES` and assert its
+   columns/FKs with `PRAGMA table_info` / `PRAGMA foreign_key_list`.
+3. Add an `insertCategory(userEmail, attrs)` fixture to `helpers/db.js` following `insertClient`.
+4. Mount the new router in `helpers/app.js` exactly as in `server.js`.
+5. Create `routes/categories.test.js`: CRUD happy paths, Joi 400s (`{ error: 'Validation error', details }`),
+   404s, user isolation using `USER` vs `OTHER_USER`, and 500s via `breakTable` / `failOn`.
+6. If `down()` of the new migration drops tables that `breakTable` might rename, nothing extra is
+   needed: `resetDatabase()` restores names first.
 
-## Mocking Strategy
+## Coverage
 
-### Database Mocking
-```javascript
-mockDb = {
-  all: jest.fn(),   // For SELECT queries returning multiple rows
-  get: jest.fn(),   // For SELECT queries returning single row
-  run: jest.fn()    // For INSERT, UPDATE, DELETE
-};
-```
-
-### Authentication Mocking
-```javascript
-jest.mock('../../middleware/auth', () => ({
-  authenticateUser: (req, res, next) => {
-    req.userEmail = 'test@example.com';
-    next();
-  }
-}));
-```
-
-### File System Mocking
-```javascript
-jest.mock('fs');
-fs.existsSync = jest.fn().mockReturnValue(true);
-fs.mkdirSync = jest.fn();
-```
-
-## Common Test Patterns
-
-### Testing CRUD Operations
-```javascript
-// GET all
-test('should return all items', async () => {
-  mockDb.all.mockImplementation((query, params, callback) => {
-    callback(null, [{ id: 1 }, { id: 2 }]);
-  });
-  const response = await request(app).get('/api/items');
-  expect(response.status).toBe(200);
-  expect(response.body.items).toHaveLength(2);
-});
-
-// POST create
-test('should create new item', async () => {
-  mockDb.run.mockImplementation(function(query, params, callback) {
-    this.lastID = 1;
-    callback.call(this, null);
-  });
-  const response = await request(app)
-    .post('/api/items')
-    .send({ name: 'Test' });
-  expect(response.status).toBe(201);
-});
-```
-
-### Testing Validation
-```javascript
-test('should reject invalid input', async () => {
-  const response = await request(app)
-    .post('/api/items')
-    .send({ invalid: 'data' });
-  expect(response.status).toBe(400);
-});
-```
-
-### Testing Authorization
-```javascript
-test('should only return user-owned data', async () => {
-  mockDb.all.mockImplementation((query, params, callback) => {
-    expect(params).toContain('test@example.com');
-    callback(null, []);
-  });
-  await request(app).get('/api/items');
-});
-```
-
-## Debugging Tests
-
-### Run specific test file
-```bash
-npm test -- auth.test.js
-```
-
-### Run specific test
-```bash
-npm test -- -t "should create new client"
-```
-
-### Run with console output
-```bash
-npm test -- --verbose
-```
-
-### Debug in VS Code
-Add to `.vscode/launch.json`:
-```json
-{
-  "type": "node",
-  "request": "launch",
-  "name": "Jest Debug",
-  "program": "${workspaceFolder}/node_modules/.bin/jest",
-  "args": ["--runInBand", "--no-cache"],
-  "console": "integratedTerminal",
-  "internalConsoleOptions": "neverOpen"
-}
-```
-
-## Coverage Goals
-
-- **Statements**: > 60% (Current: 79.2%)
-- **Branches**: > 60% (Current: 80.3%)
-- **Functions**: > 65% (Current: 89.1%)
-- **Lines**: > 60% (Current: 79.3%)
-
-## CI/CD Integration
-
-### GitHub Actions Example
-```yaml
-- name: Run tests
-  run: npm run test:ci
-
-- name: Upload coverage
-  uses: codecov/codecov-action@v3
-  with:
-    files: ./coverage/lcov.info
-```
-
-## Troubleshooting
-
-### Tests timing out
-- Increase timeout in `jest.config.js`
-- Check for unresolved promises
-- Ensure callbacks are called in mocks
-
-### Mocks not working
-- Check mock is defined before import
-- Use `jest.clearAllMocks()` in `afterEach`
-- Verify mock path is correct
-
-### Coverage not accurate
-- Check `collectCoverageFrom` in `jest.config.js`
-- Ensure all files are included
-- Run `npm test -- --coverage --verbose`
-
-## Resources
-
-- [Jest Documentation](https://jestjs.io/docs/getting-started)
-- [Supertest Documentation](https://github.com/visionmedia/supertest)
-- [Testing Best Practices](https://testingjavascript.com/)
+`jest.config.js` enforces global thresholds: branches 60, functions 65, lines 60, statements 60.
+`src/database/db.js` shows 0% because it is replaced by the mock; its behaviour is covered by
+`database/init.test.js` through the identical mocked exports.

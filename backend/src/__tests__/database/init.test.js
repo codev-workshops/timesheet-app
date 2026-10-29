@@ -1,187 +1,130 @@
-const sqlite3 = require('sqlite3');
-const { getDatabase, initializeDatabase, closeDatabase } = require('../../database/init');
+const { db, initializeDatabase, closeDatabase } = require('../../database/db');
+const { tableNames, indexNames } = require('../helpers/db');
 
-// Mock sqlite3
-jest.mock('sqlite3', () => {
-  const mockDatabase = {
-    serialize: jest.fn((callback) => callback()),
-    run: jest.fn((query, callback) => {
-      if (typeof callback === 'function') callback(null);
-    }),
-    close: jest.fn((callback) => callback(null))
-  };
+const TABLES = ['users', 'clients', 'work_entries'];
+const INDEXES = [
+  'idx_clients_user_email',
+  'idx_work_entries_client_id',
+  'idx_work_entries_user_email',
+  'idx_work_entries_date'
+];
 
-  return {
-    verbose: jest.fn(() => ({
-      Database: jest.fn((path, callback) => {
-        callback(null);
-        return mockDatabase;
-      })
-    }))
-  };
-});
+async function columns(table) {
+  return db.raw(`PRAGMA table_info(${table})`);
+}
 
-describe('Database Initialization', () => {
-  let consoleLogSpy, consoleErrorSpy;
+async function foreignKeys(table) {
+  return db.raw(`PRAGMA foreign_key_list(${table})`);
+}
 
-  beforeEach(() => {
-    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-    
-    // Reset the database singleton
-    jest.resetModules();
+describe('Database initialization (Knex migrations)', () => {
+  beforeAll(async () => {
+    await db.migrate.rollback(undefined, true);
   });
 
-  afterEach(() => {
-    consoleLogSpy.mockRestore();
-    consoleErrorSpy.mockRestore();
-    jest.clearAllMocks();
+  test('exposes exactly db, initializeDatabase and closeDatabase', () => {
+    const mod = require('../../database/db');
+    expect(Object.keys(mod).sort()).toEqual(['closeDatabase', 'db', 'initializeDatabase']);
+    expect(typeof db).toBe('function');
   });
 
-  describe('getDatabase', () => {
-    test('should create and return database instance', () => {
-      const db = getDatabase();
-      
-      expect(db).toBeDefined();
-      expect(consoleLogSpy).toHaveBeenCalledWith('Connected to SQLite in-memory database');
+  test('starts with no application tables', async () => {
+    const names = await tableNames();
+    TABLES.forEach((t) => expect(names).not.toContain(t));
+  });
+
+  test('initializeDatabase() creates users, clients and work_entries', async () => {
+    await initializeDatabase();
+    const names = await tableNames();
+    expect(names).toEqual(expect.arrayContaining(TABLES));
+  });
+
+  test('initializeDatabase() creates the four named indexes', async () => {
+    expect(await indexNames()).toEqual(expect.arrayContaining(INDEXES));
+  });
+
+  test('initializeDatabase() is idempotent and keeps existing data', async () => {
+    await db('users').insert({ email: 'keep@example.com' });
+    await expect(initializeDatabase()).resolves.toBeUndefined();
+    await expect(initializeDatabase()).resolves.toBeUndefined();
+
+    const users = await db('users').select('email');
+    expect(users).toEqual([{ email: 'keep@example.com' }]);
+    const indexes = (await indexNames()).filter((n) => INDEXES.includes(n));
+    expect(indexes).toHaveLength(INDEXES.length);
+    await db('users').del();
+  });
+
+  describe('schema', () => {
+    test('users has email primary key and created_at default', async () => {
+      const cols = await columns('users');
+      const email = cols.find((c) => c.name === 'email');
+      expect(email.pk).toBe(1);
+      expect(cols.find((c) => c.name === 'created_at').dflt_value).toMatch(/CURRENT_TIMESTAMP/i);
     });
 
-    test('should return same database instance on multiple calls', () => {
-      const db1 = getDatabase();
-      const db2 = getDatabase();
-      
-      expect(db1).toBe(db2);
+    test('clients has expected columns, NOT NULL constraints and FK to users', async () => {
+      const cols = await columns('clients');
+      expect(cols.map((c) => c.name)).toEqual(expect.arrayContaining([
+        'id', 'name', 'description', 'department', 'email', 'user_email', 'created_at', 'updated_at'
+      ]));
+      expect(cols.find((c) => c.name === 'id').pk).toBe(1);
+      expect(cols.find((c) => c.name === 'name').notnull).toBe(1);
+      expect(cols.find((c) => c.name === 'user_email').notnull).toBe(1);
+
+      const fks = await foreignKeys('clients');
+      expect(fks).toEqual(expect.arrayContaining([
+        expect.objectContaining({ table: 'users', from: 'user_email', to: 'email', on_delete: 'CASCADE' })
+      ]));
     });
 
-    test('should handle database connection error', () => {
-      jest.resetModules();
-      
-      jest.doMock('sqlite3', () => {
-        return {
-          verbose: jest.fn(() => ({
-            Database: jest.fn((path, callback) => {
-              callback(new Error('Connection failed'));
-              return {};
-            })
-          }))
-        };
+    test('work_entries has expected columns and FKs to clients and users', async () => {
+      const cols = await columns('work_entries');
+      expect(cols.map((c) => c.name)).toEqual(expect.arrayContaining([
+        'id', 'client_id', 'user_email', 'hours', 'description', 'date', 'created_at', 'updated_at'
+      ]));
+      ['client_id', 'user_email', 'hours', 'date'].forEach((name) => {
+        expect(cols.find((c) => c.name === name).notnull).toBe(1);
       });
 
-      const { getDatabase: getDatabaseWithError } = require('../../database/init');
-      
-      expect(() => getDatabaseWithError()).toThrow('Connection failed');
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Error opening database:', expect.any(Error));
+      const fks = await foreignKeys('work_entries');
+      expect(fks).toEqual(expect.arrayContaining([
+        expect.objectContaining({ table: 'clients', from: 'client_id', to: 'id', on_delete: 'CASCADE' }),
+        expect.objectContaining({ table: 'users', from: 'user_email', to: 'email', on_delete: 'CASCADE' })
+      ]));
+    });
+
+    test('ids autoincrement and timestamps default on insert', async () => {
+      await db('users').insert({ email: 'schema@example.com' });
+      const [id] = await db('clients').insert({ name: 'A', user_email: 'schema@example.com' });
+      const client = await db('clients').where({ id }).first();
+      expect(id).toBeGreaterThan(0);
+      expect(client.created_at).toBeTruthy();
+      expect(client.updated_at).toBeTruthy();
+      await db('clients').del();
+      await db('users').del();
+    });
+
+    test('foreign key enforcement stays disabled (matches main)', async () => {
+      const [{ foreign_keys: enabled }] = await db.raw('PRAGMA foreign_keys');
+      expect(enabled).toBe(0);
     });
   });
 
-  describe('initializeDatabase', () => {
-    test('should create all required tables', async () => {
-      const db = getDatabase();
-      await initializeDatabase();
-
-      expect(db.serialize).toHaveBeenCalled();
-      expect(db.run).toHaveBeenCalled();
-      
-      // Check that run was called for each table and index
-      const runCalls = db.run.mock.calls;
-      const queries = runCalls.map(call => call[0]);
-      
-      expect(queries.some(q => q.includes('CREATE TABLE IF NOT EXISTS users'))).toBe(true);
-      expect(queries.some(q => q.includes('CREATE TABLE IF NOT EXISTS clients'))).toBe(true);
-      expect(queries.some(q => q.includes('CREATE TABLE IF NOT EXISTS work_entries'))).toBe(true);
-    });
-
-    test('should create indexes for performance', async () => {
-      const db = getDatabase();
-      await initializeDatabase();
-
-      const runCalls = db.run.mock.calls;
-      const queries = runCalls.map(call => call[0]);
-      
-      expect(queries.some(q => q.includes('CREATE INDEX IF NOT EXISTS idx_clients_user_email'))).toBe(true);
-      expect(queries.some(q => q.includes('CREATE INDEX IF NOT EXISTS idx_work_entries_client_id'))).toBe(true);
-      expect(queries.some(q => q.includes('CREATE INDEX IF NOT EXISTS idx_work_entries_user_email'))).toBe(true);
-      expect(queries.some(q => q.includes('CREATE INDEX IF NOT EXISTS idx_work_entries_date'))).toBe(true);
-    });
-
-    test('should log success message', async () => {
-      await initializeDatabase();
-      
-      expect(consoleLogSpy).toHaveBeenCalledWith('Database tables created successfully');
-    });
-
-    test('should resolve promise on success', async () => {
-      await expect(initializeDatabase()).resolves.toBeUndefined();
-    });
+  test('migrate.rollback drops all application tables', async () => {
+    await db.migrate.rollback(undefined, true);
+    const names = await tableNames();
+    TABLES.forEach((t) => expect(names).not.toContain(t));
+    INDEXES.forEach((i) => expect(names).not.toContain(i));
   });
 
-  describe('closeDatabase', () => {
-    test('should close database connection', () => {
-      const db = getDatabase();
-      closeDatabase();
+  test('closeDatabase() destroys the Knex instance', async () => {
+    await initializeDatabase();
+    await expect(closeDatabase()).resolves.toBeUndefined();
+    await expect(db.raw('SELECT 1')).rejects.toThrow();
 
-      expect(db.close).toHaveBeenCalled();
-      expect(consoleLogSpy).toHaveBeenCalledWith('Database connection closed');
-    });
-
-    test('should handle close error gracefully', () => {
-      const db = getDatabase();
-      db.close.mockImplementation((callback) => callback(new Error('Close error')));
-
-      closeDatabase();
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Error closing database:', expect.any(Error));
-    });
-
-    test('should handle multiple close calls safely', () => {
-      const db = getDatabase();
-      // Reset close mock to default behavior (no error)
-      db.close.mockImplementation((callback) => callback(null));
-      closeDatabase();
-      closeDatabase(); // Second call should not throw
-
-      expect(consoleErrorSpy).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('Database Schema', () => {
-    test('users table should have correct structure', async () => {
-      const db = getDatabase();
-      await initializeDatabase();
-
-      const userTableQuery = db.run.mock.calls.find(call => 
-        call[0].includes('CREATE TABLE IF NOT EXISTS users')
-      );
-
-      expect(userTableQuery).toBeDefined();
-      expect(userTableQuery[0]).toContain('email TEXT PRIMARY KEY');
-      expect(userTableQuery[0]).toContain('created_at DATETIME DEFAULT CURRENT_TIMESTAMP');
-    });
-
-    test('clients table should have foreign key to users', async () => {
-      const db = getDatabase();
-      await initializeDatabase();
-
-      const clientTableQuery = db.run.mock.calls.find(call => 
-        call[0].includes('CREATE TABLE IF NOT EXISTS clients')
-      );
-
-      expect(clientTableQuery).toBeDefined();
-      expect(clientTableQuery[0]).toContain('user_email TEXT NOT NULL');
-      expect(clientTableQuery[0]).toContain('FOREIGN KEY (user_email) REFERENCES users (email) ON DELETE CASCADE');
-    });
-
-    test('work_entries table should have foreign keys', async () => {
-      const db = getDatabase();
-      await initializeDatabase();
-
-      const workEntriesQuery = db.run.mock.calls.find(call => 
-        call[0].includes('CREATE TABLE IF NOT EXISTS work_entries')
-      );
-
-      expect(workEntriesQuery).toBeDefined();
-      expect(workEntriesQuery[0]).toContain('FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE');
-      expect(workEntriesQuery[0]).toContain('FOREIGN KEY (user_email) REFERENCES users (email) ON DELETE CASCADE');
-    });
+    // Re-open so the global afterAll teardown has a live pool; :memory: data is gone.
+    db.initialize();
+    expect(await tableNames()).not.toContain('users');
   });
 });
