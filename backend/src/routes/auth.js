@@ -1,7 +1,7 @@
 const express = require('express');
 const { db } = require('../database/db');
 const { emailSchema } = require('../validation/schemas');
-const { authenticateUser } = require('../middleware/auth');
+const { authenticateUser, isAdminEmail } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -30,7 +30,8 @@ router.post('/login', async (req, res, next) => {
         message: 'Login successful',
         user: {
           email: row.email,
-          createdAt: row.created_at
+          createdAt: row.created_at,
+          isAdmin: isAdminEmail(row.email)
         }
       });
     }
@@ -47,7 +48,8 @@ router.post('/login', async (req, res, next) => {
       message: 'User created and logged in successfully',
       user: {
         email: email,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        isAdmin: isAdminEmail(email)
       }
     });
   } catch (error) {
@@ -72,7 +74,8 @@ router.get('/me', authenticateUser, async (req, res) => {
   res.json({
     user: {
       email: row.email,
-      createdAt: row.created_at
+      createdAt: row.created_at,
+      isAdmin: isAdminEmail(row.email)
     }
   });
 });

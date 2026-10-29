@@ -1,6 +1,7 @@
 export interface User {
   email: string;
   createdAt: string;
+  isAdmin?: boolean;
 }
 
 export interface Client {
@@ -22,6 +23,8 @@ export interface WorkEntry {
   created_at: string;
   updated_at: string;
   client_name?: string;
+  category_id: number | null;
+  category_name: string | null;
 }
 
 export interface WorkEntryWithClient extends WorkEntry {
@@ -54,6 +57,7 @@ export interface CreateWorkEntryRequest {
   hours: number;
   description?: string;
   date: string;
+  categoryId?: number | null;
 }
 
 export interface UpdateWorkEntryRequest {
@@ -61,6 +65,37 @@ export interface UpdateWorkEntryRequest {
   hours?: number;
   description?: string;
   date?: string;
+  categoryId?: number | null;
+}
+
+export interface Category {
+  id: number;
+  name: string;
+  description: string | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateCategoryRequest {
+  name: string;
+  description?: string;
+  active?: boolean;
+}
+
+export interface UpdateCategoryRequest {
+  name?: string;
+  description?: string;
+  active?: boolean;
+}
+
+export interface CategoriesResponse {
+  categories: Category[];
+}
+
+export interface CategoryResponse {
+  message: string;
+  category: Category;
 }
 
 export interface LoginRequest {

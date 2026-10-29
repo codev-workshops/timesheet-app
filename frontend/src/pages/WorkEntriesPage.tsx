@@ -34,13 +34,22 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import apiClient from '../api/client';
-import { type WorkEntry } from '../types/api';
+import {
+  type Category,
+  type CreateWorkEntryRequest,
+  type UpdateWorkEntryRequest,
+  type WorkEntry,
+} from '../types/api';
+
+// Select value for "no category"; converted to null before sending.
+const NO_CATEGORY = 0;
 
 const WorkEntriesPage: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<WorkEntry | null>(null);
   const [formData, setFormData] = useState({
     clientId: 0,
+    categoryId: NO_CATEGORY,
     hours: '',
     description: '',
     date: new Date(),
@@ -59,8 +68,13 @@ const WorkEntriesPage: React.FC = () => {
     queryFn: () => apiClient.getClients(),
   });
 
+  const { data: categoriesData, isLoading: categoriesLoading } = useQuery({
+    queryKey: ['categories', 'active'],
+    queryFn: () => apiClient.getCategories(),
+  });
+
   const createMutation = useMutation({
-    mutationFn: (entryData: { clientId: number; hours: number; description?: string; date: string }) =>
+    mutationFn: (entryData: CreateWorkEntryRequest) =>
       apiClient.createWorkEntry(entryData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workEntries'] });
@@ -73,7 +87,7 @@ const WorkEntriesPage: React.FC = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { clientId?: number; hours?: number; description?: string; date?: string } }) =>
+    mutationFn: ({ id, data }: { id: number; data: UpdateWorkEntryRequest }) =>
       apiClient.updateWorkEntry(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workEntries'] });
@@ -98,12 +112,18 @@ const WorkEntriesPage: React.FC = () => {
 
   const workEntries = workEntriesData?.workEntries || [];
   const clients = clientsData?.clients || [];
+  const categories: Category[] = categoriesData?.categories || [];
+  const editingInactiveCategory =
+    editingEntry?.category_id != null && !categories.some((c) => c.id === editingEntry.category_id)
+      ? editingEntry
+      : null;
 
   const handleOpen = (entry?: WorkEntry) => {
     if (entry) {
       setEditingEntry(entry);
       setFormData({
         clientId: entry.client_id,
+        categoryId: entry.category_id ?? NO_CATEGORY,
         hours: entry.hours.toString(),
         description: entry.description || '',
         date: new Date(entry.date),
@@ -112,6 +132,7 @@ const WorkEntriesPage: React.FC = () => {
       setEditingEntry(null);
       setFormData({
         clientId: 0,
+        categoryId: NO_CATEGORY,
         hours: '',
         description: '',
         date: new Date(),
@@ -126,6 +147,7 @@ const WorkEntriesPage: React.FC = () => {
     setEditingEntry(null);
     setFormData({
       clientId: 0,
+      categoryId: NO_CATEGORY,
       hours: '',
       description: '',
       date: new Date(),
@@ -153,6 +175,7 @@ const WorkEntriesPage: React.FC = () => {
       return;
     }
 
+    const categoryId = formData.categoryId === NO_CATEGORY ? null : formData.categoryId;
     const entryData = {
       clientId: formData.clientId,
       hours,
@@ -161,12 +184,15 @@ const WorkEntriesPage: React.FC = () => {
     };
 
     if (editingEntry) {
+      // Only send categoryId when changed, so entries tagged with a since-deactivated
+      // category can still be edited without re-validating that category.
+      const categoryChanged = categoryId !== editingEntry.category_id;
       updateMutation.mutate({
         id: editingEntry.id,
-        data: entryData,
+        data: categoryChanged ? { ...entryData, categoryId } : entryData,
       });
     } else {
-      createMutation.mutate(entryData);
+      createMutation.mutate({ ...entryData, categoryId });
     }
   };
 
@@ -176,7 +202,7 @@ const WorkEntriesPage: React.FC = () => {
     }
   };
 
-  if (entriesLoading || clientsLoading) {
+  if (entriesLoading || clientsLoading || categoriesLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
         <CircularProgress />
@@ -216,6 +242,7 @@ const WorkEntriesPage: React.FC = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell>Client</TableCell>
+                    <TableCell>Category</TableCell>
                     <TableCell>Date</TableCell>
                     <TableCell>Hours</TableCell>
                     <TableCell>Description</TableCell>
@@ -230,6 +257,13 @@ const WorkEntriesPage: React.FC = () => {
                           <Typography variant="subtitle1" fontWeight="medium">
                             {entry.client_name}
                           </Typography>
+                        </TableCell>
+                        <TableCell>
+                          {entry.category_name ? (
+                            <Chip label={entry.category_name} size="small" color="secondary" variant="outlined" />
+                          ) : (
+                            <Chip label="None" size="small" variant="outlined" />
+                          )}
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2">
@@ -272,7 +306,7 @@ const WorkEntriesPage: React.FC = () => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={5} align="center">
+                      <TableCell colSpan={6} align="center">
                         <Typography color="text.secondary" sx={{ py: 3 }}>
                           No work entries found. Add your first work entry to get started.
                         </Typography>
@@ -303,6 +337,31 @@ const WorkEntriesPage: React.FC = () => {
                       {client.name}
                     </MenuItem>
                   ))}
+                </Select>
+              </FormControl>
+
+              <FormControl fullWidth margin="dense">
+                <InputLabel id="work-entry-category-label">Category</InputLabel>
+                <Select
+                  labelId="work-entry-category-label"
+                  label="Category"
+                  value={formData.categoryId}
+                  onChange={(e) => setFormData({ ...formData, categoryId: Number(e.target.value) })}
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                >
+                  <MenuItem value={NO_CATEGORY}>
+                    <em>None</em>
+                  </MenuItem>
+                  {categories.map((category) => (
+                    <MenuItem key={category.id} value={category.id}>
+                      {category.name}
+                    </MenuItem>
+                  ))}
+                  {editingInactiveCategory && (
+                    <MenuItem value={editingInactiveCategory.category_id ?? NO_CATEGORY} disabled>
+                      {editingInactiveCategory.category_name} (inactive)
+                    </MenuItem>
+                  )}
                 </Select>
               </FormControl>
 
