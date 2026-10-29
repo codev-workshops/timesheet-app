@@ -1,0 +1,74 @@
+{
+  "model_version": "xgb-20261029-03f46b",
+  "trained_at": "2026-10-29T09:21:57+00:00",
+  "data_source": "synthetic",
+  "n_rows": 2000,
+  "n_train": 1600,
+  "n_test": 400,
+  "split": {
+    "method": "time",
+    "test_frac": 0.2,
+    "train_date_max": "2026-08-25",
+    "test_date_min": "2026-08-25",
+    "test_date_max": "2026-09-30"
+  },
+  "test": {
+    "mae": 0.6913,
+    "rmse": 1.0507
+  },
+  "baseline": {
+    "name": "per_client_median (global median for unseen clients)",
+    "mae": 1.0106,
+    "rmse": 1.4939
+  },
+  "beats_baseline_mae": true,
+  "mae_improvement_pct": 31.6,
+  "log_target": true,
+  "target_skew": 2.4536,
+  "log_target_rule": "log1p target when train-split hours skewness > 0.75",
+  "best_params": {
+    "max_depth": 10,
+    "learning_rate": 0.06690992453172911,
+    "n_estimators": 80,
+    "min_child_weight": 16.946658050358234
+  },
+  "search": {
+    "library": "optuna",
+    "sampler": "TPE",
+    "n_trials": 50,
+    "seed": 42,
+    "best_val_mae": 0.6802,
+    "searched_n_estimators": 100,
+    "early_stopping_rounds": 50,
+    "best_iteration": 79,
+    "n_inner_train": 1360,
+    "n_val": 240
+  },
+  "features": {
+    "onehot": [
+      "client_id",
+      "user_email",
+      "department"
+    ],
+    "tfidf": {
+      "column": "description",
+      "max_features": 500,
+      "ngram_range": [
+        1,
+        2
+      ]
+    },
+    "date": [
+      "day_of_week",
+      "is_weekend",
+      "month"
+    ]
+  },
+  "versions": {
+    "python": "3.12.13",
+    "scikit-learn": "1.7.2",
+    "xgboost": "3.0.5",
+    "pandas": "2.3.3",
+    "numpy": "2.3.5"
+  }
+}
