@@ -1,0 +1,2001 @@
+client_id,user_email,description,date,client_name,department,hours
+4,bob@example.com,Wrote onboarding guide,2026-04-01,Nakatomi Trading,Finance,1.25
+4,bob@example.com,deployment,2026-04-01,Nakatomi Trading,Finance,2.0
+5,bob@example.com,Call with stakeholders re budget review,2026-04-01,Cyberdyne,Finance,1.5
+6,bob@example.com,Investigated and fixed issue in search,2026-04-01,Pied Piper,Operations,4.0
+6,bob@example.com,Call with stakeholders re kickoff,2026-04-01,Pied Piper,Operations,3.0
+7,carol@example.com,Meeting with client about Q3 roadmap,2026-04-01,Prestige Worldwide,Sales,1.25
+8,carol@example.com,,2026-04-01,Bluth Company,Finance,0.5
+9,carol@example.com,Client meeting,2026-04-01,Hooli,Marketing,2.25
+13,erin@example.com,Drafted onboarding guide,2026-04-01,Aperture Labs,Finance,3.0
+14,erin@example.com,Deployed release to production,2026-04-01,Vandelay Imports,Marketing,1.75
+20,grace@example.com,Client meeting,2026-04-01,Stark Industries,Finance,1.75
+20,grace@example.com,client workshop on campaign results,2026-04-01,Stark Industries,Finance,2.0
+21,grace@example.com,Standup meeting,2026-04-01,Black Mesa,Finance,0.25
+22,grace@example.com,Fixed bug in checkout flow,2026-04-01,Globex,Marketing,4.5
+22,grace@example.com,client workshop on requirements,2026-04-01,Globex,Marketing,1.25
+3,alice@example.com,Deployment,2026-04-02,Monarch Solutions,Engineering,1.0
+4,bob@example.com,Developing dark mode for export to CSV,2026-04-02,Nakatomi Trading,Finance,2.75
+4,bob@example.com,Morning standup with the team,2026-04-02,Nakatomi Trading,Finance,1.25
+11,dave@example.com,Implemented SSO integration,2026-04-02,Umbrella Health,Engineering,2.75
+11,dave@example.com,PR review: mobile layout,2026-04-02,Umbrella Health,Engineering,2.0
+11,dave@example.com,,2026-04-02,Umbrella Health,Engineering,0.75
+13,erin@example.com,Updated runbook,2026-04-02,Aperture Labs,Finance,1.25
+16,erin@example.com,BUG FIX: LOGIN PAGE ERROR,2026-04-02,Wonka Retail,Engineering,3.25
+16,erin@example.com,Hotfix for user settings,2026-04-02,Wonka Retail,Engineering,1.25
+16,erin@example.com,Built invoice generation,2026-04-02,Wonka Retail,Engineering,3.25
+19,frank@example.com,call with stakeholders re renewal,2026-04-02,Initech,Finance,1.75
+21,grace@example.com,Team standup,2026-04-02,Black Mesa,Finance,0.75
+3,alice@example.com,Bug fix: mobile layout error,2026-04-03,Monarch Solutions,Engineering,4.75
+8,carol@example.com,Updated runbook,2026-04-03,Bluth Company,Finance,0.75
+13,erin@example.com,Wrote architecture doc,2026-04-03,Aperture Labs,Finance,1.25
+14,erin@example.com,Client workshop on Q3 roadmap,2026-04-03,Vandelay Imports,Marketing,1.5
+15,erin@example.com,Morning standup with the team,2026-04-03,Wayne Enterprises,Sales,0.25
+16,erin@example.com,Feature work: analytics widgets,2026-04-03,Wonka Retail,Engineering,2.0
+21,grace@example.com,pr review: notifications,2026-04-03,Black Mesa,Finance,1.0
+23,grace@example.com,deploy to qa,2026-04-03,Gringotts Bank,Operations,2.0
+25,heidi@example.com,Feature work: audit logging,2026-04-03,Dunder Mifflin,Engineering,2.25
+2,alice@example.com,Team standup,2026-04-05,Massive Dynamic,Finance,0.5
+5,bob@example.com,Team sync / standup,2026-04-05,Cyberdyne,Finance,0.5
+2,alice@example.com,Feature work: bulk import,2026-04-06,Massive Dynamic,Finance,1.0
+2,alice@example.com,,2026-04-06,Massive Dynamic,Finance,4.0
+3,alice@example.com,Team standup,2026-04-06,Monarch Solutions,Engineering,0.5
+6,bob@example.com,Production deployment,2026-04-06,Pied Piper,Operations,2.0
+8,carol@example.com,Client meeting,2026-04-06,Bluth Company,Finance,1.25
+8,carol@example.com,Wrote release notes,2026-04-06,Bluth Company,Finance,2.0
+8,carol@example.com,Team sync / standup,2026-04-06,Bluth Company,Finance,0.75
+11,dave@example.com,Daily scrum,2026-04-06,Umbrella Health,Engineering,1.25
+12,dave@example.com,Updated release notes,2026-04-06,Acme Corp,Marketing,1.5
+13,erin@example.com,Client call: pricing,2026-04-06,Aperture Labs,Finance,2.0
+16,erin@example.com,Team sync / standup,2026-04-06,Wonka Retail,Engineering,0.25
+24,heidi@example.com,Meeting with client about pricing,2026-04-06,Soylent Foods,Finance,3.0
+25,heidi@example.com,Standup meeting,2026-04-06,Dunder Mifflin,Engineering,0.5
+3,alice@example.com,Daily standup,2026-04-07,Monarch Solutions,Engineering,0.25
+5,bob@example.com,Team standup,2026-04-07,Cyberdyne,Finance,0.5
+7,carol@example.com,Daily standup,2026-04-07,Prestige Worldwide,Sales,0.75
+8,carol@example.com,client workshop on pricing,2026-04-07,Bluth Company,Finance,2.25
+9,carol@example.com,Documentation,2026-04-07,Hooli,Marketing,1.5
+11,dave@example.com,Code review,2026-04-07,Umbrella Health,Engineering,2.75
+13,erin@example.com,Drafted onboarding guide,2026-04-07,Aperture Labs,Finance,4.5
+14,erin@example.com,Meeting with client about requirements,2026-04-07,Vandelay Imports,Marketing,0.75
+16,erin@example.com,Developing bulk import for checkout flow,2026-04-07,Wonka Retail,Engineering,3.25
+18,frank@example.com,Developing analytics widgets for search,2026-04-07,Duff Beverages,Engineering,2.75
+20,grace@example.com,Built role-based access,2026-04-07,Stark Industries,Finance,8.5
+20,grace@example.com,Client workshop on requirements,2026-04-07,Stark Industries,Finance,1.75
+20,grace@example.com,Documentation,2026-04-07,Stark Industries,Finance,2.75
+21,grace@example.com,Team sync / standup,2026-04-07,Black Mesa,Finance,0.5
+21,grace@example.com,Feature development,2026-04-07,Black Mesa,Finance,6.0
+22,grace@example.com,Documentation for webhooks,2026-04-07,Globex,Marketing,3.0
+23,grace@example.com,Deployed release to QA,2026-04-07,Gringotts Bank,Operations,3.0
+24,heidi@example.com,Bug fix: login page error,2026-04-07,Soylent Foods,Finance,2.0
+24,heidi@example.com,implemented dark mode,2026-04-07,Soylent Foods,Finance,6.25
+1,alice@example.com,Call with stakeholders re campaign results,2026-04-08,Dunder Mifflin,Sales,1.5
+4,bob@example.com,Hotfix for reports API,2026-04-08,Nakatomi Trading,Finance,1.5
+6,bob@example.com,Bug fix: mobile layout error,2026-04-08,Pied Piper,Operations,2.25
+8,carol@example.com,daily standup,2026-04-08,Bluth Company,Finance,1.0
+8,carol@example.com,Updated release notes,2026-04-08,Bluth Company,Finance,3.5
+10,dave@example.com,Meeting with client about requirements,2026-04-08,Tyrell Logistics,Sales,3.0
+10,dave@example.com,Client meeting,2026-04-08,Tyrell Logistics,Sales,2.25
+13,erin@example.com,drafted api reference,2026-04-08,Aperture Labs,Finance,1.75
+15,erin@example.com,Drafted user manual,2026-04-08,Wayne Enterprises,Sales,1.25
+17,frank@example.com,Code review and feedback on dark mode,2026-04-08,Oscorp,Operations,1.0
+18,frank@example.com,Feature development,2026-04-08,Duff Beverages,Engineering,4.5
+19,frank@example.com,Meeting with client about campaign results,2026-04-08,Initech,Finance,2.75
+19,frank@example.com,Developing analytics widgets for search,2026-04-08,Initech,Finance,2.25
+19,frank@example.com,Developing role-based access for dashboard,2026-04-08,Initech,Finance,5.75
+20,grace@example.com,Client call: pricing,2026-04-08,Stark Industries,Finance,1.5
+20,grace@example.com,Meeting with client about Q3 roadmap,2026-04-08,Stark Industries,Finance,2.25
+20,grace@example.com,Call with stakeholders re renewal,2026-04-08,Stark Industries,Finance,0.5
+22,grace@example.com,client workshop on kickoff,2026-04-08,Globex,Marketing,1.25
+24,heidi@example.com,Documentation for audit logging,2026-04-08,Soylent Foods,Finance,2.75
+25,heidi@example.com,Feature development,2026-04-08,Dunder Mifflin,Engineering,2.75
+3,alice@example.com,Implemented role-based access,2026-04-09,Monarch Solutions,Engineering,5.75
+5,bob@example.com,Documentation for webhooks,2026-04-09,Cyberdyne,Finance,0.5
+7,carol@example.com,Drafted architecture doc,2026-04-09,Prestige Worldwide,Sales,3.0
+7,carol@example.com,Client meeting,2026-04-09,Prestige Worldwide,Sales,1.25
+8,carol@example.com,Updated user manual,2026-04-09,Bluth Company,Finance,2.25
+9,carol@example.com,Code review,2026-04-09,Hooli,Marketing,1.25
+11,dave@example.com,team standup,2026-04-09,Umbrella Health,Engineering,1.5
+16,erin@example.com,Hotfix for billing service,2026-04-09,Wonka Retail,Engineering,3.0
+20,grace@example.com,Documentation for SSO integration,2026-04-09,Stark Industries,Finance,2.25
+21,grace@example.com,Feature work: audit logging,2026-04-09,Black Mesa,Finance,6.25
+22,grace@example.com,Updated release notes,2026-04-09,Globex,Marketing,1.0
+25,heidi@example.com,Bug fix: billing service error,2026-04-09,Dunder Mifflin,Engineering,1.5
+1,alice@example.com,DOCUMENTATION FOR SSO INTEGRATION,2026-04-10,Dunder Mifflin,Sales,2.5
+2,alice@example.com,Call with stakeholders re pricing,2026-04-10,Massive Dynamic,Finance,1.75
+2,alice@example.com,Documentation,2026-04-10,Massive Dynamic,Finance,1.5
+3,alice@example.com,CODE REVIEW AND FEEDBACK ON DARK MODE,2026-04-10,Monarch Solutions,Engineering,0.5
+3,alice@example.com,,2026-04-10,Monarch Solutions,Engineering,1.75
+4,bob@example.com,Wrote API reference,2026-04-10,Nakatomi Trading,Finance,4.0
+7,carol@example.com,Client call: requirements,2026-04-10,Prestige Worldwide,Sales,1.5
+9,carol@example.com,Meeting with client about retrospective,2026-04-10,Hooli,Marketing,1.0
+10,dave@example.com,developing webhooks for user settings,2026-04-10,Tyrell Logistics,Sales,3.75
+12,dave@example.com,Client workshop on renewal,2026-04-10,Acme Corp,Marketing,1.0
+14,erin@example.com,Client meeting,2026-04-10,Vandelay Imports,Marketing,1.75
+20,grace@example.com,Drafted onboarding guide,2026-04-10,Stark Industries,Finance,3.0
+20,grace@example.com,Standup meeting,2026-04-10,Stark Industries,Finance,1.25
+22,grace@example.com,Client call: budget review,2026-04-10,Globex,Marketing,1.75
+23,grace@example.com,Call with stakeholders re pricing,2026-04-10,Gringotts Bank,Operations,3.0
+4,bob@example.com,DOCUMENTATION,2026-04-11,Nakatomi Trading,Finance,1.75
+8,carol@example.com,Meeting with client about kickoff,2026-04-11,Bluth Company,Finance,1.25
+10,dave@example.com,Documentation for analytics widgets,2026-04-11,Tyrell Logistics,Sales,1.75
+20,grace@example.com,Implemented analytics widgets,2026-04-11,Stark Industries,Finance,6.5
+6,bob@example.com,deployment,2026-04-12,Pied Piper,Operations,1.5
+9,carol@example.com,Morning standup with the team,2026-04-12,Hooli,Marketing,0.25
+13,erin@example.com,Updated API reference,2026-04-12,Aperture Labs,Finance,2.0
+21,grace@example.com,Deployed release to production,2026-04-12,Black Mesa,Finance,1.25
+4,bob@example.com,Meeting with client about Q3 roadmap,2026-04-13,Nakatomi Trading,Finance,2.5
+5,bob@example.com,Developing audit logging for notifications,2026-04-13,Cyberdyne,Finance,5.5
+6,bob@example.com,Deployment,2026-04-13,Pied Piper,Operations,2.0
+10,dave@example.com,Drafted runbook,2026-04-13,Tyrell Logistics,Sales,3.0
+11,dave@example.com,Code review,2026-04-13,Umbrella Health,Engineering,2.75
+11,dave@example.com,investigated and fixed issue in reports api,2026-04-13,Umbrella Health,Engineering,7.0
+13,erin@example.com,Meeting with client about retrospective,2026-04-13,Aperture Labs,Finance,2.5
+13,erin@example.com,Daily standup,2026-04-13,Aperture Labs,Finance,0.75
+16,erin@example.com,pr review: search,2026-04-13,Wonka Retail,Engineering,0.75
+16,erin@example.com,daily standup,2026-04-13,Wonka Retail,Engineering,0.75
+18,frank@example.com,Implemented SSO integration,2026-04-13,Duff Beverages,Engineering,4.25
+20,grace@example.com,Client call: budget review,2026-04-13,Stark Industries,Finance,0.5
+20,grace@example.com,documentation for role-based access,2026-04-13,Stark Industries,Finance,1.25
+22,grace@example.com,Client workshop on status update,2026-04-13,Globex,Marketing,0.5
+22,grace@example.com,Standup meeting,2026-04-13,Globex,Marketing,0.25
+24,heidi@example.com,wrote runbook,2026-04-13,Soylent Foods,Finance,3.25
+2,alice@example.com,call with stakeholders re pricing,2026-04-14,Massive Dynamic,Finance,2.0
+4,bob@example.com,Code review for PR #1506,2026-04-14,Nakatomi Trading,Finance,0.75
+5,bob@example.com,Documentation,2026-04-14,Cyberdyne,Finance,3.0
+5,bob@example.com,Client workshop on Q3 roadmap,2026-04-14,Cyberdyne,Finance,0.75
+8,carol@example.com,Standup meeting,2026-04-14,Bluth Company,Finance,0.75
+9,carol@example.com,Meeting with client about renewal,2026-04-14,Hooli,Marketing,0.5
+12,dave@example.com,Client workshop on Q3 roadmap,2026-04-14,Acme Corp,Marketing,2.0
+21,grace@example.com,Wrote architecture doc,2026-04-14,Black Mesa,Finance,1.25
+21,grace@example.com,Daily standup,2026-04-14,Black Mesa,Finance,1.0
+22,grace@example.com,Meeting with client about campaign results,2026-04-14,Globex,Marketing,2.0
+22,grace@example.com,updated release notes,2026-04-14,Globex,Marketing,3.75
+23,grace@example.com,Implemented audit logging,2026-04-14,Gringotts Bank,Operations,2.0
+25,heidi@example.com,CLIENT WORKSHOP ON STATUS UPDATE,2026-04-14,Dunder Mifflin,Engineering,2.5
+2,alice@example.com,Documentation,2026-04-15,Massive Dynamic,Finance,1.75
+3,alice@example.com,PR review: checkout flow,2026-04-15,Monarch Solutions,Engineering,0.5
+5,bob@example.com,Updated user manual,2026-04-15,Cyberdyne,Finance,2.75
+6,bob@example.com,,2026-04-15,Pied Piper,Operations,6.75
+8,carol@example.com,Fixed bug in login page,2026-04-15,Bluth Company,Finance,1.25
+9,carol@example.com,Investigated and fixed issue in export to CSV,2026-04-15,Hooli,Marketing,1.5
+9,carol@example.com,Updated release notes,2026-04-15,Hooli,Marketing,2.0
+10,dave@example.com,Client meeting,2026-04-15,Tyrell Logistics,Sales,1.5
+11,dave@example.com,Code review and feedback on SSO integration,2026-04-15,Umbrella Health,Engineering,3.0
+12,dave@example.com,Developing dark mode for checkout flow,2026-04-15,Acme Corp,Marketing,1.75
+18,frank@example.com,Investigated and fixed issue in export to CSV,2026-04-15,Duff Beverages,Engineering,3.25
+20,grace@example.com,Documentation,2026-04-15,Stark Industries,Finance,3.25
+20,grace@example.com,Deployed release to QA,2026-04-15,Stark Industries,Finance,3.5
+22,grace@example.com,Fixed bug in notifications,2026-04-15,Globex,Marketing,4.0
+2,alice@example.com,Deploy to the demo environment,2026-04-16,Massive Dynamic,Finance,1.25
+2,alice@example.com,Deployment,2026-04-16,Massive Dynamic,Finance,1.0
+3,alice@example.com,Bug fix: mobile layout error,2026-04-16,Monarch Solutions,Engineering,1.25
+3,alice@example.com,Developing SSO integration for checkout flow,2026-04-16,Monarch Solutions,Engineering,4.0
+4,bob@example.com,Documentation for webhooks,2026-04-16,Nakatomi Trading,Finance,1.5
+5,bob@example.com,Daily standup,2026-04-16,Cyberdyne,Finance,0.75
+9,carol@example.com,Wrote architecture doc,2026-04-16,Hooli,Marketing,1.5
+10,dave@example.com,Call with stakeholders re campaign results,2026-04-16,Tyrell Logistics,Sales,1.75
+13,erin@example.com,Standup meeting,2026-04-16,Aperture Labs,Finance,0.75
+14,erin@example.com,Client workshop on requirements,2026-04-16,Vandelay Imports,Marketing,2.0
+14,erin@example.com,Client meeting,2026-04-16,Vandelay Imports,Marketing,1.0
+15,erin@example.com,drafted runbook,2026-04-16,Wayne Enterprises,Sales,1.0
+16,erin@example.com,Investigated and fixed issue in user settings,2026-04-16,Wonka Retail,Engineering,1.5
+17,frank@example.com,Deployment,2026-04-16,Oscorp,Operations,3.0
+18,frank@example.com,Daily scrum,2026-04-16,Duff Beverages,Engineering,0.5
+19,frank@example.com,Meeting with client about renewal,2026-04-16,Initech,Finance,2.25
+19,frank@example.com,Team standup,2026-04-16,Initech,Finance,1.25
+21,grace@example.com,client call: campaign results,2026-04-16,Black Mesa,Finance,2.0
+21,grace@example.com,Team sync / standup,2026-04-16,Black Mesa,Finance,1.25
+23,grace@example.com,WROTE RELEASE NOTES,2026-04-16,Gringotts Bank,Operations,2.5
+1,alice@example.com,Client call: pricing,2026-04-17,Dunder Mifflin,Sales,1.0
+1,alice@example.com,Client meeting,2026-04-17,Dunder Mifflin,Sales,2.0
+2,alice@example.com,Feature development,2026-04-17,Massive Dynamic,Finance,4.75
+2,alice@example.com,Documentation for analytics widgets,2026-04-17,Massive Dynamic,Finance,2.0
+3,alice@example.com,Reviewed pull request #460,2026-04-17,Monarch Solutions,Engineering,0.75
+4,bob@example.com,drafted release notes,2026-04-17,Nakatomi Trading,Finance,3.0
+6,bob@example.com,Standup meeting,2026-04-17,Pied Piper,Operations,0.5
+6,bob@example.com,wrote architecture doc,2026-04-17,Pied Piper,Operations,2.75
+6,bob@example.com,Updated architecture doc,2026-04-17,Pied Piper,Operations,1.25
+6,bob@example.com,Deploy to the demo environment,2026-04-17,Pied Piper,Operations,2.75
+6,bob@example.com,Deployed release to staging,2026-04-17,Pied Piper,Operations,2.75
+8,carol@example.com,documentation for audit logging,2026-04-17,Bluth Company,Finance,2.75
+9,carol@example.com,Client meeting,2026-04-17,Hooli,Marketing,1.75
+9,carol@example.com,wrote runbook,2026-04-17,Hooli,Marketing,1.75
+14,erin@example.com,Client call: kickoff,2026-04-17,Vandelay Imports,Marketing,1.0
+15,erin@example.com,Client meeting,2026-04-17,Wayne Enterprises,Sales,0.75
+16,erin@example.com,Morning standup with the team,2026-04-17,Wonka Retail,Engineering,0.5
+20,grace@example.com,Wrote architecture doc,2026-04-17,Stark Industries,Finance,3.5
+21,grace@example.com,Code review for PR #415,2026-04-17,Black Mesa,Finance,0.75
+22,grace@example.com,Wrote runbook,2026-04-17,Globex,Marketing,2.5
+24,heidi@example.com,Wrote architecture doc,2026-04-17,Soylent Foods,Finance,2.0
+2,alice@example.com,Client meeting,2026-04-18,Massive Dynamic,Finance,1.0
+6,bob@example.com,PR review: search,2026-04-18,Pied Piper,Operations,1.25
+2,alice@example.com,Documentation,2026-04-19,Massive Dynamic,Finance,2.25
+16,erin@example.com,fixed bug in search,2026-04-19,Wonka Retail,Engineering,1.25
+19,frank@example.com,Wrote runbook,2026-04-19,Initech,Finance,1.75
+1,alice@example.com,daily standup,2026-04-20,Dunder Mifflin,Sales,1.0
+2,alice@example.com,Wrote runbook,2026-04-20,Massive Dynamic,Finance,2.25
+3,alice@example.com,Release deployment and smoke tests on QA,2026-04-20,Monarch Solutions,Engineering,1.0
+6,bob@example.com,Wrote onboarding guide,2026-04-20,Pied Piper,Operations,2.75
+10,dave@example.com,Documentation,2026-04-20,Tyrell Logistics,Sales,2.0
+11,dave@example.com,Feature development,2026-04-20,Umbrella Health,Engineering,2.75
+11,dave@example.com,feature development,2026-04-20,Umbrella Health,Engineering,12.0
+13,erin@example.com,Code review,2026-04-20,Aperture Labs,Finance,1.5
+13,erin@example.com,Documentation,2026-04-20,Aperture Labs,Finance,2.5
+13,erin@example.com,Team standup,2026-04-20,Aperture Labs,Finance,1.0
+13,erin@example.com,Daily standup,2026-04-20,Aperture Labs,Finance,0.75
+13,erin@example.com,Feature development,2026-04-20,Aperture Labs,Finance,6.5
+16,erin@example.com,Code review and feedback on audit logging,2026-04-20,Wonka Retail,Engineering,0.75
+19,frank@example.com,Documentation,2026-04-20,Initech,Finance,2.0
+21,grace@example.com,Client call: Q3 roadmap,2026-04-20,Black Mesa,Finance,2.0
+22,grace@example.com,Updated API reference,2026-04-20,Globex,Marketing,1.5
+3,alice@example.com,BUG FIX,2026-04-21,Monarch Solutions,Engineering,2.25
+4,bob@example.com,Feature work: dark mode,2026-04-21,Nakatomi Trading,Finance,2.0
+6,bob@example.com,Release deployment and smoke tests on staging,2026-04-21,Pied Piper,Operations,2.75
+7,carol@example.com,Call with stakeholders re onboarding,2026-04-21,Prestige Worldwide,Sales,0.75
+7,carol@example.com,Drafted runbook,2026-04-21,Prestige Worldwide,Sales,2.0
+8,carol@example.com,call with stakeholders re status update,2026-04-21,Bluth Company,Finance,1.0
+10,dave@example.com,Daily scrum,2026-04-21,Tyrell Logistics,Sales,0.5
+13,erin@example.com,Documentation for analytics widgets,2026-04-21,Aperture Labs,Finance,2.0
+13,erin@example.com,Feature work: dark mode,2026-04-21,Aperture Labs,Finance,7.25
+21,grace@example.com,Standup meeting,2026-04-21,Black Mesa,Finance,0.5
+22,grace@example.com,Client workshop on status update,2026-04-21,Globex,Marketing,0.25
+22,grace@example.com,Code review,2026-04-21,Globex,Marketing,0.75
+25,heidi@example.com,Documentation for SSO integration,2026-04-21,Dunder Mifflin,Engineering,2.75
+2,alice@example.com,Daily standup,2026-04-22,Massive Dynamic,Finance,0.5
+3,alice@example.com,Feature work: webhooks,2026-04-22,Monarch Solutions,Engineering,2.5
+6,bob@example.com,Release deployment and smoke tests on the demo environment,2026-04-22,Pied Piper,Operations,2.75
+8,carol@example.com,Team sync / standup,2026-04-22,Bluth Company,Finance,0.5
+17,frank@example.com,Deployment,2026-04-22,Oscorp,Operations,1.0
+20,grace@example.com,,2026-04-22,Stark Industries,Finance,6.5
+20,grace@example.com,PR review: export to CSV,2026-04-22,Stark Industries,Finance,1.5
+22,grace@example.com,Developing bulk import for search,2026-04-22,Globex,Marketing,6.5
+25,heidi@example.com,Daily standup,2026-04-22,Dunder Mifflin,Engineering,1.0
+3,alice@example.com,Team sync / standup,2026-04-23,Monarch Solutions,Engineering,0.5
+3,alice@example.com,PR review: checkout flow,2026-04-23,Monarch Solutions,Engineering,0.75
+3,alice@example.com,Fixed bug in billing service,2026-04-23,Monarch Solutions,Engineering,1.5
+4,bob@example.com,Updated architecture doc,2026-04-23,Nakatomi Trading,Finance,3.25
+4,bob@example.com,client call: retrospective,2026-04-23,Nakatomi Trading,Finance,1.75
+5,bob@example.com,Call with stakeholders re renewal,2026-04-23,Cyberdyne,Finance,2.5
+10,dave@example.com,Meeting with client about status update,2026-04-23,Tyrell Logistics,Sales,1.0
+13,erin@example.com,Implemented SSO integration,2026-04-23,Aperture Labs,Finance,3.25
+16,erin@example.com,Daily standup,2026-04-23,Wonka Retail,Engineering,0.5
+16,erin@example.com,Code review and feedback on invoice generation,2026-04-23,Wonka Retail,Engineering,1.0
+16,erin@example.com,Bug fix: login page error,2026-04-23,Wonka Retail,Engineering,1.25
+16,erin@example.com,Fixed bug in billing service,2026-04-23,Wonka Retail,Engineering,1.75
+21,grace@example.com,documentation for sso integration,2026-04-23,Black Mesa,Finance,2.0
+22,grace@example.com,Client call: campaign results,2026-04-23,Globex,Marketing,2.25
+2,alice@example.com,Documentation,2026-04-24,Massive Dynamic,Finance,2.0
+3,alice@example.com,Release deployment and smoke tests on the demo environment,2026-04-24,Monarch Solutions,Engineering,1.25
+4,bob@example.com,Daily scrum,2026-04-24,Nakatomi Trading,Finance,1.0
+5,bob@example.com,Wrote release notes,2026-04-24,Cyberdyne,Finance,2.0
+8,carol@example.com,client meeting,2026-04-24,Bluth Company,Finance,1.75
+9,carol@example.com,Daily standup,2026-04-24,Hooli,Marketing,1.0
+10,dave@example.com,wrote architecture doc,2026-04-24,Tyrell Logistics,Sales,2.0
+14,erin@example.com,Wrote architecture doc,2026-04-24,Vandelay Imports,Marketing,3.0
+16,erin@example.com,DOCUMENTATION FOR INVOICE GENERATION,2026-04-24,Wonka Retail,Engineering,1.25
+21,grace@example.com,Feature development,2026-04-24,Black Mesa,Finance,6.5
+25,heidi@example.com,Investigated and fixed issue in billing service,2026-04-24,Dunder Mifflin,Engineering,3.0
+2,alice@example.com,drafted user manual,2026-04-25,Massive Dynamic,Finance,1.0
+10,dave@example.com,Client meeting,2026-04-25,Tyrell Logistics,Sales,1.5
+10,dave@example.com,call with stakeholders re q3 roadmap,2026-04-26,Tyrell Logistics,Sales,1.25
+22,grace@example.com,Meeting with client about campaign results,2026-04-26,Globex,Marketing,1.0
+1,alice@example.com,Meeting with client about onboarding,2026-04-27,Dunder Mifflin,Sales,1.0
+4,bob@example.com,Meeting with client about requirements,2026-04-27,Nakatomi Trading,Finance,2.0
+4,bob@example.com,Client meeting,2026-04-27,Nakatomi Trading,Finance,1.5
+5,bob@example.com,Client workshop on campaign results,2026-04-27,Cyberdyne,Finance,1.25
+7,carol@example.com,Client call: onboarding,2026-04-27,Prestige Worldwide,Sales,2.0
+7,carol@example.com,Standup meeting,2026-04-27,Prestige Worldwide,Sales,0.75
+10,dave@example.com,Call with stakeholders re retrospective,2026-04-27,Tyrell Logistics,Sales,1.5
+11,dave@example.com,team sync / standup,2026-04-27,Umbrella Health,Engineering,1.75
+11,dave@example.com,Investigated and fixed issue in export to CSV,2026-04-27,Umbrella Health,Engineering,4.75
+13,erin@example.com,Client workshop on budget review,2026-04-27,Aperture Labs,Finance,3.25
+13,erin@example.com,Meeting with client about Q3 roadmap,2026-04-27,Aperture Labs,Finance,2.5
+20,grace@example.com,Client workshop on requirements,2026-04-27,Stark Industries,Finance,1.0
+20,grace@example.com,Daily standup,2026-04-27,Stark Industries,Finance,1.0
+21,grace@example.com,Client call: Q3 roadmap,2026-04-27,Black Mesa,Finance,2.5
+22,grace@example.com,,2026-04-27,Globex,Marketing,1.0
+23,grace@example.com,Bug fix,2026-04-27,Gringotts Bank,Operations,4.0
+24,heidi@example.com,Team standup,2026-04-27,Soylent Foods,Finance,1.25
+24,heidi@example.com,Meeting with client about status update,2026-04-27,Soylent Foods,Finance,2.5
+2,alice@example.com,Client meeting,2026-04-28,Massive Dynamic,Finance,1.25
+4,bob@example.com,Documentation,2026-04-28,Nakatomi Trading,Finance,2.0
+4,bob@example.com,Hotfix for dashboard,2026-04-28,Nakatomi Trading,Finance,2.0
+5,bob@example.com,Documentation,2026-04-28,Cyberdyne,Finance,1.0
+6,bob@example.com,Hotfix for checkout flow,2026-04-28,Pied Piper,Operations,3.0
+6,bob@example.com,Call with stakeholders re pricing,2026-04-28,Pied Piper,Operations,0.5
+7,carol@example.com,Client meeting,2026-04-28,Prestige Worldwide,Sales,1.5
+8,carol@example.com,Standup meeting,2026-04-28,Bluth Company,Finance,0.25
+8,carol@example.com,client meeting,2026-04-28,Bluth Company,Finance,1.75
+13,erin@example.com,Updated API reference,2026-04-28,Aperture Labs,Finance,3.25
+20,grace@example.com,Bug fix,2026-04-28,Stark Industries,Finance,1.75
+21,grace@example.com,client meeting,2026-04-28,Black Mesa,Finance,1.5
+22,grace@example.com,Client workshop on onboarding,2026-04-28,Globex,Marketing,1.75
+1,alice@example.com,Client call: campaign results,2026-04-29,Dunder Mifflin,Sales,2.0
+3,alice@example.com,Bug fix,2026-04-29,Monarch Solutions,Engineering,1.0
+4,bob@example.com,Fixed bug in dashboard,2026-04-29,Nakatomi Trading,Finance,2.0
+5,bob@example.com,Documentation for SSO integration,2026-04-29,Cyberdyne,Finance,1.0
+6,bob@example.com,Deploy to production,2026-04-29,Pied Piper,Operations,1.75
+8,carol@example.com,Implemented webhooks,2026-04-29,Bluth Company,Finance,5.25
+11,dave@example.com,Deploy to QA,2026-04-29,Umbrella Health,Engineering,3.5
+11,dave@example.com,Developing role-based access for billing service,2026-04-29,Umbrella Health,Engineering,7.25
+12,dave@example.com,Call with stakeholders re pricing,2026-04-29,Acme Corp,Marketing,0.75
+13,erin@example.com,Updated release notes,2026-04-29,Aperture Labs,Finance,1.75
+16,erin@example.com,Feature work: dark mode,2026-04-29,Wonka Retail,Engineering,3.0
+16,erin@example.com,Standup meeting,2026-04-29,Wonka Retail,Engineering,0.25
+20,grace@example.com,Investigated and fixed issue in notifications,2026-04-29,Stark Industries,Finance,5.0
+20,grace@example.com,Feature development,2026-04-29,Stark Industries,Finance,7.5
+21,grace@example.com,Morning standup with the team,2026-04-29,Black Mesa,Finance,0.75
+24,heidi@example.com,Hotfix for billing service,2026-04-29,Soylent Foods,Finance,3.25
+25,heidi@example.com,Feature work: audit logging,2026-04-29,Dunder Mifflin,Engineering,3.5
+4,bob@example.com,Client workshop on onboarding,2026-04-30,Nakatomi Trading,Finance,2.5
+4,bob@example.com,Documentation,2026-04-30,Nakatomi Trading,Finance,4.75
+5,bob@example.com,Documentation,2026-04-30,Cyberdyne,Finance,1.25
+6,bob@example.com,Documentation,2026-04-30,Pied Piper,Operations,2.0
+8,carol@example.com,Call with stakeholders re renewal,2026-04-30,Bluth Company,Finance,2.0
+8,carol@example.com,Fixed bug in dashboard,2026-04-30,Bluth Company,Finance,2.75
+9,carol@example.com,Documentation for invoice generation,2026-04-30,Hooli,Marketing,2.25
+12,dave@example.com,Client call: Q3 roadmap,2026-04-30,Acme Corp,Marketing,1.25
+14,erin@example.com,,2026-04-30,Vandelay Imports,Marketing,1.5
+16,erin@example.com,Standup meeting,2026-04-30,Wonka Retail,Engineering,0.25
+16,erin@example.com,pr review: billing service,2026-04-30,Wonka Retail,Engineering,1.0
+20,grace@example.com,Feature work: SSO integration,2026-04-30,Stark Industries,Finance,8.25
+21,grace@example.com,Client call: pricing,2026-04-30,Black Mesa,Finance,2.5
+22,grace@example.com,Reviewed pull request #1927,2026-04-30,Globex,Marketing,1.25
+22,grace@example.com,Documentation for dark mode,2026-04-30,Globex,Marketing,1.0
+25,heidi@example.com,Team sync / standup,2026-04-30,Dunder Mifflin,Engineering,1.0
+2,alice@example.com,Wrote runbook,2026-05-01,Massive Dynamic,Finance,2.0
+3,alice@example.com,Team sync / standup,2026-05-01,Monarch Solutions,Engineering,0.75
+4,bob@example.com,Daily standup,2026-05-01,Nakatomi Trading,Finance,0.25
+4,bob@example.com,implemented bulk import,2026-05-01,Nakatomi Trading,Finance,8.0
+4,bob@example.com,Drafted architecture doc,2026-05-01,Nakatomi Trading,Finance,1.25
+6,bob@example.com,Feature development,2026-05-01,Pied Piper,Operations,5.0
+9,carol@example.com,Drafted architecture doc,2026-05-01,Hooli,Marketing,1.5
+10,dave@example.com,Morning standup with the team,2026-05-01,Tyrell Logistics,Sales,0.75
+16,erin@example.com,Client call: Q3 roadmap,2026-05-01,Wonka Retail,Engineering,1.0
+20,grace@example.com,Client meeting,2026-05-01,Stark Industries,Finance,2.0
+20,grace@example.com,,2026-05-01,Stark Industries,Finance,1.5
+21,grace@example.com,Code review and feedback on bulk import,2026-05-01,Black Mesa,Finance,1.0
+24,heidi@example.com,,2026-05-01,Soylent Foods,Finance,3.25
+8,carol@example.com,Client meeting,2026-05-02,Bluth Company,Finance,1.75
+21,grace@example.com,Meeting with client about kickoff,2026-05-02,Black Mesa,Finance,0.5
+5,bob@example.com,Documentation,2026-05-03,Cyberdyne,Finance,1.75
+4,bob@example.com,Documentation,2026-05-04,Nakatomi Trading,Finance,1.5
+5,bob@example.com,Updated API reference,2026-05-04,Cyberdyne,Finance,2.75
+5,bob@example.com,Client meeting,2026-05-04,Cyberdyne,Finance,2.0
+7,carol@example.com,,2026-05-04,Prestige Worldwide,Sales,1.0
+8,carol@example.com,Wrote onboarding guide,2026-05-04,Bluth Company,Finance,3.5
+11,dave@example.com,Feature development,2026-05-04,Umbrella Health,Engineering,11.25
+16,erin@example.com,Team sync / standup,2026-05-04,Wonka Retail,Engineering,0.5
+16,erin@example.com,Code review and feedback on invoice generation,2026-05-04,Wonka Retail,Engineering,0.25
+20,grace@example.com,Client meeting,2026-05-04,Stark Industries,Finance,1.75
+2,alice@example.com,,2026-05-05,Massive Dynamic,Finance,2.75
+3,alice@example.com,morning standup with the team,2026-05-05,Monarch Solutions,Engineering,0.5
+4,bob@example.com,Morning standup with the team,2026-05-05,Nakatomi Trading,Finance,0.75
+4,bob@example.com,Daily scrum,2026-05-05,Nakatomi Trading,Finance,1.0
+4,bob@example.com,Drafted runbook,2026-05-05,Nakatomi Trading,Finance,1.5
+6,bob@example.com,PR review: user settings,2026-05-05,Pied Piper,Operations,1.0
+7,carol@example.com,Call with stakeholders re requirements,2026-05-05,Prestige Worldwide,Sales,1.75
+9,carol@example.com,Client call: renewal,2026-05-05,Hooli,Marketing,1.5
+9,carol@example.com,Client workshop on budget review,2026-05-05,Hooli,Marketing,1.5
+9,carol@example.com,Updated API reference,2026-05-05,Hooli,Marketing,2.0
+10,dave@example.com,Meeting with client about retrospective,2026-05-05,Tyrell Logistics,Sales,1.5
+10,dave@example.com,Morning standup with the team,2026-05-05,Tyrell Logistics,Sales,0.5
+10,dave@example.com,Client workshop on retrospective,2026-05-05,Tyrell Logistics,Sales,2.5
+11,dave@example.com,DEVELOPING BULK IMPORT FOR LOGIN PAGE,2026-05-05,Umbrella Health,Engineering,7.75
+12,dave@example.com,Documentation for SSO integration,2026-05-05,Acme Corp,Marketing,1.75
+12,dave@example.com,morning standup with the team,2026-05-05,Acme Corp,Marketing,0.5
+16,erin@example.com,Team standup,2026-05-05,Wonka Retail,Engineering,0.5
+21,grace@example.com,CODE REVIEW FOR PR #1282,2026-05-05,Black Mesa,Finance,2.75
+21,grace@example.com,Client call: renewal,2026-05-05,Black Mesa,Finance,1.25
+22,grace@example.com,Documentation,2026-05-05,Globex,Marketing,1.0
+22,grace@example.com,Drafted runbook,2026-05-05,Globex,Marketing,3.0
+24,heidi@example.com,Code review and feedback on analytics widgets,2026-05-05,Soylent Foods,Finance,1.0
+25,heidi@example.com,Team standup,2026-05-05,Dunder Mifflin,Engineering,1.0
+2,alice@example.com,Feature work: bulk import,2026-05-06,Massive Dynamic,Finance,5.75
+2,alice@example.com,feature development,2026-05-06,Massive Dynamic,Finance,5.0
+3,alice@example.com,Daily scrum,2026-05-06,Monarch Solutions,Engineering,0.75
+8,carol@example.com,Drafted release notes,2026-05-06,Bluth Company,Finance,2.25
+8,carol@example.com,Standup meeting,2026-05-06,Bluth Company,Finance,1.0
+8,carol@example.com,Wrote API reference,2026-05-06,Bluth Company,Finance,4.25
+9,carol@example.com,Hotfix for reports API,2026-05-06,Hooli,Marketing,1.0
+10,dave@example.com,Client workshop on status update,2026-05-06,Tyrell Logistics,Sales,2.75
+10,dave@example.com,Meeting with client about status update,2026-05-06,Tyrell Logistics,Sales,1.25
+12,dave@example.com,Documentation,2026-05-06,Acme Corp,Marketing,1.25
+13,erin@example.com,Documentation,2026-05-06,Aperture Labs,Finance,3.75
+14,erin@example.com,Client workshop on onboarding,2026-05-06,Vandelay Imports,Marketing,2.5
+19,frank@example.com,Client call: requirements,2026-05-06,Initech,Finance,1.25
+21,grace@example.com,DOCUMENTATION FOR SSO INTEGRATION,2026-05-06,Black Mesa,Finance,3.5
+4,bob@example.com,Team sync / standup,2026-05-07,Nakatomi Trading,Finance,0.75
+4,bob@example.com,Documentation,2026-05-07,Nakatomi Trading,Finance,1.5
+5,bob@example.com,Documentation for dark mode,2026-05-07,Cyberdyne,Finance,2.75
+5,bob@example.com,Documentation for bulk import,2026-05-07,Cyberdyne,Finance,2.25
+9,carol@example.com,Documentation for role-based access,2026-05-07,Hooli,Marketing,2.25
+10,dave@example.com,Daily scrum,2026-05-07,Tyrell Logistics,Sales,0.5
+10,dave@example.com,Feature development,2026-05-07,Tyrell Logistics,Sales,1.75
+10,dave@example.com,Client meeting,2026-05-07,Tyrell Logistics,Sales,1.75
+11,dave@example.com,Feature development,2026-05-07,Umbrella Health,Engineering,9.0
+13,erin@example.com,Team sync / standup,2026-05-07,Aperture Labs,Finance,1.25
+18,frank@example.com,Standup meeting,2026-05-07,Duff Beverages,Engineering,0.25
+19,frank@example.com,Drafted runbook,2026-05-07,Initech,Finance,3.75
+21,grace@example.com,Team standup,2026-05-07,Black Mesa,Finance,1.25
+24,heidi@example.com,Meeting with client about budget review,2026-05-07,Soylent Foods,Finance,1.25
+1,alice@example.com,Call with stakeholders re pricing,2026-05-08,Dunder Mifflin,Sales,0.5
+2,alice@example.com,Team standup,2026-05-08,Massive Dynamic,Finance,0.25
+5,bob@example.com,Documentation,2026-05-08,Cyberdyne,Finance,1.0
+5,bob@example.com,Documentation for audit logging,2026-05-08,Cyberdyne,Finance,3.5
+6,bob@example.com,release deployment and smoke tests on production,2026-05-08,Pied Piper,Operations,1.5
+6,bob@example.com,Deployment,2026-05-08,Pied Piper,Operations,2.5
+8,carol@example.com,Meeting with client about Q3 roadmap,2026-05-08,Bluth Company,Finance,1.0
+8,carol@example.com,fixed bug in login page,2026-05-08,Bluth Company,Finance,2.5
+14,erin@example.com,Feature development,2026-05-08,Vandelay Imports,Marketing,2.0
+14,erin@example.com,Client call: Q3 roadmap,2026-05-08,Vandelay Imports,Marketing,2.0
+17,frank@example.com,Deployment,2026-05-08,Oscorp,Operations,0.25
+20,grace@example.com,Documentation for dark mode,2026-05-08,Stark Industries,Finance,2.5
+21,grace@example.com,Developing invoice generation for user settings,2026-05-08,Black Mesa,Finance,3.0
+21,grace@example.com,Documentation,2026-05-08,Black Mesa,Finance,2.0
+4,bob@example.com,Daily scrum,2026-05-09,Nakatomi Trading,Finance,0.5
+8,carol@example.com,Meeting with client about requirements,2026-05-10,Bluth Company,Finance,1.25
+6,bob@example.com,PR review: notifications,2026-05-11,Pied Piper,Operations,1.5
+6,bob@example.com,Fixed bug in billing service,2026-05-11,Pied Piper,Operations,2.0
+8,carol@example.com,daily scrum,2026-05-11,Bluth Company,Finance,1.0
+11,dave@example.com,Release deployment and smoke tests on QA,2026-05-11,Umbrella Health,Engineering,2.75
+11,dave@example.com,Investigated and fixed issue in notifications,2026-05-11,Umbrella Health,Engineering,3.25
+12,dave@example.com,DRAFTED USER MANUAL,2026-05-11,Acme Corp,Marketing,0.5
+13,erin@example.com,Wrote onboarding guide,2026-05-11,Aperture Labs,Finance,3.5
+16,erin@example.com,Daily standup,2026-05-11,Wonka Retail,Engineering,0.5
+19,frank@example.com,Client meeting,2026-05-11,Initech,Finance,1.25
+20,grace@example.com,Team sync / standup,2026-05-11,Stark Industries,Finance,0.5
+20,grace@example.com,Call with stakeholders re onboarding,2026-05-11,Stark Industries,Finance,1.75
+21,grace@example.com,Documentation,2026-05-11,Black Mesa,Finance,2.5
+22,grace@example.com,Wrote architecture doc,2026-05-11,Globex,Marketing,3.5
+25,heidi@example.com,PR review: export to CSV,2026-05-11,Dunder Mifflin,Engineering,2.25
+25,heidi@example.com,,2026-05-11,Dunder Mifflin,Engineering,2.25
+4,bob@example.com,Hotfix for billing service,2026-05-12,Nakatomi Trading,Finance,1.0
+4,bob@example.com,Drafted release notes,2026-05-12,Nakatomi Trading,Finance,3.75
+4,bob@example.com,,2026-05-12,Nakatomi Trading,Finance,3.0
+5,bob@example.com,daily scrum,2026-05-12,Cyberdyne,Finance,0.75
+6,bob@example.com,Documentation,2026-05-12,Pied Piper,Operations,1.25
+6,bob@example.com,Team standup,2026-05-12,Pied Piper,Operations,0.75
+8,carol@example.com,Client call: budget review,2026-05-12,Bluth Company,Finance,2.0
+10,dave@example.com,Client meeting,2026-05-12,Tyrell Logistics,Sales,1.75
+14,erin@example.com,Daily standup,2026-05-12,Vandelay Imports,Marketing,0.75
+19,frank@example.com,Feature work: role-based access,2026-05-12,Initech,Finance,4.25
+20,grace@example.com,Daily scrum,2026-05-12,Stark Industries,Finance,0.5
+20,grace@example.com,Client call: campaign results,2026-05-12,Stark Industries,Finance,2.0
+21,grace@example.com,Documentation for webhooks,2026-05-12,Black Mesa,Finance,2.25
+25,heidi@example.com,Meeting with client about kickoff,2026-05-12,Dunder Mifflin,Engineering,2.25
+3,alice@example.com,Deployed release to staging,2026-05-13,Monarch Solutions,Engineering,2.0
+5,bob@example.com,,2026-05-13,Cyberdyne,Finance,1.75
+6,bob@example.com,Daily scrum,2026-05-13,Pied Piper,Operations,0.75
+8,carol@example.com,updated architecture doc,2026-05-13,Bluth Company,Finance,2.75
+8,carol@example.com,Client workshop on campaign results,2026-05-13,Bluth Company,Finance,2.25
+9,carol@example.com,Client workshop on renewal,2026-05-13,Hooli,Marketing,1.5
+10,dave@example.com,Call with stakeholders re retrospective,2026-05-13,Tyrell Logistics,Sales,2.0
+13,erin@example.com,Client meeting,2026-05-13,Aperture Labs,Finance,3.25
+20,grace@example.com,Documentation,2026-05-13,Stark Industries,Finance,2.5
+20,grace@example.com,Team standup,2026-05-13,Stark Industries,Finance,0.5
+22,grace@example.com,Client call: pricing,2026-05-13,Globex,Marketing,1.0
+4,bob@example.com,Documentation for SSO integration,2026-05-14,Nakatomi Trading,Finance,3.0
+9,carol@example.com,Morning standup with the team,2026-05-14,Hooli,Marketing,0.5
+10,dave@example.com,Hotfix for search,2026-05-14,Tyrell Logistics,Sales,2.25
+10,dave@example.com,Team standup,2026-05-14,Tyrell Logistics,Sales,0.75
+14,erin@example.com,Client meeting,2026-05-14,Vandelay Imports,Marketing,1.0
+16,erin@example.com,code review,2026-05-14,Wonka Retail,Engineering,0.75
+20,grace@example.com,Team standup,2026-05-14,Stark Industries,Finance,1.0
+22,grace@example.com,Call with stakeholders re kickoff,2026-05-14,Globex,Marketing,2.0
+22,grace@example.com,Daily scrum,2026-05-14,Globex,Marketing,1.0
+22,grace@example.com,Morning standup with the team,2026-05-14,Globex,Marketing,1.0
+24,heidi@example.com,Code review and feedback on role-based access,2026-05-14,Soylent Foods,Finance,1.5
+24,heidi@example.com,meeting with client about q3 roadmap,2026-05-14,Soylent Foods,Finance,2.25
+2,alice@example.com,Team standup,2026-05-15,Massive Dynamic,Finance,0.75
+2,alice@example.com,Daily standup,2026-05-15,Massive Dynamic,Finance,0.5
+2,alice@example.com,Documentation for audit logging,2026-05-15,Massive Dynamic,Finance,1.0
+3,alice@example.com,REVIEWED PULL REQUEST #1616,2026-05-15,Monarch Solutions,Engineering,1.0
+4,bob@example.com,,2026-05-15,Nakatomi Trading,Finance,0.5
+4,bob@example.com,Client workshop on requirements,2026-05-15,Nakatomi Trading,Finance,2.0
+6,bob@example.com,Deployed release to production,2026-05-15,Pied Piper,Operations,1.75
+6,bob@example.com,Team standup,2026-05-15,Pied Piper,Operations,1.0
+6,bob@example.com,Updated architecture doc,2026-05-15,Pied Piper,Operations,2.5
+6,bob@example.com,Client workshop on onboarding,2026-05-15,Pied Piper,Operations,3.0
+8,carol@example.com,Team sync / standup,2026-05-15,Bluth Company,Finance,0.25
+9,carol@example.com,Wrote architecture doc,2026-05-15,Hooli,Marketing,2.0
+11,dave@example.com,Investigated and fixed issue in user settings,2026-05-15,Umbrella Health,Engineering,3.25
+16,erin@example.com,updated user manual,2026-05-15,Wonka Retail,Engineering,1.5
+19,frank@example.com,Investigated and fixed issue in billing service,2026-05-15,Initech,Finance,2.25
+20,grace@example.com,Bug fix: billing service error,2026-05-15,Stark Industries,Finance,2.25
+21,grace@example.com,,2026-05-15,Black Mesa,Finance,3.0
+21,grace@example.com,Standup meeting,2026-05-15,Black Mesa,Finance,1.0
+21,grace@example.com,PR review: search,2026-05-15,Black Mesa,Finance,1.0
+22,grace@example.com,WROTE API REFERENCE,2026-05-15,Globex,Marketing,3.25
+25,heidi@example.com,Daily standup,2026-05-15,Dunder Mifflin,Engineering,0.75
+25,heidi@example.com,Investigated and fixed issue in export to CSV,2026-05-15,Dunder Mifflin,Engineering,2.5
+2,alice@example.com,Implemented invoice generation,2026-05-16,Massive Dynamic,Finance,4.25
+7,carol@example.com,Meeting with client about onboarding,2026-05-16,Prestige Worldwide,Sales,1.25
+1,alice@example.com,Updated release notes,2026-05-18,Dunder Mifflin,Sales,2.75
+2,alice@example.com,Deployment,2026-05-18,Massive Dynamic,Finance,2.25
+3,alice@example.com,Feature development,2026-05-18,Monarch Solutions,Engineering,4.25
+5,bob@example.com,Client meeting,2026-05-18,Cyberdyne,Finance,1.75
+5,bob@example.com,Code review and feedback on analytics widgets,2026-05-18,Cyberdyne,Finance,0.75
+9,carol@example.com,Client workshop on kickoff,2026-05-18,Hooli,Marketing,1.0
+10,dave@example.com,Client meeting,2026-05-18,Tyrell Logistics,Sales,1.5
+11,dave@example.com,Feature development,2026-05-18,Umbrella Health,Engineering,10.25
+11,dave@example.com,Implemented analytics widgets,2026-05-18,Umbrella Health,Engineering,0.25
+12,dave@example.com,Call with stakeholders re pricing,2026-05-18,Acme Corp,Marketing,1.25
+19,frank@example.com,Daily scrum,2026-05-18,Initech,Finance,1.0
+19,frank@example.com,Code review,2026-05-18,Initech,Finance,0.75
+19,frank@example.com,Developing SSO integration for search,2026-05-18,Initech,Finance,7.5
+20,grace@example.com,Documentation,2026-05-18,Stark Industries,Finance,2.25
+21,grace@example.com,daily standup,2026-05-18,Black Mesa,Finance,0.75
+21,grace@example.com,Developing analytics widgets for user settings,2026-05-18,Black Mesa,Finance,3.5
+21,grace@example.com,Client meeting,2026-05-18,Black Mesa,Finance,1.5
+21,grace@example.com,TEAM SYNC / STANDUP,2026-05-18,Black Mesa,Finance,1.25
+22,grace@example.com,Call with stakeholders re status update,2026-05-18,Globex,Marketing,2.5
+24,heidi@example.com,Team standup,2026-05-18,Soylent Foods,Finance,1.0
+2,alice@example.com,Call with stakeholders re renewal,2026-05-19,Massive Dynamic,Finance,1.75
+2,alice@example.com,Team standup,2026-05-19,Massive Dynamic,Finance,0.75
+3,alice@example.com,Morning standup with the team,2026-05-19,Monarch Solutions,Engineering,0.25
+4,bob@example.com,PR review: search,2026-05-19,Nakatomi Trading,Finance,1.0
+6,bob@example.com,,2026-05-19,Pied Piper,Operations,2.25
+10,dave@example.com,wrote onboarding guide,2026-05-19,Tyrell Logistics,Sales,2.5
+11,dave@example.com,Fixed bug in export to CSV,2026-05-19,Umbrella Health,Engineering,2.5
+13,erin@example.com,PR review: export to CSV,2026-05-19,Aperture Labs,Finance,1.5
+14,erin@example.com,Wrote runbook,2026-05-19,Vandelay Imports,Marketing,2.5
+19,frank@example.com,Documentation,2026-05-19,Initech,Finance,3.25
+19,frank@example.com,Client workshop on retrospective,2026-05-19,Initech,Finance,2.25
+19,frank@example.com,Feature work: webhooks,2026-05-19,Initech,Finance,5.75
+21,grace@example.com,DOCUMENTATION FOR ANALYTICS WIDGETS,2026-05-19,Black Mesa,Finance,2.25
+22,grace@example.com,Code review,2026-05-19,Globex,Marketing,1.5
+23,grace@example.com,Built invoice generation,2026-05-19,Gringotts Bank,Operations,4.75
+1,alice@example.com,Client call: pricing,2026-05-20,Dunder Mifflin,Sales,2.0
+2,alice@example.com,Drafted release notes,2026-05-20,Massive Dynamic,Finance,2.25
+2,alice@example.com,Updated onboarding guide,2026-05-20,Massive Dynamic,Finance,0.75
+3,alice@example.com,Fixed bug in reports API,2026-05-20,Monarch Solutions,Engineering,1.75
+4,bob@example.com,Call with stakeholders re retrospective,2026-05-20,Nakatomi Trading,Finance,1.0
+6,bob@example.com,Hotfix for mobile layout,2026-05-20,Pied Piper,Operations,1.5
+6,bob@example.com,Documentation for audit logging,2026-05-20,Pied Piper,Operations,6.75
+8,carol@example.com,Team standup,2026-05-20,Bluth Company,Finance,0.5
+8,carol@example.com,Client call: campaign results,2026-05-20,Bluth Company,Finance,2.5
+11,dave@example.com,PR review: login page,2026-05-20,Umbrella Health,Engineering,1.25
+13,erin@example.com,Feature work: dark mode,2026-05-20,Aperture Labs,Finance,2.75
+14,erin@example.com,Feature development,2026-05-20,Vandelay Imports,Marketing,4.75
+16,erin@example.com,Implemented analytics widgets,2026-05-20,Wonka Retail,Engineering,6.75
+20,grace@example.com,Updated API reference,2026-05-20,Stark Industries,Finance,0.25
+21,grace@example.com,Daily standup,2026-05-20,Black Mesa,Finance,1.0
+25,heidi@example.com,,2026-05-20,Dunder Mifflin,Engineering,1.5
+2,alice@example.com,Client workshop on Q3 roadmap,2026-05-21,Massive Dynamic,Finance,1.5
+8,carol@example.com,Drafted runbook,2026-05-21,Bluth Company,Finance,2.25
+8,carol@example.com,Drafted user manual,2026-05-21,Bluth Company,Finance,1.5
+10,dave@example.com,Morning standup with the team,2026-05-21,Tyrell Logistics,Sales,1.0
+10,dave@example.com,Client meeting,2026-05-21,Tyrell Logistics,Sales,1.5
+11,dave@example.com,Production deployment,2026-05-21,Umbrella Health,Engineering,6.25
+11,dave@example.com,Daily standup,2026-05-21,Umbrella Health,Engineering,1.75
+11,dave@example.com,Code review and feedback on dark mode,2026-05-21,Umbrella Health,Engineering,3.5
+16,erin@example.com,Deployed release to QA,2026-05-21,Wonka Retail,Engineering,2.0
+16,erin@example.com,Daily scrum,2026-05-21,Wonka Retail,Engineering,0.25
+19,frank@example.com,Call with stakeholders re budget review,2026-05-21,Initech,Finance,3.0
+19,frank@example.com,Call with stakeholders re status update,2026-05-21,Initech,Finance,2.25
+20,grace@example.com,release deployment and smoke tests on qa,2026-05-21,Stark Industries,Finance,1.0
+21,grace@example.com,client call: onboarding,2026-05-21,Black Mesa,Finance,1.75
+21,grace@example.com,Daily standup,2026-05-21,Black Mesa,Finance,1.0
+22,grace@example.com,Feature development,2026-05-21,Globex,Marketing,1.75
+25,heidi@example.com,Bug fix,2026-05-21,Dunder Mifflin,Engineering,2.0
+2,alice@example.com,Developing invoice generation for checkout flow,2026-05-22,Massive Dynamic,Finance,3.75
+2,alice@example.com,Call with stakeholders re pricing,2026-05-22,Massive Dynamic,Finance,0.75
+4,bob@example.com,meeting with client about status update,2026-05-22,Nakatomi Trading,Finance,1.5
+7,carol@example.com,Client workshop on status update,2026-05-22,Prestige Worldwide,Sales,0.25
+8,carol@example.com,Production deployment,2026-05-22,Bluth Company,Finance,2.5
+9,carol@example.com,Team sync / standup,2026-05-22,Hooli,Marketing,1.0
+10,dave@example.com,Client workshop on status update,2026-05-22,Tyrell Logistics,Sales,2.0
+10,dave@example.com,Daily standup,2026-05-22,Tyrell Logistics,Sales,0.75
+13,erin@example.com,Drafted runbook,2026-05-22,Aperture Labs,Finance,1.5
+13,erin@example.com,Drafted onboarding guide,2026-05-22,Aperture Labs,Finance,3.5
+15,erin@example.com,Client meeting,2026-05-22,Wayne Enterprises,Sales,1.25
+16,erin@example.com,Feature work: invoice generation,2026-05-22,Wonka Retail,Engineering,1.5
+18,frank@example.com,Feature work: audit logging,2026-05-22,Duff Beverages,Engineering,2.5
+19,frank@example.com,Client meeting,2026-05-22,Initech,Finance,2.25
+21,grace@example.com,Meeting with client about Q3 roadmap,2026-05-22,Black Mesa,Finance,1.25
+22,grace@example.com,Implemented bulk import,2026-05-22,Globex,Marketing,6.25
+5,bob@example.com,Team standup,2026-05-24,Cyberdyne,Finance,0.75
+14,erin@example.com,STANDUP MEETING,2026-05-24,Vandelay Imports,Marketing,0.25
+1,alice@example.com,Client meeting,2026-05-25,Dunder Mifflin,Sales,2.0
+2,alice@example.com,Team standup,2026-05-25,Massive Dynamic,Finance,0.5
+3,alice@example.com,Standup meeting,2026-05-25,Monarch Solutions,Engineering,0.25
+4,bob@example.com,Call with stakeholders re Q3 roadmap,2026-05-25,Nakatomi Trading,Finance,1.0
+6,bob@example.com,Developing analytics widgets for dashboard,2026-05-25,Pied Piper,Operations,6.5
+6,bob@example.com,Code review,2026-05-25,Pied Piper,Operations,2.0
+10,dave@example.com,Call with stakeholders re onboarding,2026-05-25,Tyrell Logistics,Sales,1.25
+16,erin@example.com,Deployed release to production,2026-05-25,Wonka Retail,Engineering,1.0
+19,frank@example.com,Meeting with client about campaign results,2026-05-25,Initech,Finance,1.0
+20,grace@example.com,Client meeting,2026-05-25,Stark Industries,Finance,2.75
+20,grace@example.com,Documentation for analytics widgets,2026-05-25,Stark Industries,Finance,3.5
+21,grace@example.com,wrote runbook,2026-05-25,Black Mesa,Finance,2.0
+22,grace@example.com,Updated architecture doc,2026-05-25,Globex,Marketing,1.25
+25,heidi@example.com,Investigated and fixed issue in search,2026-05-25,Dunder Mifflin,Engineering,2.5
+2,alice@example.com,Documentation,2026-05-26,Massive Dynamic,Finance,1.75
+2,alice@example.com,Updated release notes,2026-05-26,Massive Dynamic,Finance,2.25
+3,alice@example.com,DOCUMENTATION,2026-05-26,Monarch Solutions,Engineering,1.5
+4,bob@example.com,Drafted runbook,2026-05-26,Nakatomi Trading,Finance,2.5
+5,bob@example.com,Client meeting,2026-05-26,Cyberdyne,Finance,2.25
+5,bob@example.com,Drafted runbook,2026-05-26,Cyberdyne,Finance,2.25
+5,bob@example.com,Hotfix for user settings,2026-05-26,Cyberdyne,Finance,2.0
+8,carol@example.com,Standup meeting,2026-05-26,Bluth Company,Finance,1.0
+10,dave@example.com,Call with stakeholders re Q3 roadmap,2026-05-26,Tyrell Logistics,Sales,2.0
+13,erin@example.com,PR REVIEW: NOTIFICATIONS,2026-05-26,Aperture Labs,Finance,1.5
+21,grace@example.com,Documentation for analytics widgets,2026-05-26,Black Mesa,Finance,3.0
+3,alice@example.com,Code review for PR #294,2026-05-27,Monarch Solutions,Engineering,1.0
+4,bob@example.com,,2026-05-27,Nakatomi Trading,Finance,1.75
+6,bob@example.com,Release deployment and smoke tests on production,2026-05-27,Pied Piper,Operations,2.25
+8,carol@example.com,Documentation for audit logging,2026-05-27,Bluth Company,Finance,3.25
+10,dave@example.com,Wrote architecture doc,2026-05-27,Tyrell Logistics,Sales,1.0
+10,dave@example.com,Built SSO integration,2026-05-27,Tyrell Logistics,Sales,5.0
+11,dave@example.com,implemented dark mode,2026-05-27,Umbrella Health,Engineering,8.75
+13,erin@example.com,Standup meeting,2026-05-27,Aperture Labs,Finance,0.75
+16,erin@example.com,Code review,2026-05-27,Wonka Retail,Engineering,0.25
+18,frank@example.com,Morning standup with the team,2026-05-27,Duff Beverages,Engineering,0.5
+19,frank@example.com,Fixed bug in checkout flow,2026-05-27,Initech,Finance,4.25
+20,grace@example.com,Meeting with client about requirements,2026-05-27,Stark Industries,Finance,1.5
+20,grace@example.com,Updated release notes,2026-05-27,Stark Industries,Finance,2.5
+21,grace@example.com,Documentation,2026-05-27,Black Mesa,Finance,5.0
+1,alice@example.com,Call with stakeholders re requirements,2026-05-28,Dunder Mifflin,Sales,2.25
+4,bob@example.com,Drafted architecture doc,2026-05-28,Nakatomi Trading,Finance,1.75
+8,carol@example.com,Feature development,2026-05-28,Bluth Company,Finance,4.5
+10,dave@example.com,Daily standup,2026-05-28,Tyrell Logistics,Sales,0.75
+13,erin@example.com,Documentation for bulk import,2026-05-28,Aperture Labs,Finance,1.75
+14,erin@example.com,Morning standup with the team,2026-05-28,Vandelay Imports,Marketing,0.5
+16,erin@example.com,Hotfix for reports API,2026-05-28,Wonka Retail,Engineering,2.25
+16,erin@example.com,Team sync / standup,2026-05-28,Wonka Retail,Engineering,0.5
+19,frank@example.com,Documentation for webhooks,2026-05-28,Initech,Finance,3.0
+19,frank@example.com,Updated API reference,2026-05-28,Initech,Finance,1.75
+20,grace@example.com,Meeting with client about status update,2026-05-28,Stark Industries,Finance,1.75
+23,grace@example.com,investigated and fixed issue in user settings,2026-05-28,Gringotts Bank,Operations,4.75
+23,grace@example.com,morning standup with the team,2026-05-28,Gringotts Bank,Operations,0.75
+24,heidi@example.com,Release deployment and smoke tests on production,2026-05-28,Soylent Foods,Finance,2.0
+1,alice@example.com,Team sync / standup,2026-05-29,Dunder Mifflin,Sales,0.5
+2,alice@example.com,Bug fix,2026-05-29,Massive Dynamic,Finance,2.25
+2,alice@example.com,Drafted release notes,2026-05-29,Massive Dynamic,Finance,3.0
+3,alice@example.com,Daily standup,2026-05-29,Monarch Solutions,Engineering,0.75
+4,bob@example.com,Drafted release notes,2026-05-29,Nakatomi Trading,Finance,3.0
+4,bob@example.com,Team standup,2026-05-29,Nakatomi Trading,Finance,1.0
+6,bob@example.com,bug fix,2026-05-29,Pied Piper,Operations,1.75
+7,carol@example.com,Updated architecture doc,2026-05-29,Prestige Worldwide,Sales,2.0
+10,dave@example.com,Client call: pricing,2026-05-29,Tyrell Logistics,Sales,2.0
+11,dave@example.com,Hotfix for mobile layout,2026-05-29,Umbrella Health,Engineering,5.25
+17,frank@example.com,Release deployment and smoke tests on production,2026-05-29,Oscorp,Operations,2.5
+18,frank@example.com,release deployment and smoke tests on staging,2026-05-29,Duff Beverages,Engineering,0.75
+20,grace@example.com,Documentation,2026-05-29,Stark Industries,Finance,1.75
+20,grace@example.com,,2026-05-29,Stark Industries,Finance,1.5
+21,grace@example.com,Wrote API reference,2026-05-29,Black Mesa,Finance,1.75
+21,grace@example.com,deployment,2026-05-29,Black Mesa,Finance,2.5
+22,grace@example.com,Call with stakeholders re requirements,2026-05-29,Globex,Marketing,1.0
+23,grace@example.com,,2026-05-29,Gringotts Bank,Operations,5.75
+24,heidi@example.com,Updated user manual,2026-05-29,Soylent Foods,Finance,3.0
+25,heidi@example.com,Code review for PR #792,2026-05-29,Dunder Mifflin,Engineering,0.25
+2,alice@example.com,Call with stakeholders re kickoff,2026-05-30,Massive Dynamic,Finance,1.0
+4,bob@example.com,Documentation for audit logging,2026-05-30,Nakatomi Trading,Finance,1.5
+7,carol@example.com,Client meeting,2026-05-30,Prestige Worldwide,Sales,0.75
+11,dave@example.com,Deployed release to the demo environment,2026-05-30,Umbrella Health,Engineering,2.5
+14,erin@example.com,Feature work: audit logging,2026-05-30,Vandelay Imports,Marketing,2.5
+19,frank@example.com,Drafted architecture doc,2026-05-30,Initech,Finance,1.5
+5,bob@example.com,daily standup,2026-05-31,Cyberdyne,Finance,0.5
+7,carol@example.com,,2026-05-31,Prestige Worldwide,Sales,1.0
+10,dave@example.com,Client workshop on campaign results,2026-05-31,Tyrell Logistics,Sales,1.25
+16,erin@example.com,Bug fix: export to CSV error,2026-05-31,Wonka Retail,Engineering,1.25
+2,alice@example.com,Investigated and fixed issue in billing service,2026-06-01,Massive Dynamic,Finance,2.0
+2,alice@example.com,Documentation for invoice generation,2026-06-01,Massive Dynamic,Finance,3.0
+2,alice@example.com,Hotfix for reports API,2026-06-01,Massive Dynamic,Finance,1.25
+3,alice@example.com,,2026-06-01,Monarch Solutions,Engineering,3.75
+3,alice@example.com,Hotfix for billing service,2026-06-01,Monarch Solutions,Engineering,1.75
+3,alice@example.com,Hotfix for user settings,2026-06-01,Monarch Solutions,Engineering,4.0
+4,bob@example.com,Meeting with client about pricing,2026-06-01,Nakatomi Trading,Finance,1.0
+8,carol@example.com,Meeting with client about status update,2026-06-01,Bluth Company,Finance,2.5
+10,dave@example.com,Client call: retrospective,2026-06-01,Tyrell Logistics,Sales,1.25
+11,dave@example.com,Bug fix,2026-06-01,Umbrella Health,Engineering,4.75
+20,grace@example.com,,2026-06-01,Stark Industries,Finance,6.25
+21,grace@example.com,Release deployment and smoke tests on staging,2026-06-01,Black Mesa,Finance,3.0
+2,alice@example.com,Team sync / standup,2026-06-02,Massive Dynamic,Finance,0.25
+2,alice@example.com,Documentation for SSO integration,2026-06-02,Massive Dynamic,Finance,2.0
+2,alice@example.com,Client call: campaign results,2026-06-02,Massive Dynamic,Finance,2.75
+3,alice@example.com,Daily standup,2026-06-02,Monarch Solutions,Engineering,0.75
+4,bob@example.com,Deployed release to QA,2026-06-02,Nakatomi Trading,Finance,1.25
+6,bob@example.com,Production deployment,2026-06-02,Pied Piper,Operations,2.75
+7,carol@example.com,documentation,2026-06-02,Prestige Worldwide,Sales,1.25
+8,carol@example.com,Meeting with client about Q3 roadmap,2026-06-02,Bluth Company,Finance,1.25
+8,carol@example.com,Documentation,2026-06-02,Bluth Company,Finance,1.75
+10,dave@example.com,Client call: renewal,2026-06-02,Tyrell Logistics,Sales,1.75
+11,dave@example.com,Documentation for analytics widgets,2026-06-02,Umbrella Health,Engineering,6.75
+11,dave@example.com,Hotfix for dashboard,2026-06-02,Umbrella Health,Engineering,4.25
+12,dave@example.com,Implemented role-based access,2026-06-02,Acme Corp,Marketing,3.5
+13,erin@example.com,Updated runbook,2026-06-02,Aperture Labs,Finance,2.25
+13,erin@example.com,Investigated and fixed issue in export to CSV,2026-06-02,Aperture Labs,Finance,4.75
+14,erin@example.com,Drafted architecture doc,2026-06-02,Vandelay Imports,Marketing,1.75
+20,grace@example.com,CLIENT CALL: RETROSPECTIVE,2026-06-02,Stark Industries,Finance,3.0
+21,grace@example.com,Daily standup,2026-06-02,Black Mesa,Finance,1.25
+3,alice@example.com,Code review,2026-06-03,Monarch Solutions,Engineering,0.75
+6,bob@example.com,Code review,2026-06-03,Pied Piper,Operations,1.5
+7,carol@example.com,Drafted user manual,2026-06-03,Prestige Worldwide,Sales,2.0
+8,carol@example.com,Daily scrum,2026-06-03,Bluth Company,Finance,0.75
+9,carol@example.com,Team standup,2026-06-03,Hooli,Marketing,0.75
+10,dave@example.com,Deploy to QA,2026-06-03,Tyrell Logistics,Sales,1.25
+11,dave@example.com,Fixed bug in dashboard,2026-06-03,Umbrella Health,Engineering,5.0
+11,dave@example.com,Release deployment and smoke tests on production,2026-06-03,Umbrella Health,Engineering,3.75
+12,dave@example.com,Code review,2026-06-03,Acme Corp,Marketing,0.75
+13,erin@example.com,Wrote user manual,2026-06-03,Aperture Labs,Finance,1.5
+14,erin@example.com,Documentation,2026-06-03,Vandelay Imports,Marketing,1.75
+19,frank@example.com,Drafted onboarding guide,2026-06-03,Initech,Finance,2.25
+21,grace@example.com,Updated onboarding guide,2026-06-03,Black Mesa,Finance,1.75
+1,alice@example.com,Updated user manual,2026-06-04,Dunder Mifflin,Sales,2.0
+2,alice@example.com,meeting with client about status update,2026-06-04,Massive Dynamic,Finance,1.25
+2,alice@example.com,Standup meeting,2026-06-04,Massive Dynamic,Finance,0.75
+4,bob@example.com,Built dark mode,2026-06-04,Nakatomi Trading,Finance,4.5
+4,bob@example.com,Developing SSO integration for export to CSV,2026-06-04,Nakatomi Trading,Finance,1.75
+4,bob@example.com,Team standup,2026-06-04,Nakatomi Trading,Finance,1.0
+7,carol@example.com,Client workshop on kickoff,2026-06-04,Prestige Worldwide,Sales,1.0
+7,carol@example.com,Client meeting,2026-06-04,Prestige Worldwide,Sales,1.5
+8,carol@example.com,Client meeting,2026-06-04,Bluth Company,Finance,2.0
+10,dave@example.com,Client meeting,2026-06-04,Tyrell Logistics,Sales,0.75
+10,dave@example.com,Standup meeting,2026-06-04,Tyrell Logistics,Sales,1.0
+10,dave@example.com,CLIENT CALL: Q3 ROADMAP,2026-06-04,Tyrell Logistics,Sales,1.25
+11,dave@example.com,Deployed release to the demo environment,2026-06-04,Umbrella Health,Engineering,4.75
+14,erin@example.com,Client call: kickoff,2026-06-04,Vandelay Imports,Marketing,1.75
+18,frank@example.com,Morning standup with the team,2026-06-04,Duff Beverages,Engineering,0.25
+19,frank@example.com,Feature work: invoice generation,2026-06-04,Initech,Finance,3.5
+21,grace@example.com,Standup meeting,2026-06-04,Black Mesa,Finance,1.0
+21,grace@example.com,Client workshop on pricing,2026-06-04,Black Mesa,Finance,2.0
+2,alice@example.com,Deployment,2026-06-05,Massive Dynamic,Finance,2.0
+4,bob@example.com,Client call: Q3 roadmap,2026-06-05,Nakatomi Trading,Finance,3.0
+4,bob@example.com,Standup meeting,2026-06-05,Nakatomi Trading,Finance,1.0
+7,carol@example.com,Morning standup with the team,2026-06-05,Prestige Worldwide,Sales,0.75
+8,carol@example.com,Investigated and fixed issue in checkout flow,2026-06-05,Bluth Company,Finance,2.25
+11,dave@example.com,Code review for PR #1088,2026-06-05,Umbrella Health,Engineering,2.0
+13,erin@example.com,team standup,2026-06-05,Aperture Labs,Finance,0.5
+13,erin@example.com,Wrote onboarding guide,2026-06-05,Aperture Labs,Finance,4.25
+1,alice@example.com,Meeting with client about requirements,2026-06-06,Dunder Mifflin,Sales,1.0
+4,bob@example.com,Updated API reference,2026-06-07,Nakatomi Trading,Finance,2.0
+8,carol@example.com,Drafted onboarding guide,2026-06-07,Bluth Company,Finance,2.75
+11,dave@example.com,Feature development,2026-06-07,Umbrella Health,Engineering,5.75
+24,heidi@example.com,Code review for PR #329,2026-06-07,Soylent Foods,Finance,1.25
+1,alice@example.com,Meeting with client about renewal,2026-06-08,Dunder Mifflin,Sales,1.75
+4,bob@example.com,Call with stakeholders re renewal,2026-06-08,Nakatomi Trading,Finance,2.0
+6,bob@example.com,Release deployment and smoke tests on staging,2026-06-08,Pied Piper,Operations,1.5
+6,bob@example.com,updated release notes,2026-06-08,Pied Piper,Operations,2.5
+7,carol@example.com,Call with stakeholders re status update,2026-06-08,Prestige Worldwide,Sales,1.0
+7,carol@example.com,Morning standup with the team,2026-06-08,Prestige Worldwide,Sales,0.75
+9,carol@example.com,Daily standup,2026-06-08,Hooli,Marketing,0.5
+14,erin@example.com,Release deployment and smoke tests on the demo environment,2026-06-08,Vandelay Imports,Marketing,1.0
+14,erin@example.com,Drafted architecture doc,2026-06-08,Vandelay Imports,Marketing,2.25
+15,erin@example.com,Bug fix,2026-06-08,Wayne Enterprises,Sales,2.0
+18,frank@example.com,deployed release to staging,2026-06-08,Duff Beverages,Engineering,1.25
+2,alice@example.com,Documentation,2026-06-09,Massive Dynamic,Finance,0.75
+2,alice@example.com,Client meeting,2026-06-09,Massive Dynamic,Finance,2.0
+2,alice@example.com,Client meeting,2026-06-09,Massive Dynamic,Finance,1.25
+4,bob@example.com,Team sync / standup,2026-06-09,Nakatomi Trading,Finance,0.5
+4,bob@example.com,Client call: kickoff,2026-06-09,Nakatomi Trading,Finance,2.0
+5,bob@example.com,Client meeting,2026-06-09,Cyberdyne,Finance,1.25
+8,carol@example.com,daily standup,2026-06-09,Bluth Company,Finance,0.75
+9,carol@example.com,Daily standup,2026-06-09,Hooli,Marketing,0.5
+10,dave@example.com,Client call: renewal,2026-06-09,Tyrell Logistics,Sales,0.5
+10,dave@example.com,,2026-06-09,Tyrell Logistics,Sales,0.75
+14,erin@example.com,,2026-06-09,Vandelay Imports,Marketing,1.0
+16,erin@example.com,Morning standup with the team,2026-06-09,Wonka Retail,Engineering,0.75
+19,frank@example.com,Updated architecture doc,2026-06-09,Initech,Finance,3.5
+21,grace@example.com,morning standup with the team,2026-06-09,Black Mesa,Finance,0.25
+24,heidi@example.com,Call with stakeholders re campaign results,2026-06-09,Soylent Foods,Finance,1.0
+24,heidi@example.com,Daily standup,2026-06-09,Soylent Foods,Finance,1.25
+4,bob@example.com,Wrote release notes,2026-06-10,Nakatomi Trading,Finance,3.25
+5,bob@example.com,,2026-06-10,Cyberdyne,Finance,0.25
+5,bob@example.com,Morning standup with the team,2026-06-10,Cyberdyne,Finance,1.0
+6,bob@example.com,Call with stakeholders re Q3 roadmap,2026-06-10,Pied Piper,Operations,3.5
+8,carol@example.com,Client meeting,2026-06-10,Bluth Company,Finance,2.0
+9,carol@example.com,Meeting with client about status update,2026-06-10,Hooli,Marketing,1.75
+10,dave@example.com,Team standup,2026-06-10,Tyrell Logistics,Sales,1.0
+11,dave@example.com,Team standup,2026-06-10,Umbrella Health,Engineering,0.5
+13,erin@example.com,Hotfix for search,2026-06-10,Aperture Labs,Finance,2.75
+13,erin@example.com,Deploy to the demo environment,2026-06-10,Aperture Labs,Finance,1.5
+14,erin@example.com,Documentation,2026-06-10,Vandelay Imports,Marketing,1.5
+2,alice@example.com,Meeting with client about requirements,2026-06-11,Massive Dynamic,Finance,1.5
+3,alice@example.com,Code review and feedback on webhooks,2026-06-11,Monarch Solutions,Engineering,0.5
+3,alice@example.com,bug fix: billing service error,2026-06-11,Monarch Solutions,Engineering,1.25
+4,bob@example.com,Team standup,2026-06-11,Nakatomi Trading,Finance,1.0
+5,bob@example.com,Feature development,2026-06-11,Cyberdyne,Finance,3.75
+6,bob@example.com,Daily scrum,2026-06-11,Pied Piper,Operations,0.5
+8,carol@example.com,Bug fix,2026-06-11,Bluth Company,Finance,3.5
+8,carol@example.com,Drafted user manual,2026-06-11,Bluth Company,Finance,1.5
+10,dave@example.com,Daily standup,2026-06-11,Tyrell Logistics,Sales,1.0
+12,dave@example.com,Feature work: invoice generation,2026-06-11,Acme Corp,Marketing,2.5
+14,erin@example.com,,2026-06-11,Vandelay Imports,Marketing,0.75
+16,erin@example.com,implemented bulk import,2026-06-11,Wonka Retail,Engineering,2.25
+16,erin@example.com,Built dark mode,2026-06-11,Wonka Retail,Engineering,2.5
+16,erin@example.com,Implemented analytics widgets,2026-06-11,Wonka Retail,Engineering,1.75
+19,frank@example.com,updated onboarding guide,2026-06-11,Initech,Finance,4.0
+20,grace@example.com,PR review: search,2026-06-11,Stark Industries,Finance,2.0
+20,grace@example.com,client workshop on budget review,2026-06-11,Stark Industries,Finance,1.5
+20,grace@example.com,Wrote architecture doc,2026-06-11,Stark Industries,Finance,1.0
+21,grace@example.com,Drafted release notes,2026-06-11,Black Mesa,Finance,1.5
+21,grace@example.com,Documentation for webhooks,2026-06-11,Black Mesa,Finance,2.25
+1,alice@example.com,Daily scrum,2026-06-12,Dunder Mifflin,Sales,0.5
+6,bob@example.com,Morning standup with the team,2026-06-12,Pied Piper,Operations,0.75
+7,carol@example.com,Client meeting,2026-06-12,Prestige Worldwide,Sales,0.75
+8,carol@example.com,,2026-06-12,Bluth Company,Finance,4.5
+8,carol@example.com,Investigated and fixed issue in search,2026-06-12,Bluth Company,Finance,2.0
+8,carol@example.com,Drafted API reference,2026-06-12,Bluth Company,Finance,3.5
+15,erin@example.com,Call with stakeholders re budget review,2026-06-12,Wayne Enterprises,Sales,1.75
+21,grace@example.com,Daily scrum,2026-06-12,Black Mesa,Finance,1.25
+25,heidi@example.com,Fixed bug in export to CSV,2026-06-12,Dunder Mifflin,Engineering,2.25
+14,erin@example.com,Built invoice generation,2026-06-13,Vandelay Imports,Marketing,2.5
+8,carol@example.com,Team standup,2026-06-15,Bluth Company,Finance,0.5
+8,carol@example.com,CLIENT CALL: Q3 ROADMAP,2026-06-15,Bluth Company,Finance,0.75
+11,dave@example.com,Reviewed pull request #1144,2026-06-15,Umbrella Health,Engineering,2.75
+11,dave@example.com,Implemented analytics widgets,2026-06-15,Umbrella Health,Engineering,0.5
+15,erin@example.com,Client meeting,2026-06-15,Wayne Enterprises,Sales,0.75
+20,grace@example.com,client call: onboarding,2026-06-15,Stark Industries,Finance,2.5
+21,grace@example.com,Meeting with client about renewal,2026-06-15,Black Mesa,Finance,2.25
+24,heidi@example.com,Client meeting,2026-06-15,Soylent Foods,Finance,2.5
+2,alice@example.com,Documentation for dark mode,2026-06-16,Massive Dynamic,Finance,2.0
+2,alice@example.com,Daily standup,2026-06-16,Massive Dynamic,Finance,0.75
+3,alice@example.com,Feature development,2026-06-16,Monarch Solutions,Engineering,4.5
+6,bob@example.com,Feature work: webhooks,2026-06-16,Pied Piper,Operations,3.25
+6,bob@example.com,Drafted onboarding guide,2026-06-16,Pied Piper,Operations,4.0
+10,dave@example.com,Call with stakeholders re requirements,2026-06-16,Tyrell Logistics,Sales,2.0
+10,dave@example.com,Meeting with client about status update,2026-06-16,Tyrell Logistics,Sales,2.0
+13,erin@example.com,production deployment,2026-06-16,Aperture Labs,Finance,1.5
+13,erin@example.com,Client call: campaign results,2026-06-16,Aperture Labs,Finance,2.0
+16,erin@example.com,Code review and feedback on SSO integration,2026-06-16,Wonka Retail,Engineering,1.0
+16,erin@example.com,Bug fix: checkout flow error,2026-06-16,Wonka Retail,Engineering,2.25
+16,erin@example.com,Implemented analytics widgets,2026-06-16,Wonka Retail,Engineering,4.25
+16,erin@example.com,Developing invoice generation for mobile layout,2026-06-16,Wonka Retail,Engineering,2.25
+18,frank@example.com,,2026-06-16,Duff Beverages,Engineering,3.5
+19,frank@example.com,Hotfix for user settings,2026-06-16,Initech,Finance,3.75
+21,grace@example.com,Standup meeting,2026-06-16,Black Mesa,Finance,0.5
+21,grace@example.com,Team standup,2026-06-16,Black Mesa,Finance,1.0
+21,grace@example.com,Updated runbook,2026-06-16,Black Mesa,Finance,3.25
+2,alice@example.com,Wrote user manual,2026-06-17,Massive Dynamic,Finance,2.5
+2,alice@example.com,Feature work: invoice generation,2026-06-17,Massive Dynamic,Finance,2.0
+2,alice@example.com,Documentation,2026-06-17,Massive Dynamic,Finance,3.0
+6,bob@example.com,Daily scrum,2026-06-17,Pied Piper,Operations,1.0
+8,carol@example.com,Morning standup with the team,2026-06-17,Bluth Company,Finance,0.25
+9,carol@example.com,Wrote architecture doc,2026-06-17,Hooli,Marketing,2.75
+10,dave@example.com,Morning standup with the team,2026-06-17,Tyrell Logistics,Sales,1.0
+11,dave@example.com,Standup meeting,2026-06-17,Umbrella Health,Engineering,1.0
+11,dave@example.com,Code review for PR #236,2026-06-17,Umbrella Health,Engineering,2.75
+15,erin@example.com,Standup meeting,2026-06-17,Wayne Enterprises,Sales,0.5
+16,erin@example.com,Built audit logging,2026-06-17,Wonka Retail,Engineering,4.25
+19,frank@example.com,Documentation for role-based access,2026-06-17,Initech,Finance,3.5
+20,grace@example.com,Documentation,2026-06-17,Stark Industries,Finance,2.75
+21,grace@example.com,Release deployment and smoke tests on the demo environment,2026-06-17,Black Mesa,Finance,2.75
+24,heidi@example.com,,2026-06-17,Soylent Foods,Finance,5.0
+25,heidi@example.com,Code review,2026-06-17,Dunder Mifflin,Engineering,1.25
+3,alice@example.com,Bug fix,2026-06-18,Monarch Solutions,Engineering,1.25
+3,alice@example.com,,2026-06-18,Monarch Solutions,Engineering,2.75
+4,bob@example.com,Meeting with client about renewal,2026-06-18,Nakatomi Trading,Finance,1.75
+5,bob@example.com,,2026-06-18,Cyberdyne,Finance,4.25
+10,dave@example.com,Client meeting,2026-06-18,Tyrell Logistics,Sales,0.75
+10,dave@example.com,Client workshop on Q3 roadmap,2026-06-18,Tyrell Logistics,Sales,1.25
+11,dave@example.com,Feature work: dark mode,2026-06-18,Umbrella Health,Engineering,10.0
+11,dave@example.com,Built analytics widgets,2026-06-18,Umbrella Health,Engineering,8.5
+13,erin@example.com,Wrote architecture doc,2026-06-18,Aperture Labs,Finance,2.5
+13,erin@example.com,Release deployment and smoke tests on the demo environment,2026-06-18,Aperture Labs,Finance,2.25
+13,erin@example.com,Documentation,2026-06-18,Aperture Labs,Finance,1.25
+15,erin@example.com,team standup,2026-06-18,Wayne Enterprises,Sales,0.5
+18,frank@example.com,Hotfix for notifications,2026-06-18,Duff Beverages,Engineering,1.0
+19,frank@example.com,Feature development,2026-06-18,Initech,Finance,7.0
+20,grace@example.com,,2026-06-18,Stark Industries,Finance,0.25
+20,grace@example.com,Built bulk import,2026-06-18,Stark Industries,Finance,8.75
+21,grace@example.com,Team standup,2026-06-18,Black Mesa,Finance,1.0
+24,heidi@example.com,Daily scrum,2026-06-18,Soylent Foods,Finance,1.0
+2,alice@example.com,Built bulk import,2026-06-19,Massive Dynamic,Finance,2.5
+5,bob@example.com,Client call: renewal,2026-06-19,Cyberdyne,Finance,1.75
+6,bob@example.com,,2026-06-19,Pied Piper,Operations,1.0
+6,bob@example.com,Code review for PR #1743,2026-06-19,Pied Piper,Operations,1.25
+8,carol@example.com,Daily standup,2026-06-19,Bluth Company,Finance,0.75
+8,carol@example.com,,2026-06-19,Bluth Company,Finance,3.0
+11,dave@example.com,hotfix for user settings,2026-06-19,Umbrella Health,Engineering,4.25
+13,erin@example.com,Client meeting,2026-06-19,Aperture Labs,Finance,2.0
+14,erin@example.com,Client meeting,2026-06-19,Vandelay Imports,Marketing,1.0
+19,frank@example.com,Updated runbook,2026-06-19,Initech,Finance,3.25
+20,grace@example.com,Bug fix: mobile layout error,2026-06-19,Stark Industries,Finance,2.75
+21,grace@example.com,Morning standup with the team,2026-06-19,Black Mesa,Finance,0.5
+21,grace@example.com,Daily standup,2026-06-19,Black Mesa,Finance,1.0
+22,grace@example.com,Client call: status update,2026-06-19,Globex,Marketing,1.25
+22,grace@example.com,Meeting with client about budget review,2026-06-19,Globex,Marketing,2.0
+6,bob@example.com,Team standup,2026-06-20,Pied Piper,Operations,0.75
+9,carol@example.com,code review and feedback on bulk import,2026-06-20,Hooli,Marketing,0.75
+14,erin@example.com,Meeting with client about budget review,2026-06-20,Vandelay Imports,Marketing,1.0
+16,erin@example.com,bug fix: billing service error,2026-06-20,Wonka Retail,Engineering,1.5
+3,alice@example.com,Code review and feedback on dark mode,2026-06-22,Monarch Solutions,Engineering,0.75
+5,bob@example.com,Standup meeting,2026-06-22,Cyberdyne,Finance,0.75
+5,bob@example.com,Documentation,2026-06-22,Cyberdyne,Finance,2.5
+8,carol@example.com,Daily standup,2026-06-22,Bluth Company,Finance,1.0
+9,carol@example.com,Client call: Q3 roadmap,2026-06-22,Hooli,Marketing,2.0
+9,carol@example.com,Wrote runbook,2026-06-22,Hooli,Marketing,3.75
+13,erin@example.com,Drafted user manual,2026-06-22,Aperture Labs,Finance,1.75
+14,erin@example.com,Client workshop on campaign results,2026-06-22,Vandelay Imports,Marketing,1.75
+16,erin@example.com,documentation,2026-06-22,Wonka Retail,Engineering,1.75
+20,grace@example.com,Client call: onboarding,2026-06-22,Stark Industries,Finance,2.25
+20,grace@example.com,Production deployment,2026-06-22,Stark Industries,Finance,1.25
+21,grace@example.com,Team sync / standup,2026-06-22,Black Mesa,Finance,0.75
+21,grace@example.com,,2026-06-22,Black Mesa,Finance,1.0
+25,heidi@example.com,fixed bug in export to csv,2026-06-22,Dunder Mifflin,Engineering,1.5
+1,alice@example.com,Documentation for bulk import,2026-06-23,Dunder Mifflin,Sales,2.5
+1,alice@example.com,Client workshop on retrospective,2026-06-23,Dunder Mifflin,Sales,1.5
+4,bob@example.com,Daily scrum,2026-06-23,Nakatomi Trading,Finance,0.5
+5,bob@example.com,Morning standup with the team,2026-06-23,Cyberdyne,Finance,1.0
+8,carol@example.com,Updated runbook,2026-06-23,Bluth Company,Finance,2.0
+11,dave@example.com,Implemented analytics widgets,2026-06-23,Umbrella Health,Engineering,9.0
+11,dave@example.com,Team standup,2026-06-23,Umbrella Health,Engineering,2.0
+13,erin@example.com,Code review,2026-06-23,Aperture Labs,Finance,1.0
+13,erin@example.com,Documentation for bulk import,2026-06-23,Aperture Labs,Finance,3.25
+15,erin@example.com,Client workshop on retrospective,2026-06-23,Wayne Enterprises,Sales,1.0
+19,frank@example.com,Meeting with client about Q3 roadmap,2026-06-23,Initech,Finance,2.25
+19,frank@example.com,Hotfix for search,2026-06-23,Initech,Finance,2.25
+21,grace@example.com,Wrote runbook,2026-06-23,Black Mesa,Finance,2.5
+22,grace@example.com,Production deployment,2026-06-23,Globex,Marketing,2.0
+25,heidi@example.com,Production deployment,2026-06-23,Dunder Mifflin,Engineering,2.25
+25,heidi@example.com,Team standup,2026-06-23,Dunder Mifflin,Engineering,0.5
+2,alice@example.com,Morning standup with the team,2026-06-24,Massive Dynamic,Finance,1.0
+5,bob@example.com,Morning standup with the team,2026-06-24,Cyberdyne,Finance,0.5
+7,carol@example.com,Call with stakeholders re renewal,2026-06-24,Prestige Worldwide,Sales,1.0
+8,carol@example.com,Client workshop on onboarding,2026-06-24,Bluth Company,Finance,2.0
+8,carol@example.com,client call: q3 roadmap,2026-06-24,Bluth Company,Finance,0.75
+13,erin@example.com,Client call: budget review,2026-06-24,Aperture Labs,Finance,3.0
+13,erin@example.com,updated api reference,2026-06-24,Aperture Labs,Finance,3.0
+16,erin@example.com,Hotfix for search,2026-06-24,Wonka Retail,Engineering,2.75
+16,erin@example.com,Morning standup with the team,2026-06-24,Wonka Retail,Engineering,0.25
+19,frank@example.com,Updated user manual,2026-06-24,Initech,Finance,2.75
+19,frank@example.com,Daily standup,2026-06-24,Initech,Finance,0.75
+4,bob@example.com,Documentation for role-based access,2026-06-25,Nakatomi Trading,Finance,2.75
+5,bob@example.com,Documentation for invoice generation,2026-06-25,Cyberdyne,Finance,2.0
+6,bob@example.com,Drafted user manual,2026-06-25,Pied Piper,Operations,3.25
+8,carol@example.com,Team standup,2026-06-25,Bluth Company,Finance,0.5
+9,carol@example.com,Client call: requirements,2026-06-25,Hooli,Marketing,2.25
+11,dave@example.com,,2026-06-25,Umbrella Health,Engineering,7.75
+12,dave@example.com,Call with stakeholders re onboarding,2026-06-25,Acme Corp,Marketing,1.5
+13,erin@example.com,Implemented analytics widgets,2026-06-25,Aperture Labs,Finance,2.5
+13,erin@example.com,Call with stakeholders re retrospective,2026-06-25,Aperture Labs,Finance,1.5
+13,erin@example.com,Documentation for analytics widgets,2026-06-25,Aperture Labs,Finance,1.0
+16,erin@example.com,Implemented SSO integration,2026-06-25,Wonka Retail,Engineering,3.25
+16,erin@example.com,PR review: user settings,2026-06-25,Wonka Retail,Engineering,1.0
+20,grace@example.com,Feature work: bulk import,2026-06-25,Stark Industries,Finance,8.0
+22,grace@example.com,updated onboarding guide,2026-06-25,Globex,Marketing,1.5
+22,grace@example.com,Client meeting,2026-06-25,Globex,Marketing,1.25
+3,alice@example.com,Built dark mode,2026-06-26,Monarch Solutions,Engineering,2.75
+4,bob@example.com,Investigated and fixed issue in reports API,2026-06-26,Nakatomi Trading,Finance,2.0
+10,dave@example.com,Drafted onboarding guide,2026-06-26,Tyrell Logistics,Sales,1.75
+10,dave@example.com,,2026-06-26,Tyrell Logistics,Sales,0.5
+13,erin@example.com,Fixed bug in dashboard,2026-06-26,Aperture Labs,Finance,1.25
+18,frank@example.com,Bug fix,2026-06-26,Duff Beverages,Engineering,1.5
+20,grace@example.com,Client call: onboarding,2026-06-26,Stark Industries,Finance,2.25
+23,grace@example.com,Hotfix for dashboard,2026-06-26,Gringotts Bank,Operations,1.75
+25,heidi@example.com,Daily standup,2026-06-26,Dunder Mifflin,Engineering,1.0
+6,bob@example.com,Call with stakeholders re budget review,2026-06-27,Pied Piper,Operations,0.5
+10,dave@example.com,meeting with client about retrospective,2026-06-27,Tyrell Logistics,Sales,1.0
+12,dave@example.com,Built bulk import,2026-06-27,Acme Corp,Marketing,3.5
+25,heidi@example.com,Implemented SSO integration,2026-06-27,Dunder Mifflin,Engineering,4.25
+6,bob@example.com,Morning standup with the team,2026-06-28,Pied Piper,Operations,0.25
+1,alice@example.com,Team standup,2026-06-29,Dunder Mifflin,Sales,0.75
+1,alice@example.com,Client meeting,2026-06-29,Dunder Mifflin,Sales,2.0
+2,alice@example.com,Bug fix,2026-06-29,Massive Dynamic,Finance,1.0
+5,bob@example.com,Daily scrum,2026-06-29,Cyberdyne,Finance,0.25
+6,bob@example.com,Daily standup,2026-06-29,Pied Piper,Operations,0.5
+6,bob@example.com,Documentation for SSO integration,2026-06-29,Pied Piper,Operations,2.25
+8,carol@example.com,Call with stakeholders re requirements,2026-06-29,Bluth Company,Finance,1.75
+11,dave@example.com,Feature work: invoice generation,2026-06-29,Umbrella Health,Engineering,12.0
+13,erin@example.com,Daily scrum,2026-06-29,Aperture Labs,Finance,0.75
+14,erin@example.com,Updated user manual,2026-06-29,Vandelay Imports,Marketing,1.0
+19,frank@example.com,Daily scrum,2026-06-29,Initech,Finance,0.75
+20,grace@example.com,Documentation,2026-06-29,Stark Industries,Finance,4.75
+2,alice@example.com,FIXED BUG IN MOBILE LAYOUT,2026-06-30,Massive Dynamic,Finance,3.5
+2,alice@example.com,Production deployment,2026-06-30,Massive Dynamic,Finance,0.25
+7,carol@example.com,Team sync / standup,2026-06-30,Prestige Worldwide,Sales,0.75
+7,carol@example.com,Client meeting,2026-06-30,Prestige Worldwide,Sales,1.0
+7,carol@example.com,Client workshop on Q3 roadmap,2026-06-30,Prestige Worldwide,Sales,1.75
+8,carol@example.com,Documentation for webhooks,2026-06-30,Bluth Company,Finance,3.0
+11,dave@example.com,Daily scrum,2026-06-30,Umbrella Health,Engineering,0.75
+11,dave@example.com,Team sync / standup,2026-06-30,Umbrella Health,Engineering,1.0
+16,erin@example.com,Code review and feedback on role-based access,2026-06-30,Wonka Retail,Engineering,0.25
+18,frank@example.com,Code review,2026-06-30,Duff Beverages,Engineering,1.0
+18,frank@example.com,FEATURE DEVELOPMENT,2026-06-30,Duff Beverages,Engineering,2.5
+21,grace@example.com,Updated onboarding guide,2026-06-30,Black Mesa,Finance,2.75
+24,heidi@example.com,Built analytics widgets,2026-06-30,Soylent Foods,Finance,3.75
+4,bob@example.com,Drafted API reference,2026-07-01,Nakatomi Trading,Finance,1.25
+4,bob@example.com,Client workshop on pricing,2026-07-01,Nakatomi Trading,Finance,2.25
+6,bob@example.com,Meeting with client about requirements,2026-07-01,Pied Piper,Operations,1.5
+6,bob@example.com,Deployment,2026-07-01,Pied Piper,Operations,2.25
+6,bob@example.com,Daily scrum,2026-07-01,Pied Piper,Operations,1.0
+8,carol@example.com,client meeting,2026-07-01,Bluth Company,Finance,1.25
+10,dave@example.com,Team sync / standup,2026-07-01,Tyrell Logistics,Sales,0.5
+11,dave@example.com,Morning standup with the team,2026-07-01,Umbrella Health,Engineering,1.5
+13,erin@example.com,Morning standup with the team,2026-07-01,Aperture Labs,Finance,1.0
+13,erin@example.com,Wrote release notes,2026-07-01,Aperture Labs,Finance,3.5
+16,erin@example.com,Bug fix: mobile layout error,2026-07-01,Wonka Retail,Engineering,1.0
+17,frank@example.com,Morning standup with the team,2026-07-01,Oscorp,Operations,0.75
+18,frank@example.com,Documentation for invoice generation,2026-07-01,Duff Beverages,Engineering,0.25
+18,frank@example.com,Reviewed pull request #495,2026-07-01,Duff Beverages,Engineering,0.75
+20,grace@example.com,Bug fix,2026-07-01,Stark Industries,Finance,4.75
+20,grace@example.com,Drafted onboarding guide,2026-07-01,Stark Industries,Finance,3.75
+20,grace@example.com,Call with stakeholders re renewal,2026-07-01,Stark Industries,Finance,2.25
+22,grace@example.com,deployment,2026-07-01,Globex,Marketing,2.75
+24,heidi@example.com,Meeting with client about onboarding,2026-07-01,Soylent Foods,Finance,2.25
+25,heidi@example.com,Built SSO integration,2026-07-01,Dunder Mifflin,Engineering,4.25
+4,bob@example.com,feature development,2026-07-02,Nakatomi Trading,Finance,4.0
+5,bob@example.com,Documentation for dark mode,2026-07-02,Cyberdyne,Finance,2.25
+6,bob@example.com,Wrote architecture doc,2026-07-02,Pied Piper,Operations,2.5
+7,carol@example.com,Daily standup,2026-07-02,Prestige Worldwide,Sales,0.25
+9,carol@example.com,Code review,2026-07-02,Hooli,Marketing,0.5
+10,dave@example.com,Feature work: SSO integration,2026-07-02,Tyrell Logistics,Sales,4.25
+13,erin@example.com,Client meeting,2026-07-02,Aperture Labs,Finance,1.5
+13,erin@example.com,Client meeting,2026-07-02,Aperture Labs,Finance,2.25
+14,erin@example.com,Investigated and fixed issue in reports API,2026-07-02,Vandelay Imports,Marketing,1.5
+14,erin@example.com,Call with stakeholders re Q3 roadmap,2026-07-02,Vandelay Imports,Marketing,2.0
+17,frank@example.com,CODE REVIEW FOR PR #388,2026-07-02,Oscorp,Operations,0.25
+19,frank@example.com,client call: campaign results,2026-07-02,Initech,Finance,1.0
+20,grace@example.com,Documentation for role-based access,2026-07-02,Stark Industries,Finance,0.25
+21,grace@example.com,Documentation,2026-07-02,Black Mesa,Finance,1.75
+24,heidi@example.com,Client workshop on retrospective,2026-07-02,Soylent Foods,Finance,2.0
+25,heidi@example.com,updated user manual,2026-07-02,Dunder Mifflin,Engineering,2.25
+25,heidi@example.com,Code review and feedback on invoice generation,2026-07-02,Dunder Mifflin,Engineering,1.75
+1,alice@example.com,Team sync / standup,2026-07-03,Dunder Mifflin,Sales,1.0
+1,alice@example.com,client call: q3 roadmap,2026-07-03,Dunder Mifflin,Sales,1.25
+4,bob@example.com,Client meeting,2026-07-03,Nakatomi Trading,Finance,1.5
+5,bob@example.com,Code review for PR #1213,2026-07-03,Cyberdyne,Finance,0.25
+5,bob@example.com,Daily standup,2026-07-03,Cyberdyne,Finance,0.25
+11,dave@example.com,,2026-07-03,Umbrella Health,Engineering,7.0
+12,dave@example.com,MORNING STANDUP WITH THE TEAM,2026-07-03,Acme Corp,Marketing,0.25
+13,erin@example.com,Documentation for dark mode,2026-07-03,Aperture Labs,Finance,2.25
+15,erin@example.com,daily standup,2026-07-03,Wayne Enterprises,Sales,0.5
+21,grace@example.com,Daily scrum,2026-07-03,Black Mesa,Finance,0.75
+21,grace@example.com,Client meeting,2026-07-03,Black Mesa,Finance,3.25
+21,grace@example.com,Call with stakeholders re renewal,2026-07-03,Black Mesa,Finance,2.0
+22,grace@example.com,Drafted release notes,2026-07-03,Globex,Marketing,2.0
+24,heidi@example.com,Developing audit logging for export to CSV,2026-07-03,Soylent Foods,Finance,8.25
+25,heidi@example.com,Team standup,2026-07-03,Dunder Mifflin,Engineering,0.75
+5,bob@example.com,Meeting with client about onboarding,2026-07-04,Cyberdyne,Finance,1.0
+16,erin@example.com,Daily standup,2026-07-04,Wonka Retail,Engineering,0.25
+3,alice@example.com,Code review and feedback on bulk import,2026-07-05,Monarch Solutions,Engineering,0.75
+8,carol@example.com,Feature development,2026-07-05,Bluth Company,Finance,3.0
+10,dave@example.com,Wrote architecture doc,2026-07-05,Tyrell Logistics,Sales,0.5
+1,alice@example.com,Team standup,2026-07-06,Dunder Mifflin,Sales,0.75
+2,alice@example.com,Call with stakeholders re campaign results,2026-07-06,Massive Dynamic,Finance,1.75
+5,bob@example.com,Bug fix,2026-07-06,Cyberdyne,Finance,1.5
+6,bob@example.com,Documentation,2026-07-06,Pied Piper,Operations,2.75
+6,bob@example.com,Drafted onboarding guide,2026-07-06,Pied Piper,Operations,4.5
+8,carol@example.com,Team standup,2026-07-06,Bluth Company,Finance,1.0
+8,carol@example.com,Updated runbook,2026-07-06,Bluth Company,Finance,1.5
+10,dave@example.com,Client workshop on budget review,2026-07-06,Tyrell Logistics,Sales,0.75
+13,erin@example.com,Daily scrum,2026-07-06,Aperture Labs,Finance,0.75
+18,frank@example.com,Code review,2026-07-06,Duff Beverages,Engineering,0.5
+18,frank@example.com,Bug fix,2026-07-06,Duff Beverages,Engineering,1.25
+19,frank@example.com,Drafted runbook,2026-07-06,Initech,Finance,1.0
+19,frank@example.com,Updated API reference,2026-07-06,Initech,Finance,3.75
+22,grace@example.com,Updated runbook,2026-07-06,Globex,Marketing,1.75
+24,heidi@example.com,Drafted runbook,2026-07-06,Soylent Foods,Finance,1.5
+1,alice@example.com,Client call: requirements,2026-07-07,Dunder Mifflin,Sales,1.5
+3,alice@example.com,Code review and feedback on invoice generation,2026-07-07,Monarch Solutions,Engineering,1.5
+4,bob@example.com,Drafted API reference,2026-07-07,Nakatomi Trading,Finance,2.25
+4,bob@example.com,updated api reference,2026-07-07,Nakatomi Trading,Finance,2.0
+5,bob@example.com,Client meeting,2026-07-07,Cyberdyne,Finance,1.5
+6,bob@example.com,Client workshop on budget review,2026-07-07,Pied Piper,Operations,1.5
+7,carol@example.com,Documentation,2026-07-07,Prestige Worldwide,Sales,1.5
+7,carol@example.com,client call: renewal,2026-07-07,Prestige Worldwide,Sales,0.75
+8,carol@example.com,Bug fix: reports API error,2026-07-07,Bluth Company,Finance,1.0
+11,dave@example.com,Developing invoice generation for checkout flow,2026-07-07,Umbrella Health,Engineering,8.75
+14,erin@example.com,Team sync / standup,2026-07-07,Vandelay Imports,Marketing,0.5
+15,erin@example.com,Standup meeting,2026-07-07,Wayne Enterprises,Sales,0.25
+15,erin@example.com,Client call: campaign results,2026-07-07,Wayne Enterprises,Sales,0.5
+16,erin@example.com,Daily scrum,2026-07-07,Wonka Retail,Engineering,0.75
+18,frank@example.com,Implemented bulk import,2026-07-07,Duff Beverages,Engineering,4.0
+19,frank@example.com,Production deployment,2026-07-07,Initech,Finance,1.0
+22,grace@example.com,Client call: status update,2026-07-07,Globex,Marketing,1.25
+3,alice@example.com,Deployment,2026-07-08,Monarch Solutions,Engineering,1.0
+3,alice@example.com,reviewed pull request #364,2026-07-08,Monarch Solutions,Engineering,0.5
+5,bob@example.com,Call with stakeholders re renewal,2026-07-08,Cyberdyne,Finance,0.5
+5,bob@example.com,Client meeting,2026-07-08,Cyberdyne,Finance,1.25
+7,carol@example.com,Client call: Q3 roadmap,2026-07-08,Prestige Worldwide,Sales,1.75
+8,carol@example.com,Documentation for bulk import,2026-07-08,Bluth Company,Finance,3.5
+11,dave@example.com,Documentation for webhooks,2026-07-08,Umbrella Health,Engineering,2.75
+12,dave@example.com,Documentation,2026-07-08,Acme Corp,Marketing,0.75
+21,grace@example.com,Call with stakeholders re status update,2026-07-08,Black Mesa,Finance,2.0
+1,alice@example.com,Team standup,2026-07-09,Dunder Mifflin,Sales,0.5
+2,alice@example.com,Code review and feedback on role-based access,2026-07-09,Massive Dynamic,Finance,2.0
+2,alice@example.com,Daily standup,2026-07-09,Massive Dynamic,Finance,0.25
+4,bob@example.com,team standup,2026-07-09,Nakatomi Trading,Finance,0.5
+5,bob@example.com,documentation,2026-07-09,Cyberdyne,Finance,2.25
+5,bob@example.com,Wrote API reference,2026-07-09,Cyberdyne,Finance,2.75
+6,bob@example.com,Deployment,2026-07-09,Pied Piper,Operations,0.75
+9,carol@example.com,Client meeting,2026-07-09,Hooli,Marketing,0.75
+10,dave@example.com,Documentation,2026-07-09,Tyrell Logistics,Sales,2.5
+10,dave@example.com,Team sync / standup,2026-07-09,Tyrell Logistics,Sales,1.0
+11,dave@example.com,Bug fix: mobile layout error,2026-07-09,Umbrella Health,Engineering,3.25
+11,dave@example.com,Code review for PR #1053,2026-07-09,Umbrella Health,Engineering,1.75
+11,dave@example.com,Production deployment,2026-07-09,Umbrella Health,Engineering,3.25
+13,erin@example.com,Call with stakeholders re status update,2026-07-09,Aperture Labs,Finance,1.0
+13,erin@example.com,Wrote user manual,2026-07-09,Aperture Labs,Finance,2.0
+16,erin@example.com,Client meeting,2026-07-09,Wonka Retail,Engineering,1.0
+18,frank@example.com,Fixed bug in notifications,2026-07-09,Duff Beverages,Engineering,1.25
+18,frank@example.com,Code review,2026-07-09,Duff Beverages,Engineering,0.75
+20,grace@example.com,Client call: status update,2026-07-09,Stark Industries,Finance,1.75
+21,grace@example.com,Client call: status update,2026-07-09,Black Mesa,Finance,2.5
+3,alice@example.com,Team standup,2026-07-10,Monarch Solutions,Engineering,0.5
+3,alice@example.com,Code review,2026-07-10,Monarch Solutions,Engineering,0.5
+3,alice@example.com,deployed release to the demo environment,2026-07-10,Monarch Solutions,Engineering,1.5
+5,bob@example.com,Built dark mode,2026-07-10,Cyberdyne,Finance,3.25
+6,bob@example.com,Fixed bug in export to CSV,2026-07-10,Pied Piper,Operations,2.5
+7,carol@example.com,Client call: retrospective,2026-07-10,Prestige Worldwide,Sales,1.25
+10,dave@example.com,Client workshop on onboarding,2026-07-10,Tyrell Logistics,Sales,2.0
+10,dave@example.com,Wrote architecture doc,2026-07-10,Tyrell Logistics,Sales,2.25
+10,dave@example.com,Team sync / standup,2026-07-10,Tyrell Logistics,Sales,0.5
+11,dave@example.com,Fixed bug in search,2026-07-10,Umbrella Health,Engineering,2.75
+21,grace@example.com,Drafted user manual,2026-07-10,Black Mesa,Finance,2.25
+22,grace@example.com,Call with stakeholders re requirements,2026-07-10,Globex,Marketing,1.25
+6,bob@example.com,Release deployment and smoke tests on production,2026-07-11,Pied Piper,Operations,0.75
+20,grace@example.com,daily standup,2026-07-11,Stark Industries,Finance,0.5
+24,heidi@example.com,Client call: pricing,2026-07-11,Soylent Foods,Finance,1.0
+25,heidi@example.com,morning standup with the team,2026-07-11,Dunder Mifflin,Engineering,0.75
+14,erin@example.com,Client call: kickoff,2026-07-12,Vandelay Imports,Marketing,0.5
+21,grace@example.com,client call: kickoff,2026-07-12,Black Mesa,Finance,1.0
+2,alice@example.com,Standup meeting,2026-07-13,Massive Dynamic,Finance,1.0
+5,bob@example.com,PR review: reports API,2026-07-13,Cyberdyne,Finance,0.75
+6,bob@example.com,Daily standup,2026-07-13,Pied Piper,Operations,0.75
+7,carol@example.com,Documentation,2026-07-13,Prestige Worldwide,Sales,1.75
+7,carol@example.com,,2026-07-13,Prestige Worldwide,Sales,0.5
+8,carol@example.com,daily standup,2026-07-13,Bluth Company,Finance,0.75
+9,carol@example.com,Meeting with client about kickoff,2026-07-13,Hooli,Marketing,1.5
+9,carol@example.com,Wrote user manual,2026-07-13,Hooli,Marketing,2.0
+11,dave@example.com,Developing webhooks for export to CSV,2026-07-13,Umbrella Health,Engineering,12.0
+11,dave@example.com,Implemented analytics widgets,2026-07-13,Umbrella Health,Engineering,10.75
+12,dave@example.com,Documentation,2026-07-13,Acme Corp,Marketing,3.0
+14,erin@example.com,Implemented webhooks,2026-07-13,Vandelay Imports,Marketing,1.25
+19,frank@example.com,Daily scrum,2026-07-13,Initech,Finance,0.75
+19,frank@example.com,implemented sso integration,2026-07-13,Initech,Finance,5.0
+20,grace@example.com,DOCUMENTATION,2026-07-13,Stark Industries,Finance,3.25
+22,grace@example.com,Client meeting,2026-07-13,Globex,Marketing,0.75
+22,grace@example.com,Release deployment and smoke tests on the demo environment,2026-07-13,Globex,Marketing,2.75
+22,grace@example.com,Meeting with client about retrospective,2026-07-13,Globex,Marketing,2.0
+22,grace@example.com,implemented bulk import,2026-07-13,Globex,Marketing,3.5
+22,grace@example.com,Updated release notes,2026-07-13,Globex,Marketing,2.0
+22,grace@example.com,Documentation for audit logging,2026-07-13,Globex,Marketing,1.75
+25,heidi@example.com,Team sync / standup,2026-07-13,Dunder Mifflin,Engineering,0.5
+2,alice@example.com,Client meeting,2026-07-14,Massive Dynamic,Finance,2.0
+2,alice@example.com,Client meeting,2026-07-14,Massive Dynamic,Finance,1.25
+5,bob@example.com,Release deployment and smoke tests on staging,2026-07-14,Cyberdyne,Finance,2.0
+7,carol@example.com,Meeting with client about pricing,2026-07-14,Prestige Worldwide,Sales,0.75
+10,dave@example.com,Call with stakeholders re renewal,2026-07-14,Tyrell Logistics,Sales,0.5
+10,dave@example.com,Meeting with client about requirements,2026-07-14,Tyrell Logistics,Sales,1.25
+11,dave@example.com,MEETING WITH CLIENT ABOUT Q3 ROADMAP,2026-07-14,Umbrella Health,Engineering,1.5
+12,dave@example.com,Team sync / standup,2026-07-14,Acme Corp,Marketing,0.25
+17,frank@example.com,Deployed release to the demo environment,2026-07-14,Oscorp,Operations,1.0
+24,heidi@example.com,Drafted architecture doc,2026-07-14,Soylent Foods,Finance,2.0
+25,heidi@example.com,Investigated and fixed issue in search,2026-07-14,Dunder Mifflin,Engineering,1.75
+2,alice@example.com,Documentation for SSO integration,2026-07-15,Massive Dynamic,Finance,1.75
+6,bob@example.com,Fixed bug in export to CSV,2026-07-15,Pied Piper,Operations,1.0
+7,carol@example.com,,2026-07-15,Prestige Worldwide,Sales,1.5
+8,carol@example.com,Client call: budget review,2026-07-15,Bluth Company,Finance,0.75
+8,carol@example.com,Morning standup with the team,2026-07-15,Bluth Company,Finance,0.25
+9,carol@example.com,Morning standup with the team,2026-07-15,Hooli,Marketing,0.75
+13,erin@example.com,Documentation,2026-07-15,Aperture Labs,Finance,2.0
+13,erin@example.com,Client meeting,2026-07-15,Aperture Labs,Finance,2.25
+15,erin@example.com,Client workshop on renewal,2026-07-15,Wayne Enterprises,Sales,1.0
+19,frank@example.com,Code review for PR #236,2026-07-15,Initech,Finance,1.5
+21,grace@example.com,Deploy to staging,2026-07-15,Black Mesa,Finance,0.75
+2,alice@example.com,Documentation for analytics widgets,2026-07-16,Massive Dynamic,Finance,1.5
+2,alice@example.com,Client call: retrospective,2026-07-16,Massive Dynamic,Finance,1.75
+5,bob@example.com,Call with stakeholders re Q3 roadmap,2026-07-16,Cyberdyne,Finance,1.25
+10,dave@example.com,Meeting with client about budget review,2026-07-16,Tyrell Logistics,Sales,2.25
+13,erin@example.com,Developing bulk import for login page,2026-07-16,Aperture Labs,Finance,1.5
+14,erin@example.com,fixed bug in user settings,2026-07-16,Vandelay Imports,Marketing,1.5
+14,erin@example.com,Wrote user manual,2026-07-16,Vandelay Imports,Marketing,1.75
+14,erin@example.com,Updated user manual,2026-07-16,Vandelay Imports,Marketing,1.25
+16,erin@example.com,Team sync / standup,2026-07-16,Wonka Retail,Engineering,0.5
+18,frank@example.com,deployment,2026-07-16,Duff Beverages,Engineering,0.75
+21,grace@example.com,Standup meeting,2026-07-16,Black Mesa,Finance,1.0
+2,alice@example.com,Documentation,2026-07-17,Massive Dynamic,Finance,2.25
+3,alice@example.com,Fixed bug in dashboard,2026-07-17,Monarch Solutions,Engineering,1.25
+3,alice@example.com,Documentation,2026-07-17,Monarch Solutions,Engineering,2.5
+4,bob@example.com,Updated architecture doc,2026-07-17,Nakatomi Trading,Finance,1.5
+6,bob@example.com,Code review,2026-07-17,Pied Piper,Operations,2.0
+6,bob@example.com,Deploy to the demo environment,2026-07-17,Pied Piper,Operations,2.0
+6,bob@example.com,Production deployment,2026-07-17,Pied Piper,Operations,2.75
+7,carol@example.com,Investigated and fixed issue in export to CSV,2026-07-17,Prestige Worldwide,Sales,1.5
+7,carol@example.com,Client workshop on pricing,2026-07-17,Prestige Worldwide,Sales,1.25
+8,carol@example.com,Meeting with client about retrospective,2026-07-17,Bluth Company,Finance,1.25
+8,carol@example.com,Drafted onboarding guide,2026-07-17,Bluth Company,Finance,2.0
+10,dave@example.com,Call with stakeholders re onboarding,2026-07-17,Tyrell Logistics,Sales,1.0
+15,erin@example.com,Team sync / standup,2026-07-17,Wayne Enterprises,Sales,0.5
+19,frank@example.com,Team sync / standup,2026-07-17,Initech,Finance,0.5
+21,grace@example.com,deployed release to production,2026-07-17,Black Mesa,Finance,1.25
+21,grace@example.com,,2026-07-17,Black Mesa,Finance,7.0
+22,grace@example.com,Client call: renewal,2026-07-17,Globex,Marketing,2.25
+23,grace@example.com,Client meeting,2026-07-17,Gringotts Bank,Operations,1.0
+24,heidi@example.com,Updated user manual,2026-07-17,Soylent Foods,Finance,3.5
+25,heidi@example.com,Built analytics widgets,2026-07-17,Dunder Mifflin,Engineering,2.75
+1,alice@example.com,Meeting with client about kickoff,2026-07-18,Dunder Mifflin,Sales,1.0
+8,carol@example.com,Drafted onboarding guide,2026-07-18,Bluth Company,Finance,1.0
+2,alice@example.com,Developing bulk import for reports API,2026-07-19,Massive Dynamic,Finance,1.5
+7,carol@example.com,PR review: search,2026-07-19,Prestige Worldwide,Sales,0.5
+13,erin@example.com,Drafted onboarding guide,2026-07-19,Aperture Labs,Finance,1.25
+25,heidi@example.com,feature development,2026-07-19,Dunder Mifflin,Engineering,5.0
+2,alice@example.com,Updated runbook,2026-07-20,Massive Dynamic,Finance,2.0
+3,alice@example.com,Production deployment,2026-07-20,Monarch Solutions,Engineering,1.5
+4,bob@example.com,Client meeting,2026-07-20,Nakatomi Trading,Finance,1.25
+4,bob@example.com,PR review: dashboard,2026-07-20,Nakatomi Trading,Finance,1.25
+6,bob@example.com,Team sync / standup,2026-07-20,Pied Piper,Operations,1.0
+10,dave@example.com,Morning standup with the team,2026-07-20,Tyrell Logistics,Sales,0.75
+12,dave@example.com,Release deployment and smoke tests on the demo environment,2026-07-20,Acme Corp,Marketing,1.0
+15,erin@example.com,Built bulk import,2026-07-20,Wayne Enterprises,Sales,3.75
+18,frank@example.com,Bug fix: export to CSV error,2026-07-20,Duff Beverages,Engineering,1.5
+20,grace@example.com,wrote runbook,2026-07-20,Stark Industries,Finance,3.25
+21,grace@example.com,Deployed release to production,2026-07-20,Black Mesa,Finance,1.25
+22,grace@example.com,,2026-07-20,Globex,Marketing,1.5
+24,heidi@example.com,Team standup,2026-07-20,Soylent Foods,Finance,0.25
+2,alice@example.com,Meeting with client about kickoff,2026-07-21,Massive Dynamic,Finance,1.5
+3,alice@example.com,Feature work: role-based access,2026-07-21,Monarch Solutions,Engineering,3.0
+3,alice@example.com,Daily scrum,2026-07-21,Monarch Solutions,Engineering,0.5
+4,bob@example.com,pr review: export to csv,2026-07-21,Nakatomi Trading,Finance,0.5
+8,carol@example.com,Drafted onboarding guide,2026-07-21,Bluth Company,Finance,1.75
+10,dave@example.com,Call with stakeholders re campaign results,2026-07-21,Tyrell Logistics,Sales,2.0
+13,erin@example.com,CLIENT CALL: CAMPAIGN RESULTS,2026-07-21,Aperture Labs,Finance,2.5
+14,erin@example.com,Updated architecture doc,2026-07-21,Vandelay Imports,Marketing,1.5
+14,erin@example.com,team standup,2026-07-21,Vandelay Imports,Marketing,0.5
+15,erin@example.com,Documentation,2026-07-21,Wayne Enterprises,Sales,1.5
+20,grace@example.com,Daily scrum,2026-07-21,Stark Industries,Finance,1.0
+20,grace@example.com,client meeting,2026-07-21,Stark Industries,Finance,2.0
+20,grace@example.com,Deployed release to staging,2026-07-21,Stark Industries,Finance,1.25
+21,grace@example.com,Drafted onboarding guide,2026-07-21,Black Mesa,Finance,3.5
+22,grace@example.com,Call with stakeholders re Q3 roadmap,2026-07-21,Globex,Marketing,0.75
+23,grace@example.com,updated release notes,2026-07-21,Gringotts Bank,Operations,1.0
+25,heidi@example.com,Hotfix for login page,2026-07-21,Dunder Mifflin,Engineering,2.5
+1,alice@example.com,Updated onboarding guide,2026-07-22,Dunder Mifflin,Sales,1.5
+2,alice@example.com,Production deployment,2026-07-22,Massive Dynamic,Finance,1.75
+4,bob@example.com,Morning standup with the team,2026-07-22,Nakatomi Trading,Finance,0.75
+4,bob@example.com,Developing invoice generation for user settings,2026-07-22,Nakatomi Trading,Finance,4.5
+6,bob@example.com,Code review,2026-07-22,Pied Piper,Operations,1.25
+6,bob@example.com,Bug fix: user settings error,2026-07-22,Pied Piper,Operations,2.5
+8,carol@example.com,reviewed pull request #1000,2026-07-22,Bluth Company,Finance,0.75
+11,dave@example.com,Daily scrum,2026-07-22,Umbrella Health,Engineering,1.5
+13,erin@example.com,Updated release notes,2026-07-22,Aperture Labs,Finance,0.25
+13,erin@example.com,feature development,2026-07-22,Aperture Labs,Finance,7.0
+16,erin@example.com,Daily standup,2026-07-22,Wonka Retail,Engineering,0.25
+19,frank@example.com,Daily scrum,2026-07-22,Initech,Finance,0.75
+21,grace@example.com,hotfix for login page,2026-07-22,Black Mesa,Finance,1.75
+22,grace@example.com,Documentation for audit logging,2026-07-22,Globex,Marketing,2.25
+25,heidi@example.com,Built role-based access,2026-07-22,Dunder Mifflin,Engineering,4.0
+2,alice@example.com,Developing webhooks for notifications,2026-07-23,Massive Dynamic,Finance,4.25
+4,bob@example.com,Call with stakeholders re kickoff,2026-07-23,Nakatomi Trading,Finance,1.25
+5,bob@example.com,Client workshop on kickoff,2026-07-23,Cyberdyne,Finance,1.5
+5,bob@example.com,client workshop on pricing,2026-07-23,Cyberdyne,Finance,2.25
+10,dave@example.com,Meeting with client about renewal,2026-07-23,Tyrell Logistics,Sales,2.5
+11,dave@example.com,DEVELOPING ROLE-BASED ACCESS FOR LOGIN PAGE,2026-07-23,Umbrella Health,Engineering,11.0
+11,dave@example.com,deployed release to the demo environment,2026-07-23,Umbrella Health,Engineering,5.0
+12,dave@example.com,Updated architecture doc,2026-07-23,Acme Corp,Marketing,1.5
+12,dave@example.com,Client call: kickoff,2026-07-23,Acme Corp,Marketing,0.75
+15,erin@example.com,Client call: Q3 roadmap,2026-07-23,Wayne Enterprises,Sales,0.25
+16,erin@example.com,Feature development,2026-07-23,Wonka Retail,Engineering,2.5
+19,frank@example.com,Drafted architecture doc,2026-07-23,Initech,Finance,3.0
+24,heidi@example.com,Meeting with client about pricing,2026-07-23,Soylent Foods,Finance,2.5
+1,alice@example.com,Client workshop on pricing,2026-07-24,Dunder Mifflin,Sales,1.25
+2,alice@example.com,Wrote runbook,2026-07-24,Massive Dynamic,Finance,3.0
+2,alice@example.com,Team standup,2026-07-24,Massive Dynamic,Finance,0.75
+2,alice@example.com,Production deployment,2026-07-24,Massive Dynamic,Finance,1.75
+7,carol@example.com,Client call: budget review,2026-07-24,Prestige Worldwide,Sales,1.0
+8,carol@example.com,Feature work: invoice generation,2026-07-24,Bluth Company,Finance,4.0
+8,carol@example.com,Client call: onboarding,2026-07-24,Bluth Company,Finance,3.25
+9,carol@example.com,Meeting with client about requirements,2026-07-24,Hooli,Marketing,1.5
+10,dave@example.com,Call with stakeholders re requirements,2026-07-24,Tyrell Logistics,Sales,1.25
+11,dave@example.com,Daily scrum,2026-07-24,Umbrella Health,Engineering,1.75
+14,erin@example.com,Client meeting,2026-07-24,Vandelay Imports,Marketing,1.25
+20,grace@example.com,Client meeting,2026-07-24,Stark Industries,Finance,2.25
+1,alice@example.com,Call with stakeholders re kickoff,2026-07-27,Dunder Mifflin,Sales,2.0
+3,alice@example.com,Fixed bug in notifications,2026-07-27,Monarch Solutions,Engineering,2.5
+4,bob@example.com,wrote architecture doc,2026-07-27,Nakatomi Trading,Finance,1.0
+7,carol@example.com,Standup meeting,2026-07-27,Prestige Worldwide,Sales,0.5
+8,carol@example.com,Bug fix: reports API error,2026-07-27,Bluth Company,Finance,1.75
+8,carol@example.com,Standup meeting,2026-07-27,Bluth Company,Finance,0.25
+10,dave@example.com,Client meeting,2026-07-27,Tyrell Logistics,Sales,2.0
+16,erin@example.com,Morning standup with the team,2026-07-27,Wonka Retail,Engineering,0.25
+17,frank@example.com,Deploy to the demo environment,2026-07-27,Oscorp,Operations,2.75
+22,grace@example.com,Daily standup,2026-07-27,Globex,Marketing,0.5
+3,alice@example.com,Deployment,2026-07-28,Monarch Solutions,Engineering,1.0
+4,bob@example.com,Documentation,2026-07-28,Nakatomi Trading,Finance,0.5
+4,bob@example.com,Morning standup with the team,2026-07-28,Nakatomi Trading,Finance,0.75
+5,bob@example.com,Meeting with client about Q3 roadmap,2026-07-28,Cyberdyne,Finance,1.5
+6,bob@example.com,deploy to the demo environment,2026-07-28,Pied Piper,Operations,3.0
+8,carol@example.com,Client meeting,2026-07-28,Bluth Company,Finance,1.25
+8,carol@example.com,Team sync / standup,2026-07-28,Bluth Company,Finance,1.0
+9,carol@example.com,Client workshop on status update,2026-07-28,Hooli,Marketing,2.0
+10,dave@example.com,Team standup,2026-07-28,Tyrell Logistics,Sales,0.75
+13,erin@example.com,Morning standup with the team,2026-07-28,Aperture Labs,Finance,0.5
+13,erin@example.com,Documentation,2026-07-28,Aperture Labs,Finance,2.25
+13,erin@example.com,Feature work: invoice generation,2026-07-28,Aperture Labs,Finance,6.5
+14,erin@example.com,Client workshop on status update,2026-07-28,Vandelay Imports,Marketing,1.5
+14,erin@example.com,Call with stakeholders re retrospective,2026-07-28,Vandelay Imports,Marketing,1.5
+16,erin@example.com,Deployment,2026-07-28,Wonka Retail,Engineering,1.25
+20,grace@example.com,Documentation,2026-07-28,Stark Industries,Finance,2.25
+21,grace@example.com,CLIENT WORKSHOP ON CAMPAIGN RESULTS,2026-07-28,Black Mesa,Finance,1.75
+21,grace@example.com,Documentation,2026-07-28,Black Mesa,Finance,0.5
+22,grace@example.com,CLIENT MEETING,2026-07-28,Globex,Marketing,1.25
+1,alice@example.com,Client workshop on campaign results,2026-07-29,Dunder Mifflin,Sales,2.0
+3,alice@example.com,fixed bug in mobile layout,2026-07-29,Monarch Solutions,Engineering,1.75
+4,bob@example.com,Client call: requirements,2026-07-29,Nakatomi Trading,Finance,1.25
+5,bob@example.com,Call with stakeholders re campaign results,2026-07-29,Cyberdyne,Finance,1.5
+6,bob@example.com,Production deployment,2026-07-29,Pied Piper,Operations,1.0
+7,carol@example.com,Drafted user manual,2026-07-29,Prestige Worldwide,Sales,1.5
+7,carol@example.com,Meeting with client about onboarding,2026-07-29,Prestige Worldwide,Sales,1.0
+8,carol@example.com,hotfix for user settings,2026-07-29,Bluth Company,Finance,4.0
+9,carol@example.com,Call with stakeholders re renewal,2026-07-29,Hooli,Marketing,1.25
+10,dave@example.com,Team standup,2026-07-29,Tyrell Logistics,Sales,0.75
+15,erin@example.com,Code review,2026-07-29,Wayne Enterprises,Sales,0.75
+17,frank@example.com,Documentation,2026-07-29,Oscorp,Operations,4.25
+17,frank@example.com,Daily scrum,2026-07-29,Oscorp,Operations,0.5
+19,frank@example.com,Documentation,2026-07-29,Initech,Finance,0.25
+20,grace@example.com,Client meeting,2026-07-29,Stark Industries,Finance,1.5
+20,grace@example.com,Wrote release notes,2026-07-29,Stark Industries,Finance,4.25
+2,alice@example.com,Client call: requirements,2026-07-30,Massive Dynamic,Finance,2.25
+3,alice@example.com,Release deployment and smoke tests on production,2026-07-30,Monarch Solutions,Engineering,1.25
+7,carol@example.com,Client meeting,2026-07-30,Prestige Worldwide,Sales,1.5
+8,carol@example.com,Client meeting,2026-07-30,Bluth Company,Finance,2.0
+10,dave@example.com,Client meeting,2026-07-30,Tyrell Logistics,Sales,0.5
+13,erin@example.com,Client call: onboarding,2026-07-30,Aperture Labs,Finance,1.25
+18,frank@example.com,Morning standup with the team,2026-07-30,Duff Beverages,Engineering,0.25
+19,frank@example.com,client workshop on kickoff,2026-07-30,Initech,Finance,2.25
+20,grace@example.com,Drafted user manual,2026-07-30,Stark Industries,Finance,2.5
+22,grace@example.com,Client workshop on status update,2026-07-30,Globex,Marketing,2.5
+22,grace@example.com,implemented role-based access,2026-07-30,Globex,Marketing,4.75
+1,alice@example.com,Team sync / standup,2026-07-31,Dunder Mifflin,Sales,0.75
+2,alice@example.com,DOCUMENTATION FOR INVOICE GENERATION,2026-07-31,Massive Dynamic,Finance,3.25
+4,bob@example.com,Client workshop on pricing,2026-07-31,Nakatomi Trading,Finance,1.75
+8,carol@example.com,,2026-07-31,Bluth Company,Finance,2.75
+8,carol@example.com,Team standup,2026-07-31,Bluth Company,Finance,0.5
+9,carol@example.com,Investigated and fixed issue in reports API,2026-07-31,Hooli,Marketing,2.25
+10,dave@example.com,Client call: renewal,2026-07-31,Tyrell Logistics,Sales,2.0
+11,dave@example.com,Developing bulk import for login page,2026-07-31,Umbrella Health,Engineering,12.0
+16,erin@example.com,Documentation,2026-07-31,Wonka Retail,Engineering,1.5
+16,erin@example.com,Code review for PR #106,2026-07-31,Wonka Retail,Engineering,0.75
+18,frank@example.com,,2026-07-31,Duff Beverages,Engineering,3.25
+19,frank@example.com,Client workshop on pricing,2026-07-31,Initech,Finance,1.75
+19,frank@example.com,Investigated and fixed issue in mobile layout,2026-07-31,Initech,Finance,3.25
+24,heidi@example.com,Documentation,2026-08-01,Soylent Foods,Finance,2.0
+5,bob@example.com,Feature work: invoice generation,2026-08-02,Cyberdyne,Finance,2.75
+14,erin@example.com,Team standup,2026-08-02,Vandelay Imports,Marketing,0.5
+18,frank@example.com,Developing dark mode for export to CSV,2026-08-02,Duff Beverages,Engineering,2.0
+1,alice@example.com,feature work: role-based access,2026-08-03,Dunder Mifflin,Sales,6.0
+1,alice@example.com,documentation for webhooks,2026-08-03,Dunder Mifflin,Sales,3.5
+2,alice@example.com,Updated user manual,2026-08-03,Massive Dynamic,Finance,2.25
+4,bob@example.com,Call with stakeholders re renewal,2026-08-03,Nakatomi Trading,Finance,2.25
+5,bob@example.com,Drafted release notes,2026-08-03,Cyberdyne,Finance,2.25
+6,bob@example.com,,2026-08-03,Pied Piper,Operations,3.5
+10,dave@example.com,Meeting with client about renewal,2026-08-03,Tyrell Logistics,Sales,1.0
+11,dave@example.com,Developing bulk import for mobile layout,2026-08-03,Umbrella Health,Engineering,10.75
+12,dave@example.com,team sync / standup,2026-08-03,Acme Corp,Marketing,0.5
+13,erin@example.com,Call with stakeholders re requirements,2026-08-03,Aperture Labs,Finance,1.25
+16,erin@example.com,Fixed bug in checkout flow,2026-08-03,Wonka Retail,Engineering,0.5
+18,frank@example.com,Implemented analytics widgets,2026-08-03,Duff Beverages,Engineering,2.5
+19,frank@example.com,Standup meeting,2026-08-03,Initech,Finance,1.25
+20,grace@example.com,Drafted architecture doc,2026-08-03,Stark Industries,Finance,3.5
+20,grace@example.com,Wrote release notes,2026-08-03,Stark Industries,Finance,1.0
+22,grace@example.com,Standup meeting,2026-08-03,Globex,Marketing,0.5
+25,heidi@example.com,Documentation,2026-08-03,Dunder Mifflin,Engineering,2.75
+25,heidi@example.com,Investigated and fixed issue in billing service,2026-08-03,Dunder Mifflin,Engineering,2.5
+25,heidi@example.com,Deployment,2026-08-03,Dunder Mifflin,Engineering,2.25
+1,alice@example.com,Documentation for analytics widgets,2026-08-04,Dunder Mifflin,Sales,3.25
+1,alice@example.com,Meeting with client about onboarding,2026-08-04,Dunder Mifflin,Sales,1.75
+2,alice@example.com,Code review,2026-08-04,Massive Dynamic,Finance,0.5
+4,bob@example.com,Client call: retrospective,2026-08-04,Nakatomi Trading,Finance,1.75
+5,bob@example.com,Developing dark mode for dashboard,2026-08-04,Cyberdyne,Finance,2.25
+9,carol@example.com,Client call: renewal,2026-08-04,Hooli,Marketing,1.25
+11,dave@example.com,deploy to production,2026-08-04,Umbrella Health,Engineering,4.0
+14,erin@example.com,Documentation,2026-08-04,Vandelay Imports,Marketing,1.75
+15,erin@example.com,Daily standup,2026-08-04,Wayne Enterprises,Sales,0.25
+16,erin@example.com,Production deployment,2026-08-04,Wonka Retail,Engineering,1.0
+18,frank@example.com,Built role-based access,2026-08-04,Duff Beverages,Engineering,2.0
+20,grace@example.com,Client workshop on onboarding,2026-08-04,Stark Industries,Finance,3.25
+21,grace@example.com,Morning standup with the team,2026-08-04,Black Mesa,Finance,0.75
+5,bob@example.com,Meeting with client about Q3 roadmap,2026-08-05,Cyberdyne,Finance,0.5
+6,bob@example.com,Fixed bug in reports API,2026-08-05,Pied Piper,Operations,3.0
+6,bob@example.com,Team sync / standup,2026-08-05,Pied Piper,Operations,0.75
+8,carol@example.com,meeting with client about onboarding,2026-08-05,Bluth Company,Finance,1.5
+8,carol@example.com,Investigated and fixed issue in user settings,2026-08-05,Bluth Company,Finance,1.75
+13,erin@example.com,Client call: pricing,2026-08-05,Aperture Labs,Finance,2.75
+14,erin@example.com,Documentation,2026-08-05,Vandelay Imports,Marketing,1.5
+16,erin@example.com,Feature work: analytics widgets,2026-08-05,Wonka Retail,Engineering,3.0
+18,frank@example.com,Team sync / standup,2026-08-05,Duff Beverages,Engineering,0.25
+20,grace@example.com,Documentation,2026-08-05,Stark Industries,Finance,4.0
+21,grace@example.com,Client call: requirements,2026-08-05,Black Mesa,Finance,1.5
+21,grace@example.com,Standup meeting,2026-08-05,Black Mesa,Finance,1.0
+25,heidi@example.com,Feature work: bulk import,2026-08-05,Dunder Mifflin,Engineering,5.5
+2,alice@example.com,,2026-08-06,Massive Dynamic,Finance,3.0
+2,alice@example.com,Call with stakeholders re campaign results,2026-08-06,Massive Dynamic,Finance,0.75
+4,bob@example.com,Built SSO integration,2026-08-06,Nakatomi Trading,Finance,6.25
+5,bob@example.com,Drafted API reference,2026-08-06,Cyberdyne,Finance,2.25
+8,carol@example.com,documentation for dark mode,2026-08-06,Bluth Company,Finance,1.5
+13,erin@example.com,Client call: renewal,2026-08-06,Aperture Labs,Finance,2.5
+15,erin@example.com,Client workshop on renewal,2026-08-06,Wayne Enterprises,Sales,0.75
+15,erin@example.com,Client meeting,2026-08-06,Wayne Enterprises,Sales,1.25
+18,frank@example.com,Call with stakeholders re requirements,2026-08-06,Duff Beverages,Engineering,0.5
+20,grace@example.com,Feature work: webhooks,2026-08-06,Stark Industries,Finance,5.0
+20,grace@example.com,Reviewed pull request #1177,2026-08-06,Stark Industries,Finance,1.75
+22,grace@example.com,Client meeting,2026-08-06,Globex,Marketing,3.25
+22,grace@example.com,Meeting with client about requirements,2026-08-06,Globex,Marketing,0.5
+24,heidi@example.com,Documentation for webhooks,2026-08-06,Soylent Foods,Finance,2.0
+25,heidi@example.com,Investigated and fixed issue in login page,2026-08-06,Dunder Mifflin,Engineering,2.75
+1,alice@example.com,Call with stakeholders re pricing,2026-08-07,Dunder Mifflin,Sales,2.5
+1,alice@example.com,Client workshop on Q3 roadmap,2026-08-07,Dunder Mifflin,Sales,1.5
+2,alice@example.com,Client workshop on requirements,2026-08-07,Massive Dynamic,Finance,1.5
+2,alice@example.com,client meeting,2026-08-07,Massive Dynamic,Finance,1.0
+2,alice@example.com,Drafted architecture doc,2026-08-07,Massive Dynamic,Finance,1.5
+3,alice@example.com,investigated and fixed issue in notifications,2026-08-07,Monarch Solutions,Engineering,4.5
+5,bob@example.com,Daily standup,2026-08-07,Cyberdyne,Finance,0.5
+6,bob@example.com,daily standup,2026-08-07,Pied Piper,Operations,0.5
+6,bob@example.com,Deploy to the demo environment,2026-08-07,Pied Piper,Operations,2.75
+8,carol@example.com,Implemented audit logging,2026-08-07,Bluth Company,Finance,3.5
+13,erin@example.com,Deploy to the demo environment,2026-08-07,Aperture Labs,Finance,4.0
+15,erin@example.com,Daily scrum,2026-08-07,Wayne Enterprises,Sales,0.25
+15,erin@example.com,Client workshop on pricing,2026-08-07,Wayne Enterprises,Sales,0.75
+17,frank@example.com,Deploy to QA,2026-08-07,Oscorp,Operations,2.5
+19,frank@example.com,client call: kickoff,2026-08-07,Initech,Finance,3.0
+21,grace@example.com,Call with stakeholders re Q3 roadmap,2026-08-07,Black Mesa,Finance,1.75
+1,alice@example.com,wrote onboarding guide,2026-08-08,Dunder Mifflin,Sales,2.25
+4,bob@example.com,Team standup,2026-08-08,Nakatomi Trading,Finance,0.5
+6,bob@example.com,Implemented webhooks,2026-08-08,Pied Piper,Operations,4.0
+8,carol@example.com,Built role-based access,2026-08-08,Bluth Company,Finance,2.5
+13,erin@example.com,Implemented analytics widgets,2026-08-08,Aperture Labs,Finance,5.75
+6,bob@example.com,Production deployment,2026-08-09,Pied Piper,Operations,0.75
+17,frank@example.com,Bug fix: dashboard error,2026-08-09,Oscorp,Operations,1.0
+25,heidi@example.com,Deployment,2026-08-09,Dunder Mifflin,Engineering,1.75
+3,alice@example.com,Code review for PR #1572,2026-08-10,Monarch Solutions,Engineering,0.5
+4,bob@example.com,Documentation for invoice generation,2026-08-10,Nakatomi Trading,Finance,1.5
+4,bob@example.com,Morning standup with the team,2026-08-10,Nakatomi Trading,Finance,0.5
+8,carol@example.com,Wrote release notes,2026-08-10,Bluth Company,Finance,3.75
+9,carol@example.com,Call with stakeholders re status update,2026-08-10,Hooli,Marketing,1.5
+10,dave@example.com,Team sync / standup,2026-08-10,Tyrell Logistics,Sales,0.5
+11,dave@example.com,Fixed bug in billing service,2026-08-10,Umbrella Health,Engineering,4.0
+12,dave@example.com,Call with stakeholders re campaign results,2026-08-10,Acme Corp,Marketing,1.75
+14,erin@example.com,Deploy to the demo environment,2026-08-10,Vandelay Imports,Marketing,1.75
+15,erin@example.com,Call with stakeholders re budget review,2026-08-10,Wayne Enterprises,Sales,0.75
+18,frank@example.com,Code review and feedback on bulk import,2026-08-10,Duff Beverages,Engineering,0.5
+20,grace@example.com,Documentation,2026-08-10,Stark Industries,Finance,3.25
+20,grace@example.com,Client workshop on requirements,2026-08-10,Stark Industries,Finance,2.25
+21,grace@example.com,,2026-08-10,Black Mesa,Finance,2.25
+21,grace@example.com,Client call: status update,2026-08-10,Black Mesa,Finance,2.25
+24,heidi@example.com,Drafted architecture doc,2026-08-10,Soylent Foods,Finance,2.75
+3,alice@example.com,Hotfix for dashboard,2026-08-11,Monarch Solutions,Engineering,1.5
+3,alice@example.com,Production deployment,2026-08-11,Monarch Solutions,Engineering,1.25
+3,alice@example.com,Fixed bug in login page,2026-08-11,Monarch Solutions,Engineering,1.5
+5,bob@example.com,,2026-08-11,Cyberdyne,Finance,2.5
+6,bob@example.com,Deployment,2026-08-11,Pied Piper,Operations,3.5
+7,carol@example.com,Meeting with client about budget review,2026-08-11,Prestige Worldwide,Sales,1.75
+8,carol@example.com,Feature work: SSO integration,2026-08-11,Bluth Company,Finance,3.75
+16,erin@example.com,Daily scrum,2026-08-11,Wonka Retail,Engineering,0.25
+18,frank@example.com,Drafted onboarding guide,2026-08-11,Duff Beverages,Engineering,1.5
+19,frank@example.com,Code review and feedback on analytics widgets,2026-08-11,Initech,Finance,1.5
+20,grace@example.com,Investigated and fixed issue in mobile layout,2026-08-11,Stark Industries,Finance,1.5
+20,grace@example.com,Team sync / standup,2026-08-11,Stark Industries,Finance,0.5
+21,grace@example.com,Documentation for role-based access,2026-08-11,Black Mesa,Finance,1.75
+22,grace@example.com,Team standup,2026-08-11,Globex,Marketing,1.0
+25,heidi@example.com,Bug fix,2026-08-11,Dunder Mifflin,Engineering,2.75
+1,alice@example.com,Client meeting,2026-08-12,Dunder Mifflin,Sales,1.75
+1,alice@example.com,,2026-08-12,Dunder Mifflin,Sales,0.25
+4,bob@example.com,DOCUMENTATION,2026-08-12,Nakatomi Trading,Finance,1.5
+8,carol@example.com,,2026-08-12,Bluth Company,Finance,1.5
+8,carol@example.com,DOCUMENTATION,2026-08-12,Bluth Company,Finance,0.5
+8,carol@example.com,Meeting with client about onboarding,2026-08-12,Bluth Company,Finance,0.25
+15,erin@example.com,Call with stakeholders re requirements,2026-08-12,Wayne Enterprises,Sales,0.75
+20,grace@example.com,,2026-08-12,Stark Industries,Finance,3.5
+20,grace@example.com,Implemented analytics widgets,2026-08-12,Stark Industries,Finance,3.75
+25,heidi@example.com,Feature work: invoice generation,2026-08-12,Dunder Mifflin,Engineering,2.0
+1,alice@example.com,Team standup,2026-08-13,Dunder Mifflin,Sales,0.25
+6,bob@example.com,client workshop on budget review,2026-08-13,Pied Piper,Operations,1.75
+6,bob@example.com,Production deployment,2026-08-13,Pied Piper,Operations,1.75
+7,carol@example.com,Client call: budget review,2026-08-13,Prestige Worldwide,Sales,1.5
+8,carol@example.com,Updated onboarding guide,2026-08-13,Bluth Company,Finance,1.75
+13,erin@example.com,Code review for PR #1024,2026-08-13,Aperture Labs,Finance,1.25
+16,erin@example.com,Hotfix for dashboard,2026-08-13,Wonka Retail,Engineering,1.0
+19,frank@example.com,Daily standup,2026-08-13,Initech,Finance,1.0
+19,frank@example.com,Call with stakeholders re pricing,2026-08-13,Initech,Finance,2.0
+2,alice@example.com,Wrote release notes,2026-08-14,Massive Dynamic,Finance,1.25
+3,alice@example.com,Daily standup,2026-08-14,Monarch Solutions,Engineering,0.75
+4,bob@example.com,Documentation for bulk import,2026-08-14,Nakatomi Trading,Finance,1.75
+6,bob@example.com,Client call: campaign results,2026-08-14,Pied Piper,Operations,1.0
+10,dave@example.com,Call with stakeholders re status update,2026-08-14,Tyrell Logistics,Sales,1.0
+19,frank@example.com,,2026-08-14,Initech,Finance,1.25
+20,grace@example.com,HOTFIX FOR EXPORT TO CSV,2026-08-14,Stark Industries,Finance,3.25
+21,grace@example.com,Call with stakeholders re pricing,2026-08-14,Black Mesa,Finance,2.25
+22,grace@example.com,Drafted runbook,2026-08-14,Globex,Marketing,2.75
+25,heidi@example.com,Standup meeting,2026-08-14,Dunder Mifflin,Engineering,0.25
+3,alice@example.com,Deployment,2026-08-15,Monarch Solutions,Engineering,1.0
+8,carol@example.com,Wrote architecture doc,2026-08-15,Bluth Company,Finance,1.25
+11,dave@example.com,Daily standup,2026-08-15,Umbrella Health,Engineering,0.5
+22,grace@example.com,Documentation for webhooks,2026-08-16,Globex,Marketing,1.25
+1,alice@example.com,client meeting,2026-08-17,Dunder Mifflin,Sales,1.5
+1,alice@example.com,Call with stakeholders re retrospective,2026-08-17,Dunder Mifflin,Sales,1.5
+2,alice@example.com,client call: onboarding,2026-08-17,Massive Dynamic,Finance,0.25
+2,alice@example.com,Wrote runbook,2026-08-17,Massive Dynamic,Finance,1.0
+2,alice@example.com,Documentation,2026-08-17,Massive Dynamic,Finance,1.25
+3,alice@example.com,PR review: reports API,2026-08-17,Monarch Solutions,Engineering,1.5
+6,bob@example.com,call with stakeholders re onboarding,2026-08-17,Pied Piper,Operations,0.75
+6,bob@example.com,Reviewed pull request #1386,2026-08-17,Pied Piper,Operations,0.75
+10,dave@example.com,Meeting with client about onboarding,2026-08-17,Tyrell Logistics,Sales,1.0
+10,dave@example.com,Team standup,2026-08-17,Tyrell Logistics,Sales,0.5
+11,dave@example.com,Developing audit logging for reports API,2026-08-17,Umbrella Health,Engineering,1.5
+14,erin@example.com,Meeting with client about budget review,2026-08-17,Vandelay Imports,Marketing,2.0
+16,erin@example.com,Hotfix for user settings,2026-08-17,Wonka Retail,Engineering,1.0
+16,erin@example.com,Implemented bulk import,2026-08-17,Wonka Retail,Engineering,2.75
+18,frank@example.com,Daily scrum,2026-08-17,Duff Beverages,Engineering,0.25
+20,grace@example.com,Client call: Q3 roadmap,2026-08-17,Stark Industries,Finance,1.25
+20,grace@example.com,Updated onboarding guide,2026-08-17,Stark Industries,Finance,2.25
+20,grace@example.com,Call with stakeholders re budget review,2026-08-17,Stark Industries,Finance,2.25
+21,grace@example.com,feature development,2026-08-17,Black Mesa,Finance,6.25
+3,alice@example.com,Feature development,2026-08-18,Monarch Solutions,Engineering,6.5
+5,bob@example.com,Client call: requirements,2026-08-18,Cyberdyne,Finance,0.75
+7,carol@example.com,Client workshop on retrospective,2026-08-18,Prestige Worldwide,Sales,0.5
+8,carol@example.com,DOCUMENTATION,2026-08-18,Bluth Company,Finance,3.5
+8,carol@example.com,Client meeting,2026-08-18,Bluth Company,Finance,1.75
+8,carol@example.com,MORNING STANDUP WITH THE TEAM,2026-08-18,Bluth Company,Finance,1.0
+9,carol@example.com,Meeting with client about status update,2026-08-18,Hooli,Marketing,2.0
+10,dave@example.com,Call with stakeholders re Q3 roadmap,2026-08-18,Tyrell Logistics,Sales,1.0
+12,dave@example.com,Drafted release notes,2026-08-18,Acme Corp,Marketing,1.5
+13,erin@example.com,Meeting with client about requirements,2026-08-18,Aperture Labs,Finance,2.25
+14,erin@example.com,Call with stakeholders re campaign results,2026-08-18,Vandelay Imports,Marketing,1.25
+20,grace@example.com,Call with stakeholders re campaign results,2026-08-18,Stark Industries,Finance,2.0
+20,grace@example.com,Team sync / standup,2026-08-18,Stark Industries,Finance,0.75
+20,grace@example.com,Meeting with client about Q3 roadmap,2026-08-18,Stark Industries,Finance,2.0
+21,grace@example.com,Client workshop on status update,2026-08-18,Black Mesa,Finance,0.75
+22,grace@example.com,Drafted user manual,2026-08-18,Globex,Marketing,2.0
+25,heidi@example.com,Hotfix for search,2026-08-18,Dunder Mifflin,Engineering,4.5
+25,heidi@example.com,Team sync / standup,2026-08-18,Dunder Mifflin,Engineering,1.0
+25,heidi@example.com,Reviewed pull request #850,2026-08-18,Dunder Mifflin,Engineering,2.25
+1,alice@example.com,feature development,2026-08-19,Dunder Mifflin,Sales,5.75
+1,alice@example.com,Client meeting,2026-08-19,Dunder Mifflin,Sales,1.0
+4,bob@example.com,Morning standup with the team,2026-08-19,Nakatomi Trading,Finance,0.25
+4,bob@example.com,Meeting with client about campaign results,2026-08-19,Nakatomi Trading,Finance,1.5
+5,bob@example.com,Implemented analytics widgets,2026-08-19,Cyberdyne,Finance,4.0
+8,carol@example.com,Drafted API reference,2026-08-19,Bluth Company,Finance,3.0
+10,dave@example.com,Client call: requirements,2026-08-19,Tyrell Logistics,Sales,2.0
+16,erin@example.com,Bug fix: checkout flow error,2026-08-19,Wonka Retail,Engineering,1.0
+16,erin@example.com,Code review,2026-08-19,Wonka Retail,Engineering,0.5
+17,frank@example.com,Deployed release to the demo environment,2026-08-19,Oscorp,Operations,0.75
+20,grace@example.com,Updated API reference,2026-08-19,Stark Industries,Finance,2.75
+21,grace@example.com,Documentation for analytics widgets,2026-08-19,Black Mesa,Finance,1.75
+22,grace@example.com,CALL WITH STAKEHOLDERS RE Q3 ROADMAP,2026-08-19,Globex,Marketing,1.75
+22,grace@example.com,Morning standup with the team,2026-08-19,Globex,Marketing,0.25
+22,grace@example.com,Wrote onboarding guide,2026-08-19,Globex,Marketing,2.5
+2,alice@example.com,Wrote user manual,2026-08-20,Massive Dynamic,Finance,1.0
+6,bob@example.com,Built dark mode,2026-08-20,Pied Piper,Operations,4.75
+8,carol@example.com,Documentation for role-based access,2026-08-20,Bluth Company,Finance,1.75
+9,carol@example.com,Call with stakeholders re kickoff,2026-08-20,Hooli,Marketing,1.25
+10,dave@example.com,,2026-08-20,Tyrell Logistics,Sales,0.75
+11,dave@example.com,Bug fix,2026-08-20,Umbrella Health,Engineering,6.5
+21,grace@example.com,,2026-08-20,Black Mesa,Finance,2.25
+25,heidi@example.com,Code review for PR #592,2026-08-20,Dunder Mifflin,Engineering,1.25
+2,alice@example.com,Documentation,2026-08-21,Massive Dynamic,Finance,1.5
+4,bob@example.com,Documentation,2026-08-21,Nakatomi Trading,Finance,2.5
+6,bob@example.com,Investigated and fixed issue in dashboard,2026-08-21,Pied Piper,Operations,6.0
+6,bob@example.com,wrote runbook,2026-08-21,Pied Piper,Operations,1.5
+7,carol@example.com,Client workshop on requirements,2026-08-21,Prestige Worldwide,Sales,0.5
+11,dave@example.com,Implemented dark mode,2026-08-21,Umbrella Health,Engineering,10.5
+12,dave@example.com,drafted user manual,2026-08-21,Acme Corp,Marketing,1.5
+21,grace@example.com,Client workshop on kickoff,2026-08-21,Black Mesa,Finance,1.0
+21,grace@example.com,Wrote runbook,2026-08-21,Black Mesa,Finance,1.0
+1,alice@example.com,Client workshop on onboarding,2026-08-23,Dunder Mifflin,Sales,1.0
+12,dave@example.com,CLIENT CALL: PRICING,2026-08-23,Acme Corp,Marketing,0.75
+2,alice@example.com,,2026-08-24,Massive Dynamic,Finance,0.25
+3,alice@example.com,Code review for PR #1719,2026-08-24,Monarch Solutions,Engineering,0.25
+4,bob@example.com,Implemented invoice generation,2026-08-24,Nakatomi Trading,Finance,3.5
+7,carol@example.com,Team standup,2026-08-24,Prestige Worldwide,Sales,0.75
+8,carol@example.com,Deployment,2026-08-24,Bluth Company,Finance,1.5
+12,dave@example.com,Daily standup,2026-08-24,Acme Corp,Marketing,0.25
+13,erin@example.com,Team sync / standup,2026-08-24,Aperture Labs,Finance,0.5
+13,erin@example.com,Feature development,2026-08-24,Aperture Labs,Finance,4.75
+14,erin@example.com,Updated user manual,2026-08-24,Vandelay Imports,Marketing,2.75
+15,erin@example.com,Morning standup with the team,2026-08-24,Wayne Enterprises,Sales,0.5
+16,erin@example.com,Fixed bug in notifications,2026-08-24,Wonka Retail,Engineering,1.75
+20,grace@example.com,release deployment and smoke tests on the demo environment,2026-08-24,Stark Industries,Finance,3.25
+22,grace@example.com,Call with stakeholders re budget review,2026-08-24,Globex,Marketing,2.25
+2,alice@example.com,Team sync / standup,2026-08-25,Massive Dynamic,Finance,0.5
+2,alice@example.com,standup meeting,2026-08-25,Massive Dynamic,Finance,0.75
+2,alice@example.com,Call with stakeholders re budget review,2026-08-25,Massive Dynamic,Finance,1.0
+2,alice@example.com,Client call: campaign results,2026-08-25,Massive Dynamic,Finance,0.5
+5,bob@example.com,Documentation for dark mode,2026-08-25,Cyberdyne,Finance,1.75
+9,carol@example.com,Drafted onboarding guide,2026-08-25,Hooli,Marketing,2.5
+10,dave@example.com,morning standup with the team,2026-08-25,Tyrell Logistics,Sales,0.5
+11,dave@example.com,Bug fix: dashboard error,2026-08-25,Umbrella Health,Engineering,3.5
+11,dave@example.com,Standup meeting,2026-08-25,Umbrella Health,Engineering,1.0
+11,dave@example.com,Deployed release to staging,2026-08-25,Umbrella Health,Engineering,4.0
+12,dave@example.com,Drafted runbook,2026-08-25,Acme Corp,Marketing,1.0
+12,dave@example.com,Documentation for invoice generation,2026-08-25,Acme Corp,Marketing,1.0
+13,erin@example.com,client meeting,2026-08-25,Aperture Labs,Finance,0.25
+13,erin@example.com,Drafted user manual,2026-08-25,Aperture Labs,Finance,1.75
+14,erin@example.com,Team standup,2026-08-25,Vandelay Imports,Marketing,1.0
+19,frank@example.com,PR review: reports API,2026-08-25,Initech,Finance,2.0
+19,frank@example.com,Production deployment,2026-08-25,Initech,Finance,2.5
+20,grace@example.com,drafted onboarding guide,2026-08-25,Stark Industries,Finance,2.25
+21,grace@example.com,client call: campaign results,2026-08-25,Black Mesa,Finance,1.5
+22,grace@example.com,morning standup with the team,2026-08-25,Globex,Marketing,0.5
+5,bob@example.com,Documentation for SSO integration,2026-08-26,Cyberdyne,Finance,3.0
+5,bob@example.com,wrote runbook,2026-08-26,Cyberdyne,Finance,1.25
+5,bob@example.com,,2026-08-26,Cyberdyne,Finance,0.5
+5,bob@example.com,Wrote API reference,2026-08-26,Cyberdyne,Finance,2.5
+6,bob@example.com,Code review for PR #470,2026-08-26,Pied Piper,Operations,0.5
+6,bob@example.com,Documentation,2026-08-26,Pied Piper,Operations,2.5
+10,dave@example.com,Meeting with client about pricing,2026-08-26,Tyrell Logistics,Sales,2.25
+13,erin@example.com,Team standup,2026-08-26,Aperture Labs,Finance,0.25
+17,frank@example.com,Morning standup with the team,2026-08-26,Oscorp,Operations,0.75
+21,grace@example.com,Bug fix: dashboard error,2026-08-26,Black Mesa,Finance,1.5
+21,grace@example.com,Wrote API reference,2026-08-26,Black Mesa,Finance,3.25
+24,heidi@example.com,drafted runbook,2026-08-26,Soylent Foods,Finance,3.0
+25,heidi@example.com,PR review: dashboard,2026-08-26,Dunder Mifflin,Engineering,2.0
+1,alice@example.com,Drafted onboarding guide,2026-08-27,Dunder Mifflin,Sales,1.5
+2,alice@example.com,Meeting with client about campaign results,2026-08-27,Massive Dynamic,Finance,1.25
+4,bob@example.com,Meeting with client about requirements,2026-08-27,Nakatomi Trading,Finance,1.5
+4,bob@example.com,feature work: webhooks,2026-08-27,Nakatomi Trading,Finance,3.25
+5,bob@example.com,Built role-based access,2026-08-27,Cyberdyne,Finance,4.25
+6,bob@example.com,,2026-08-27,Pied Piper,Operations,1.0
+10,dave@example.com,Client call: renewal,2026-08-27,Tyrell Logistics,Sales,1.25
+10,dave@example.com,PR review: user settings,2026-08-27,Tyrell Logistics,Sales,1.0
+10,dave@example.com,Client workshop on Q3 roadmap,2026-08-27,Tyrell Logistics,Sales,1.25
+10,dave@example.com,Drafted runbook,2026-08-27,Tyrell Logistics,Sales,2.0
+10,dave@example.com,Meeting with client about budget review,2026-08-27,Tyrell Logistics,Sales,1.0
+16,erin@example.com,Morning standup with the team,2026-08-27,Wonka Retail,Engineering,0.25
+21,grace@example.com,Feature development,2026-08-27,Black Mesa,Finance,5.0
+21,grace@example.com,Hotfix for login page,2026-08-27,Black Mesa,Finance,1.0
+21,grace@example.com,Documentation,2026-08-27,Black Mesa,Finance,2.0
+3,alice@example.com,PR review: reports API,2026-08-28,Monarch Solutions,Engineering,0.5
+5,bob@example.com,Standup meeting,2026-08-28,Cyberdyne,Finance,0.5
+7,carol@example.com,CLIENT MEETING,2026-08-28,Prestige Worldwide,Sales,0.75
+8,carol@example.com,Meeting with client about retrospective,2026-08-28,Bluth Company,Finance,1.5
+8,carol@example.com,Drafted onboarding guide,2026-08-28,Bluth Company,Finance,2.75
+9,carol@example.com,Meeting with client about campaign results,2026-08-28,Hooli,Marketing,1.5
+10,dave@example.com,Client workshop on renewal,2026-08-28,Tyrell Logistics,Sales,1.0
+11,dave@example.com,Investigated and fixed issue in mobile layout,2026-08-28,Umbrella Health,Engineering,2.5
+11,dave@example.com,Morning standup with the team,2026-08-28,Umbrella Health,Engineering,1.0
+14,erin@example.com,Team standup,2026-08-28,Vandelay Imports,Marketing,0.5
+15,erin@example.com,Morning standup with the team,2026-08-28,Wayne Enterprises,Sales,0.5
+16,erin@example.com,PR review: mobile layout,2026-08-28,Wonka Retail,Engineering,0.25
+19,frank@example.com,Client meeting,2026-08-28,Initech,Finance,1.5
+19,frank@example.com,Client workshop on Q3 roadmap,2026-08-28,Initech,Finance,2.25
+19,frank@example.com,Call with stakeholders re campaign results,2026-08-28,Initech,Finance,0.25
+19,frank@example.com,Drafted release notes,2026-08-28,Initech,Finance,2.0
+20,grace@example.com,Client workshop on requirements,2026-08-28,Stark Industries,Finance,1.0
+20,grace@example.com,Daily scrum,2026-08-28,Stark Industries,Finance,1.0
+21,grace@example.com,Updated API reference,2026-08-28,Black Mesa,Finance,2.75
+21,grace@example.com,,2026-08-28,Black Mesa,Finance,3.0
+25,heidi@example.com,Reviewed pull request #611,2026-08-29,Dunder Mifflin,Engineering,0.75
+2,alice@example.com,Daily standup,2026-08-31,Massive Dynamic,Finance,0.75
+8,carol@example.com,INVESTIGATED AND FIXED ISSUE IN MOBILE LAYOUT,2026-08-31,Bluth Company,Finance,1.5
+9,carol@example.com,Client meeting,2026-08-31,Hooli,Marketing,1.0
+10,dave@example.com,Client meeting,2026-08-31,Tyrell Logistics,Sales,1.5
+11,dave@example.com,Deployment,2026-08-31,Umbrella Health,Engineering,5.5
+15,erin@example.com,,2026-08-31,Wayne Enterprises,Sales,0.75
+16,erin@example.com,Client workshop on Q3 roadmap,2026-08-31,Wonka Retail,Engineering,1.25
+16,erin@example.com,Deployment,2026-08-31,Wonka Retail,Engineering,1.5
+17,frank@example.com,Fixed bug in billing service,2026-08-31,Oscorp,Operations,2.5
+19,frank@example.com,Feature work: analytics widgets,2026-08-31,Initech,Finance,4.0
+19,frank@example.com,Updated API reference,2026-08-31,Initech,Finance,2.25
+19,frank@example.com,Updated onboarding guide,2026-08-31,Initech,Finance,1.25
+22,grace@example.com,Client meeting,2026-08-31,Globex,Marketing,2.0
+22,grace@example.com,Fixed bug in reports API,2026-08-31,Globex,Marketing,2.5
+2,alice@example.com,Morning standup with the team,2026-09-01,Massive Dynamic,Finance,1.0
+2,alice@example.com,,2026-09-01,Massive Dynamic,Finance,1.75
+4,bob@example.com,FEATURE WORK: WEBHOOKS,2026-09-01,Nakatomi Trading,Finance,5.25
+4,bob@example.com,Hotfix for checkout flow,2026-09-01,Nakatomi Trading,Finance,6.5
+5,bob@example.com,Documentation,2026-09-01,Cyberdyne,Finance,1.25
+6,bob@example.com,Deploy to staging,2026-09-01,Pied Piper,Operations,3.0
+6,bob@example.com,Reviewed pull request #1745,2026-09-01,Pied Piper,Operations,0.25
+11,dave@example.com,daily standup,2026-09-01,Umbrella Health,Engineering,1.25
+11,dave@example.com,Daily scrum,2026-09-01,Umbrella Health,Engineering,2.0
+12,dave@example.com,Meeting with client about status update,2026-09-01,Acme Corp,Marketing,1.5
+13,erin@example.com,Updated architecture doc,2026-09-01,Aperture Labs,Finance,2.25
+20,grace@example.com,Team standup,2026-09-01,Stark Industries,Finance,1.25
+1,alice@example.com,Reviewed pull request #1217,2026-09-02,Dunder Mifflin,Sales,0.5
+1,alice@example.com,Daily standup,2026-09-02,Dunder Mifflin,Sales,0.25
+1,alice@example.com,Client call: onboarding,2026-09-02,Dunder Mifflin,Sales,1.5
+2,alice@example.com,Documentation,2026-09-02,Massive Dynamic,Finance,2.5
+3,alice@example.com,Implemented role-based access,2026-09-02,Monarch Solutions,Engineering,6.25
+3,alice@example.com,Release deployment and smoke tests on staging,2026-09-02,Monarch Solutions,Engineering,1.25
+6,bob@example.com,Production deployment,2026-09-02,Pied Piper,Operations,2.0
+10,dave@example.com,Meeting with client about requirements,2026-09-02,Tyrell Logistics,Sales,1.75
+13,erin@example.com,Developing dark mode for login page,2026-09-02,Aperture Labs,Finance,5.5
+14,erin@example.com,Morning standup with the team,2026-09-02,Vandelay Imports,Marketing,0.75
+21,grace@example.com,Documentation for SSO integration,2026-09-02,Black Mesa,Finance,5.0
+4,bob@example.com,Meeting with client about requirements,2026-09-03,Nakatomi Trading,Finance,1.0
+4,bob@example.com,Daily standup,2026-09-03,Nakatomi Trading,Finance,0.5
+5,bob@example.com,team standup,2026-09-03,Cyberdyne,Finance,0.75
+5,bob@example.com,Call with stakeholders re retrospective,2026-09-03,Cyberdyne,Finance,2.25
+6,bob@example.com,Deployed release to production,2026-09-03,Pied Piper,Operations,1.5
+6,bob@example.com,Feature development,2026-09-03,Pied Piper,Operations,5.75
+7,carol@example.com,standup meeting,2026-09-03,Prestige Worldwide,Sales,0.25
+11,dave@example.com,Fixed bug in checkout flow,2026-09-03,Umbrella Health,Engineering,2.5
+13,erin@example.com,Morning standup with the team,2026-09-03,Aperture Labs,Finance,1.25
+13,erin@example.com,Client workshop on campaign results,2026-09-03,Aperture Labs,Finance,2.25
+16,erin@example.com,Wrote architecture doc,2026-09-03,Wonka Retail,Engineering,2.0
+16,erin@example.com,Production deployment,2026-09-03,Wonka Retail,Engineering,1.0
+17,frank@example.com,Daily scrum,2026-09-03,Oscorp,Operations,1.0
+24,heidi@example.com,Reviewed pull request #823,2026-09-03,Soylent Foods,Finance,1.5
+24,heidi@example.com,Feature development,2026-09-03,Soylent Foods,Finance,3.0
+1,alice@example.com,Client meeting,2026-09-04,Dunder Mifflin,Sales,1.75
+2,alice@example.com,Drafted user manual,2026-09-04,Massive Dynamic,Finance,2.0
+5,bob@example.com,team sync / standup,2026-09-04,Cyberdyne,Finance,0.75
+6,bob@example.com,Code review and feedback on bulk import,2026-09-04,Pied Piper,Operations,1.0
+8,carol@example.com,Wrote user manual,2026-09-04,Bluth Company,Finance,3.0
+8,carol@example.com,Morning standup with the team,2026-09-04,Bluth Company,Finance,0.75
+9,carol@example.com,Feature work: invoice generation,2026-09-04,Hooli,Marketing,7.75
+11,dave@example.com,Built role-based access,2026-09-04,Umbrella Health,Engineering,8.0
+13,erin@example.com,Daily scrum,2026-09-04,Aperture Labs,Finance,0.25
+15,erin@example.com,Updated release notes,2026-09-04,Wayne Enterprises,Sales,0.75
+16,erin@example.com,Code review for PR #108,2026-09-04,Wonka Retail,Engineering,1.0
+16,erin@example.com,Hotfix for billing service,2026-09-04,Wonka Retail,Engineering,2.0
+20,grace@example.com,Client workshop on campaign results,2026-09-04,Stark Industries,Finance,2.0
+20,grace@example.com,Fixed bug in checkout flow,2026-09-04,Stark Industries,Finance,4.0
+21,grace@example.com,Built bulk import,2026-09-04,Black Mesa,Finance,5.25
+23,grace@example.com,Deployment,2026-09-05,Gringotts Bank,Operations,1.75
+3,alice@example.com,Deployment,2026-09-06,Monarch Solutions,Engineering,1.0
+6,bob@example.com,Deploy to the demo environment,2026-09-06,Pied Piper,Operations,2.25
+1,alice@example.com,Client workshop on renewal,2026-09-07,Dunder Mifflin,Sales,2.0
+2,alice@example.com,Daily standup,2026-09-07,Massive Dynamic,Finance,0.5
+2,alice@example.com,Drafted architecture doc,2026-09-07,Massive Dynamic,Finance,2.75
+5,bob@example.com,Updated runbook,2026-09-07,Cyberdyne,Finance,1.0
+7,carol@example.com,Drafted release notes,2026-09-07,Prestige Worldwide,Sales,1.5
+7,carol@example.com,Developing invoice generation for dashboard,2026-09-07,Prestige Worldwide,Sales,3.5
+8,carol@example.com,Documentation for bulk import,2026-09-07,Bluth Company,Finance,3.75
+10,dave@example.com,documentation,2026-09-07,Tyrell Logistics,Sales,2.0
+10,dave@example.com,Meeting with client about retrospective,2026-09-07,Tyrell Logistics,Sales,1.5
+12,dave@example.com,Code review,2026-09-07,Acme Corp,Marketing,1.25
+16,erin@example.com,Daily standup,2026-09-07,Wonka Retail,Engineering,0.5
+20,grace@example.com,Client call: budget review,2026-09-07,Stark Industries,Finance,2.5
+21,grace@example.com,Developing SSO integration for login page,2026-09-07,Black Mesa,Finance,6.25
+22,grace@example.com,Client call: pricing,2026-09-07,Globex,Marketing,2.75
+25,heidi@example.com,Meeting with client about requirements,2026-09-07,Dunder Mifflin,Engineering,1.75
+1,alice@example.com,Call with stakeholders re status update,2026-09-08,Dunder Mifflin,Sales,1.75
+1,alice@example.com,DOCUMENTATION FOR ROLE-BASED ACCESS,2026-09-08,Dunder Mifflin,Sales,1.75
+5,bob@example.com,Daily standup,2026-09-08,Cyberdyne,Finance,0.75
+5,bob@example.com,Wrote architecture doc,2026-09-08,Cyberdyne,Finance,1.75
+5,bob@example.com,Updated API reference,2026-09-08,Cyberdyne,Finance,3.0
+6,bob@example.com,Team sync / standup,2026-09-08,Pied Piper,Operations,0.5
+6,bob@example.com,Fixed bug in user settings,2026-09-08,Pied Piper,Operations,3.25
+8,carol@example.com,UPDATED ARCHITECTURE DOC,2026-09-08,Bluth Company,Finance,0.25
+12,dave@example.com,Documentation for webhooks,2026-09-08,Acme Corp,Marketing,1.5
+13,erin@example.com,Client call: Q3 roadmap,2026-09-08,Aperture Labs,Finance,2.25
+20,grace@example.com,Updated user manual,2026-09-08,Stark Industries,Finance,2.5
+20,grace@example.com,Meeting with client about status update,2026-09-08,Stark Industries,Finance,1.5
+22,grace@example.com,Team standup,2026-09-08,Globex,Marketing,0.75
+22,grace@example.com,Client meeting,2026-09-08,Globex,Marketing,1.5
+2,alice@example.com,Client workshop on retrospective,2026-09-09,Massive Dynamic,Finance,2.0
+2,alice@example.com,Client call: kickoff,2026-09-09,Massive Dynamic,Finance,2.75
+4,bob@example.com,Team sync / standup,2026-09-09,Nakatomi Trading,Finance,0.75
+5,bob@example.com,Drafted release notes,2026-09-09,Cyberdyne,Finance,1.25
+8,carol@example.com,,2026-09-09,Bluth Company,Finance,2.0
+8,carol@example.com,Client call: Q3 roadmap,2026-09-09,Bluth Company,Finance,1.0
+13,erin@example.com,developing invoice generation for user settings,2026-09-09,Aperture Labs,Finance,3.5
+13,erin@example.com,Meeting with client about retrospective,2026-09-09,Aperture Labs,Finance,1.5
+14,erin@example.com,meeting with client about q3 roadmap,2026-09-09,Vandelay Imports,Marketing,1.25
+16,erin@example.com,Implemented webhooks,2026-09-09,Wonka Retail,Engineering,2.75
+19,frank@example.com,Deployment,2026-09-09,Initech,Finance,2.25
+20,grace@example.com,Bug fix: login page error,2026-09-09,Stark Industries,Finance,3.25
+21,grace@example.com,Drafted release notes,2026-09-09,Black Mesa,Finance,1.5
+21,grace@example.com,Production deployment,2026-09-09,Black Mesa,Finance,2.75
+22,grace@example.com,Feature development,2026-09-09,Globex,Marketing,3.75
+22,grace@example.com,Daily standup,2026-09-09,Globex,Marketing,0.5
+22,grace@example.com,Wrote API reference,2026-09-09,Globex,Marketing,2.25
+2,alice@example.com,Drafted release notes,2026-09-10,Massive Dynamic,Finance,2.25
+2,alice@example.com,Team standup,2026-09-10,Massive Dynamic,Finance,0.75
+2,alice@example.com,Call with stakeholders re kickoff,2026-09-10,Massive Dynamic,Finance,2.25
+3,alice@example.com,Team standup,2026-09-10,Monarch Solutions,Engineering,0.75
+8,carol@example.com,Documentation,2026-09-10,Bluth Company,Finance,1.5
+8,carol@example.com,Client call: requirements,2026-09-10,Bluth Company,Finance,1.75
+13,erin@example.com,Wrote runbook,2026-09-10,Aperture Labs,Finance,2.5
+13,erin@example.com,Documentation,2026-09-10,Aperture Labs,Finance,2.0
+13,erin@example.com,Wrote user manual,2026-09-10,Aperture Labs,Finance,2.75
+16,erin@example.com,Code review,2026-09-10,Wonka Retail,Engineering,0.5
+20,grace@example.com,Client workshop on pricing,2026-09-10,Stark Industries,Finance,1.75
+20,grace@example.com,Feature work: analytics widgets,2026-09-10,Stark Industries,Finance,4.75
+20,grace@example.com,Daily standup,2026-09-10,Stark Industries,Finance,1.0
+2,alice@example.com,Drafted onboarding guide,2026-09-11,Massive Dynamic,Finance,1.75
+4,bob@example.com,Morning standup with the team,2026-09-11,Nakatomi Trading,Finance,1.0
+6,bob@example.com,Feature work: webhooks,2026-09-11,Pied Piper,Operations,6.5
+10,dave@example.com,Updated architecture doc,2026-09-11,Tyrell Logistics,Sales,1.25
+11,dave@example.com,Team sync / standup,2026-09-11,Umbrella Health,Engineering,0.75
+11,dave@example.com,Standup meeting,2026-09-11,Umbrella Health,Engineering,1.5
+11,dave@example.com,Production deployment,2026-09-11,Umbrella Health,Engineering,1.75
+20,grace@example.com,Client call: onboarding,2026-09-11,Stark Industries,Finance,2.25
+20,grace@example.com,daily standup,2026-09-11,Stark Industries,Finance,1.25
+21,grace@example.com,Feature development,2026-09-11,Black Mesa,Finance,5.0
+7,carol@example.com,Developing dark mode for login page,2026-09-12,Prestige Worldwide,Sales,2.25
+14,erin@example.com,wrote runbook,2026-09-12,Vandelay Imports,Marketing,1.75
+11,dave@example.com,Feature development,2026-09-13,Umbrella Health,Engineering,6.0
+2,alice@example.com,,2026-09-14,Massive Dynamic,Finance,2.0
+2,alice@example.com,Client meeting,2026-09-14,Massive Dynamic,Finance,2.25
+6,bob@example.com,Release deployment and smoke tests on staging,2026-09-14,Pied Piper,Operations,2.75
+7,carol@example.com,Feature work: audit logging,2026-09-14,Prestige Worldwide,Sales,4.5
+7,carol@example.com,Standup meeting,2026-09-14,Prestige Worldwide,Sales,0.75
+10,dave@example.com,Call with stakeholders re status update,2026-09-14,Tyrell Logistics,Sales,2.25
+13,erin@example.com,Daily scrum,2026-09-14,Aperture Labs,Finance,1.0
+15,erin@example.com,Client call: Q3 roadmap,2026-09-14,Wayne Enterprises,Sales,1.25
+21,grace@example.com,Updated API reference,2026-09-14,Black Mesa,Finance,3.75
+25,heidi@example.com,Code review for PR #158,2026-09-14,Dunder Mifflin,Engineering,1.25
+25,heidi@example.com,Bug fix,2026-09-14,Dunder Mifflin,Engineering,3.25
+3,alice@example.com,deploy to production,2026-09-15,Monarch Solutions,Engineering,1.25
+4,bob@example.com,feature development,2026-09-15,Nakatomi Trading,Finance,3.75
+6,bob@example.com,Production deployment,2026-09-15,Pied Piper,Operations,1.5
+10,dave@example.com,documentation for analytics widgets,2026-09-15,Tyrell Logistics,Sales,2.0
+10,dave@example.com,,2026-09-15,Tyrell Logistics,Sales,2.0
+12,dave@example.com,Wrote API reference,2026-09-15,Acme Corp,Marketing,2.25
+14,erin@example.com,Client call: budget review,2026-09-15,Vandelay Imports,Marketing,2.0
+15,erin@example.com,Standup meeting,2026-09-15,Wayne Enterprises,Sales,0.5
+15,erin@example.com,call with stakeholders re q3 roadmap,2026-09-15,Wayne Enterprises,Sales,1.5
+20,grace@example.com,Bug fix,2026-09-15,Stark Industries,Finance,5.5
+21,grace@example.com,Feature work: SSO integration,2026-09-15,Black Mesa,Finance,5.0
+24,heidi@example.com,Call with stakeholders re onboarding,2026-09-15,Soylent Foods,Finance,2.0
+4,bob@example.com,drafted architecture doc,2026-09-16,Nakatomi Trading,Finance,2.0
+6,bob@example.com,Release deployment and smoke tests on QA,2026-09-16,Pied Piper,Operations,2.75
+6,bob@example.com,,2026-09-16,Pied Piper,Operations,2.5
+7,carol@example.com,feature work: analytics widgets,2026-09-16,Prestige Worldwide,Sales,4.5
+8,carol@example.com,Fixed bug in export to CSV,2026-09-16,Bluth Company,Finance,2.25
+8,carol@example.com,Daily standup,2026-09-16,Bluth Company,Finance,1.0
+10,dave@example.com,Client meeting,2026-09-16,Tyrell Logistics,Sales,1.25
+12,dave@example.com,Drafted user manual,2026-09-16,Acme Corp,Marketing,1.75
+13,erin@example.com,documentation for dark mode,2026-09-16,Aperture Labs,Finance,2.75
+17,frank@example.com,standup meeting,2026-09-16,Oscorp,Operations,0.5
+20,grace@example.com,Documentation for role-based access,2026-09-16,Stark Industries,Finance,5.0
+21,grace@example.com,Client call: Q3 roadmap,2026-09-16,Black Mesa,Finance,2.75
+21,grace@example.com,Code review,2026-09-16,Black Mesa,Finance,1.0
+24,heidi@example.com,Client call: retrospective,2026-09-16,Soylent Foods,Finance,2.25
+1,alice@example.com,Client call: onboarding,2026-09-17,Dunder Mifflin,Sales,1.0
+3,alice@example.com,Code review,2026-09-17,Monarch Solutions,Engineering,1.25
+3,alice@example.com,Morning standup with the team,2026-09-17,Monarch Solutions,Engineering,0.75
+4,bob@example.com,Wrote API reference,2026-09-17,Nakatomi Trading,Finance,2.25
+4,bob@example.com,CALL WITH STAKEHOLDERS RE STATUS UPDATE,2026-09-17,Nakatomi Trading,Finance,1.5
+6,bob@example.com,Production deployment,2026-09-17,Pied Piper,Operations,3.0
+6,bob@example.com,Reviewed pull request #988,2026-09-17,Pied Piper,Operations,2.0
+7,carol@example.com,Updated runbook,2026-09-17,Prestige Worldwide,Sales,1.5
+8,carol@example.com,Deployed release to QA,2026-09-17,Bluth Company,Finance,1.75
+8,carol@example.com,MEETING WITH CLIENT ABOUT PRICING,2026-09-17,Bluth Company,Finance,1.5
+8,carol@example.com,CLIENT WORKSHOP ON PRICING,2026-09-17,Bluth Company,Finance,2.0
+11,dave@example.com,PR review: reports API,2026-09-17,Umbrella Health,Engineering,2.5
+13,erin@example.com,Updated release notes,2026-09-17,Aperture Labs,Finance,2.25
+16,erin@example.com,Documentation,2026-09-17,Wonka Retail,Engineering,2.25
+20,grace@example.com,DOCUMENTATION,2026-09-17,Stark Industries,Finance,4.75
+21,grace@example.com,Daily scrum,2026-09-17,Black Mesa,Finance,0.5
+21,grace@example.com,Wrote runbook,2026-09-17,Black Mesa,Finance,3.5
+21,grace@example.com,Wrote architecture doc,2026-09-17,Black Mesa,Finance,1.75
+22,grace@example.com,Feature work: bulk import,2026-09-17,Globex,Marketing,4.75
+22,grace@example.com,Team sync / standup,2026-09-17,Globex,Marketing,1.0
+22,grace@example.com,Client call: kickoff,2026-09-17,Globex,Marketing,1.75
+5,bob@example.com,Morning standup with the team,2026-09-18,Cyberdyne,Finance,0.75
+5,bob@example.com,Updated runbook,2026-09-18,Cyberdyne,Finance,2.75
+6,bob@example.com,documentation for bulk import,2026-09-18,Pied Piper,Operations,3.0
+6,bob@example.com,Fixed bug in export to CSV,2026-09-18,Pied Piper,Operations,3.0
+6,bob@example.com,Production deployment,2026-09-18,Pied Piper,Operations,1.75
+8,carol@example.com,Drafted release notes,2026-09-18,Bluth Company,Finance,2.75
+9,carol@example.com,Morning standup with the team,2026-09-18,Hooli,Marketing,1.0
+10,dave@example.com,Meeting with client about retrospective,2026-09-18,Tyrell Logistics,Sales,0.75
+11,dave@example.com,Deployment,2026-09-18,Umbrella Health,Engineering,5.25
+16,erin@example.com,Implemented audit logging,2026-09-18,Wonka Retail,Engineering,2.0
+18,frank@example.com,BUILT ANALYTICS WIDGETS,2026-09-18,Duff Beverages,Engineering,1.0
+19,frank@example.com,Client meeting,2026-09-18,Initech,Finance,1.5
+20,grace@example.com,Built invoice generation,2026-09-18,Stark Industries,Finance,6.25
+20,grace@example.com,Morning standup with the team,2026-09-18,Stark Industries,Finance,0.75
+22,grace@example.com,Documentation for analytics widgets,2026-09-18,Globex,Marketing,1.5
+22,grace@example.com,Meeting with client about Q3 roadmap,2026-09-18,Globex,Marketing,1.5
+22,grace@example.com,Daily scrum,2026-09-18,Globex,Marketing,1.0
+23,grace@example.com,Deploy to staging,2026-09-18,Gringotts Bank,Operations,2.75
+24,heidi@example.com,Daily standup,2026-09-18,Soylent Foods,Finance,0.75
+24,heidi@example.com,Built analytics widgets,2026-09-18,Soylent Foods,Finance,9.0
+25,heidi@example.com,feature development,2026-09-18,Dunder Mifflin,Engineering,2.0
+10,dave@example.com,Meeting with client about campaign results,2026-09-20,Tyrell Logistics,Sales,0.5
+13,erin@example.com,Reviewed pull request #1454,2026-09-20,Aperture Labs,Finance,1.0
+1,alice@example.com,Implemented webhooks,2026-09-21,Dunder Mifflin,Sales,6.25
+2,alice@example.com,Feature work: webhooks,2026-09-21,Massive Dynamic,Finance,4.0
+3,alice@example.com,Bug fix: mobile layout error,2026-09-21,Monarch Solutions,Engineering,1.25
+5,bob@example.com,Drafted onboarding guide,2026-09-21,Cyberdyne,Finance,2.75
+7,carol@example.com,Meeting with client about budget review,2026-09-21,Prestige Worldwide,Sales,2.0
+7,carol@example.com,Call with stakeholders re budget review,2026-09-21,Prestige Worldwide,Sales,1.0
+8,carol@example.com,Documentation,2026-09-21,Bluth Company,Finance,3.0
+9,carol@example.com,Documentation,2026-09-21,Hooli,Marketing,2.5
+16,erin@example.com,Updated API reference,2026-09-21,Wonka Retail,Engineering,1.0
+19,frank@example.com,Client call: kickoff,2026-09-21,Initech,Finance,2.75
+19,frank@example.com,Wrote architecture doc,2026-09-21,Initech,Finance,3.5
+25,heidi@example.com,wrote release notes,2026-09-21,Dunder Mifflin,Engineering,1.5
+25,heidi@example.com,Reviewed pull request #817,2026-09-21,Dunder Mifflin,Engineering,1.25
+1,alice@example.com,Standup meeting,2026-09-22,Dunder Mifflin,Sales,0.75
+5,bob@example.com,Meeting with client about kickoff,2026-09-22,Cyberdyne,Finance,1.25
+6,bob@example.com,CLIENT MEETING,2026-09-22,Pied Piper,Operations,1.75
+7,carol@example.com,Client meeting,2026-09-22,Prestige Worldwide,Sales,1.75
+7,carol@example.com,,2026-09-22,Prestige Worldwide,Sales,1.0
+10,dave@example.com,Client workshop on budget review,2026-09-22,Tyrell Logistics,Sales,1.75
+10,dave@example.com,Client meeting,2026-09-22,Tyrell Logistics,Sales,1.25
+11,dave@example.com,Deploy to staging,2026-09-22,Umbrella Health,Engineering,4.25
+11,dave@example.com,Documentation for analytics widgets,2026-09-22,Umbrella Health,Engineering,5.5
+13,erin@example.com,Call with stakeholders re pricing,2026-09-22,Aperture Labs,Finance,2.5
+14,erin@example.com,Drafted release notes,2026-09-22,Vandelay Imports,Marketing,1.75
+15,erin@example.com,Client meeting,2026-09-22,Wayne Enterprises,Sales,1.0
+16,erin@example.com,Feature development,2026-09-22,Wonka Retail,Engineering,1.25
+20,grace@example.com,MEETING WITH CLIENT ABOUT CAMPAIGN RESULTS,2026-09-22,Stark Industries,Finance,2.75
+20,grace@example.com,Wrote runbook,2026-09-22,Stark Industries,Finance,1.5
+22,grace@example.com,Documentation for role-based access,2026-09-22,Globex,Marketing,2.75
+22,grace@example.com,Wrote API reference,2026-09-22,Globex,Marketing,2.5
+22,grace@example.com,Code review for PR #404,2026-09-22,Globex,Marketing,0.75
+25,heidi@example.com,Code review for PR #847,2026-09-22,Dunder Mifflin,Engineering,1.75
+1,alice@example.com,CLIENT WORKSHOP ON RENEWAL,2026-09-23,Dunder Mifflin,Sales,0.75
+1,alice@example.com,Client meeting,2026-09-23,Dunder Mifflin,Sales,1.25
+3,alice@example.com,Daily scrum,2026-09-23,Monarch Solutions,Engineering,0.5
+4,bob@example.com,Drafted release notes,2026-09-23,Nakatomi Trading,Finance,1.0
+5,bob@example.com,Drafted release notes,2026-09-23,Cyberdyne,Finance,0.75
+8,carol@example.com,Standup meeting,2026-09-23,Bluth Company,Finance,0.75
+11,dave@example.com,Deploy to QA,2026-09-23,Umbrella Health,Engineering,2.25
+16,erin@example.com,Morning standup with the team,2026-09-23,Wonka Retail,Engineering,0.25
+16,erin@example.com,Daily standup,2026-09-23,Wonka Retail,Engineering,0.75
+19,frank@example.com,Updated user manual,2026-09-23,Initech,Finance,3.75
+20,grace@example.com,Feature work: dark mode,2026-09-23,Stark Industries,Finance,4.5
+21,grace@example.com,wrote user manual,2026-09-23,Black Mesa,Finance,4.5
+24,heidi@example.com,Release deployment and smoke tests on staging,2026-09-23,Soylent Foods,Finance,3.25
+2,alice@example.com,drafted release notes,2026-09-24,Massive Dynamic,Finance,3.0
+4,bob@example.com,Updated architecture doc,2026-09-24,Nakatomi Trading,Finance,3.25
+6,bob@example.com,Meeting with client about kickoff,2026-09-24,Pied Piper,Operations,2.25
+6,bob@example.com,Release deployment and smoke tests on production,2026-09-24,Pied Piper,Operations,2.25
+8,carol@example.com,Morning standup with the team,2026-09-24,Bluth Company,Finance,1.0
+8,carol@example.com,deployed release to staging,2026-09-24,Bluth Company,Finance,1.75
+10,dave@example.com,Call with stakeholders re onboarding,2026-09-24,Tyrell Logistics,Sales,1.75
+11,dave@example.com,Bug fix: notifications error,2026-09-24,Umbrella Health,Engineering,3.0
+14,erin@example.com,Updated release notes,2026-09-24,Vandelay Imports,Marketing,2.5
+16,erin@example.com,Feature work: dark mode,2026-09-24,Wonka Retail,Engineering,4.25
+21,grace@example.com,Meeting with client about campaign results,2026-09-24,Black Mesa,Finance,1.25
+21,grace@example.com,Wrote release notes,2026-09-24,Black Mesa,Finance,2.5
+3,alice@example.com,Code review,2026-09-25,Monarch Solutions,Engineering,0.25
+3,alice@example.com,Deploy to production,2026-09-25,Monarch Solutions,Engineering,2.0
+6,bob@example.com,Daily standup,2026-09-25,Pied Piper,Operations,1.0
+7,carol@example.com,Call with stakeholders re kickoff,2026-09-25,Prestige Worldwide,Sales,1.25
+8,carol@example.com,Documentation for audit logging,2026-09-25,Bluth Company,Finance,3.75
+8,carol@example.com,Call with stakeholders re renewal,2026-09-25,Bluth Company,Finance,1.75
+8,carol@example.com,Wrote release notes,2026-09-25,Bluth Company,Finance,1.0
+10,dave@example.com,Drafted API reference,2026-09-25,Tyrell Logistics,Sales,1.5
+16,erin@example.com,Feature work: dark mode,2026-09-25,Wonka Retail,Engineering,2.25
+19,frank@example.com,Feature work: bulk import,2026-09-25,Initech,Finance,8.25
+19,frank@example.com,Deployment,2026-09-25,Initech,Finance,1.25
+19,frank@example.com,Updated onboarding guide,2026-09-25,Initech,Finance,2.25
+20,grace@example.com,Feature work: invoice generation,2026-09-25,Stark Industries,Finance,8.5
+20,grace@example.com,Client meeting,2026-09-25,Stark Industries,Finance,2.75
+25,heidi@example.com,Investigated and fixed issue in search,2026-09-25,Dunder Mifflin,Engineering,2.25
+7,carol@example.com,Fixed bug in billing service,2026-09-26,Prestige Worldwide,Sales,1.25
+2,alice@example.com,Wrote runbook,2026-09-28,Massive Dynamic,Finance,2.75
+2,alice@example.com,Meeting with client about pricing,2026-09-28,Massive Dynamic,Finance,1.0
+2,alice@example.com,Team standup,2026-09-28,Massive Dynamic,Finance,1.0
+9,carol@example.com,Documentation,2026-09-28,Hooli,Marketing,2.75
+19,frank@example.com,Standup meeting,2026-09-28,Initech,Finance,0.5
+20,grace@example.com,Wrote runbook,2026-09-28,Stark Industries,Finance,3.25
+24,heidi@example.com,Standup meeting,2026-09-28,Soylent Foods,Finance,1.0
+25,heidi@example.com,Implemented webhooks,2026-09-28,Dunder Mifflin,Engineering,6.0
+2,alice@example.com,Daily scrum,2026-09-29,Massive Dynamic,Finance,1.0
+3,alice@example.com,Fixed bug in mobile layout,2026-09-29,Monarch Solutions,Engineering,1.25
+3,alice@example.com,PR review: notifications,2026-09-29,Monarch Solutions,Engineering,1.0
+6,bob@example.com,Daily standup,2026-09-29,Pied Piper,Operations,0.75
+8,carol@example.com,Updated architecture doc,2026-09-29,Bluth Company,Finance,2.5
+8,carol@example.com,Client workshop on kickoff,2026-09-29,Bluth Company,Finance,2.25
+8,carol@example.com,Wrote release notes,2026-09-29,Bluth Company,Finance,3.25
+8,carol@example.com,Client workshop on budget review,2026-09-29,Bluth Company,Finance,2.25
+10,dave@example.com,Updated runbook,2026-09-29,Tyrell Logistics,Sales,1.5
+11,dave@example.com,,2026-09-29,Umbrella Health,Engineering,8.0
+13,erin@example.com,Documentation,2026-09-29,Aperture Labs,Finance,3.0
+13,erin@example.com,developing invoice generation for billing service,2026-09-29,Aperture Labs,Finance,6.25
+14,erin@example.com,Morning standup with the team,2026-09-29,Vandelay Imports,Marketing,0.5
+14,erin@example.com,Meeting with client about pricing,2026-09-29,Vandelay Imports,Marketing,2.0
+16,erin@example.com,Deployment,2026-09-29,Wonka Retail,Engineering,1.25
+17,frank@example.com,Investigated and fixed issue in login page,2026-09-29,Oscorp,Operations,5.0
+19,frank@example.com,,2026-09-29,Initech,Finance,1.5
+20,grace@example.com,Fixed bug in export to CSV,2026-09-29,Stark Industries,Finance,2.5
+25,heidi@example.com,Updated API reference,2026-09-29,Dunder Mifflin,Engineering,3.5
+25,heidi@example.com,Fixed bug in dashboard,2026-09-29,Dunder Mifflin,Engineering,1.0
+2,alice@example.com,Updated user manual,2026-09-30,Massive Dynamic,Finance,2.75
+4,bob@example.com,Developing dark mode for user settings,2026-09-30,Nakatomi Trading,Finance,2.75
+6,bob@example.com,Team sync / standup,2026-09-30,Pied Piper,Operations,0.75
+6,bob@example.com,Implemented invoice generation,2026-09-30,Pied Piper,Operations,4.25
+8,carol@example.com,Wrote architecture doc,2026-09-30,Bluth Company,Finance,3.5
+11,dave@example.com,Code review for PR #1262,2026-09-30,Umbrella Health,Engineering,2.0
+11,dave@example.com,Feature work: role-based access,2026-09-30,Umbrella Health,Engineering,3.75
+11,dave@example.com,Deployed release to staging,2026-09-30,Umbrella Health,Engineering,2.5
+12,dave@example.com,Morning standup with the team,2026-09-30,Acme Corp,Marketing,0.5
+16,erin@example.com,Developing SSO integration for notifications,2026-09-30,Wonka Retail,Engineering,4.25
+16,erin@example.com,Client workshop on onboarding,2026-09-30,Wonka Retail,Engineering,1.75
+18,frank@example.com,deployment,2026-09-30,Duff Beverages,Engineering,0.75
+19,frank@example.com,,2026-09-30,Initech,Finance,3.0
+20,grace@example.com,UPDATED USER MANUAL,2026-09-30,Stark Industries,Finance,2.5
+21,grace@example.com,PR review: billing service,2026-09-30,Black Mesa,Finance,0.75
+22,grace@example.com,Call with stakeholders re pricing,2026-09-30,Globex,Marketing,1.5
