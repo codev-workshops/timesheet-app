@@ -41,11 +41,10 @@ RUN addgroup -g 1001 -S nodejs && \
 # Copy backend dependencies and source
 COPY --from=backend-builder /app/backend/node_modules ./node_modules
 COPY backend/src ./src
-COPY backend/package.json ./
+COPY backend/package.json backend/knexfile.js ./
 
-# Copy production overrides (modified server.js and database init for file-based SQLite)
+# Copy production server override (static SPA serving, CSP); DB uses knexfile + DATABASE_PATH
 COPY docker/overrides/server.js ./src/server.js
-COPY docker/overrides/database/init.js ./src/database/init.js
 
 # Copy built frontend to be served by backend
 COPY --from=frontend-builder /app/frontend/dist ./public

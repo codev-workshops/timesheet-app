@@ -1,150 +1,187 @@
 const express = require('express');
-const { getDatabase } = require('../database/init');
+const { db } = require('../database/db');
 const { authenticateUser } = require('../middleware/auth');
 const { workEntrySchema, updateWorkEntrySchema } = require('../validation/schemas');
 
 const router = express.Router();
 
+const WORK_ENTRY_COLUMNS = [
+  'we.id', 'we.client_id', 'we.hours', 'we.description', 'we.date',
+  'we.created_at', 'we.updated_at', 'c.name as client_name',
+  'we.category_id', 'cat.name as category_name'
+];
+
+function workEntriesWithClient() {
+  return db('work_entries as we')
+    .join('clients as c', 'we.client_id', 'c.id')
+    .leftJoin('categories as cat', 'we.category_id', 'cat.id')
+    .select(WORK_ENTRY_COLUMNS);
+}
+
+// Categories are global reference data (not user-scoped); only active ones may be assigned.
+async function findActiveCategory(categoryId) {
+  return db('categories').select('id').where({ id: categoryId, active: 1 }).first();
+}
+
+// Returns true if the response was already sent (error), false if categoryId is acceptable.
+async function rejectInvalidCategory(categoryId, res) {
+  if (categoryId === undefined || categoryId === null) {
+    return false;
+  }
+  let category;
+  try {
+    category = await findActiveCategory(categoryId);
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+    return true;
+  }
+  if (!category) {
+    res.status(400).json({ error: 'Category not found or inactive' });
+    return true;
+  }
+  return false;
+}
+
+async function findUserClient(clientId, userEmail) {
+  return db('clients').select('id').where({ id: clientId, user_email: userEmail }).first();
+}
+
+async function findUserWorkEntry(workEntryId, userEmail) {
+  return db('work_entries').select('id').where({ id: workEntryId, user_email: userEmail }).first();
+}
+
 // All routes require authentication
 router.use(authenticateUser);
 
-// Get all work entries for authenticated user (with optional client filter)
-router.get('/', (req, res) => {
-  const { clientId } = req.query;
-  const db = getDatabase();
-  
-  let query = `
-    SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-           we.created_at, we.updated_at, c.name as client_name
-    FROM work_entries we
-    JOIN clients c ON we.client_id = c.id
-    WHERE we.user_email = ?
-  `;
-  
-  const params = [req.userEmail];
-  
+// Get all work entries for authenticated user (with optional client/category filters)
+router.get('/', async (req, res) => {
+  const { clientId, categoryId } = req.query;
+
+  const query = workEntriesWithClient().where('we.user_email', req.userEmail);
+
   if (clientId) {
     const clientIdNum = parseInt(clientId);
     if (isNaN(clientIdNum)) {
       return res.status(400).json({ error: 'Invalid client ID' });
     }
-    query += ' AND we.client_id = ?';
-    params.push(clientIdNum);
+    query.andWhere('we.client_id', clientIdNum);
   }
-  
-  query += ' ORDER BY we.date DESC, we.created_at DESC';
-  
-  db.all(query, params, (err, rows) => {
-    if (err) {
-      console.error('Database error:', err);
-      return res.status(500).json({ error: 'Internal server error' });
+
+  if (categoryId) {
+    const categoryIdNum = parseInt(categoryId);
+    if (isNaN(categoryIdNum)) {
+      return res.status(400).json({ error: 'Invalid category ID' });
     }
-    
+    query.andWhere('we.category_id', categoryIdNum);
+  }
+
+  query.orderBy([
+    { column: 'we.date', order: 'desc' },
+    { column: 'we.created_at', order: 'desc' }
+  ]);
+
+  try {
+    const rows = await query;
     res.json({ workEntries: rows });
-  });
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // Get specific work entry
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   const workEntryId = parseInt(req.params.id);
-  
+
   if (isNaN(workEntryId)) {
     return res.status(400).json({ error: 'Invalid work entry ID' });
   }
-  
-  const db = getDatabase();
-  
-  db.get(
-    `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-            we.created_at, we.updated_at, c.name as client_name
-     FROM work_entries we
-     JOIN clients c ON we.client_id = c.id
-     WHERE we.id = ? AND we.user_email = ?`,
-    [workEntryId, req.userEmail],
-    (err, row) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Internal server error' });
-      }
-      
-      if (!row) {
-        return res.status(404).json({ error: 'Work entry not found' });
-      }
-      
-      res.json({ workEntry: row });
+
+  try {
+    const row = await workEntriesWithClient()
+      .where({ 'we.id': workEntryId, 'we.user_email': req.userEmail })
+      .first();
+
+    if (!row) {
+      return res.status(404).json({ error: 'Work entry not found' });
     }
-  );
+
+    res.json({ workEntry: row });
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // Create new work entry
-router.post('/', (req, res, next) => {
+router.post('/', async (req, res, next) => {
   try {
     const { error, value } = workEntrySchema.validate(req.body);
     if (error) {
       return next(error);
     }
 
-    const { clientId, hours, description, date } = value;
-    const db = getDatabase();
+    const { clientId, hours, description, date, categoryId } = value;
 
     // Verify client exists and belongs to user
-    db.get(
-      'SELECT id FROM clients WHERE id = ? AND user_email = ?',
-      [clientId, req.userEmail],
-      (err, row) => {
-        if (err) {
-          console.error('Database error:', err);
-          return res.status(500).json({ error: 'Internal server error' });
-        }
+    let client;
+    try {
+      client = await findUserClient(clientId, req.userEmail);
+    } catch (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
 
-        if (!row) {
-          return res.status(400).json({ error: 'Client not found or does not belong to user' });
-        }
+    if (!client) {
+      return res.status(400).json({ error: 'Client not found or does not belong to user' });
+    }
 
-        // Create work entry
-        db.run(
-          'INSERT INTO work_entries (client_id, user_email, hours, description, date) VALUES (?, ?, ?, ?, ?)',
-          [clientId, req.userEmail, hours, description || null, date],
-          function(err) {
-            if (err) {
-              console.error('Database error:', err);
-              return res.status(500).json({ error: 'Failed to create work entry' });
-            }
+    if (await rejectInvalidCategory(categoryId, res)) {
+      return;
+    }
 
-            // Return the created work entry with client name
-            db.get(
-              `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-                      we.created_at, we.updated_at, c.name as client_name
-               FROM work_entries we
-               JOIN clients c ON we.client_id = c.id
-               WHERE we.id = ?`,
-              [this.lastID],
-              (err, row) => {
-                if (err) {
-                  console.error('Database error:', err);
-                  return res.status(500).json({ error: 'Work entry created but failed to retrieve' });
-                }
+    // Create work entry
+    let workEntryId;
+    try {
+      [workEntryId] = await db('work_entries').insert({
+        client_id: clientId,
+        user_email: req.userEmail,
+        hours,
+        description: description || null,
+        date,
+        category_id: categoryId ?? null
+      });
+    } catch (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ error: 'Failed to create work entry' });
+    }
 
-                res.status(201).json({
-                  message: 'Work entry created successfully',
-                  workEntry: row
-                });
-              }
-            );
-          }
-        );
-      }
-    );
+    // Return the created work entry with client name
+    let row;
+    try {
+      row = await workEntriesWithClient()
+        .where({ 'we.id': workEntryId, 'we.user_email': req.userEmail })
+        .first();
+    } catch (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ error: 'Work entry created but failed to retrieve' });
+    }
+
+    res.status(201).json({
+      message: 'Work entry created successfully',
+      workEntry: row
+    });
   } catch (error) {
     next(error);
   }
 });
 
 // Update work entry
-router.put('/:id', (req, res, next) => {
+router.put('/:id', async (req, res, next) => {
   try {
     const workEntryId = parseInt(req.params.id);
-    
+
     if (isNaN(workEntryId)) {
       return res.status(400).json({ error: 'Invalid work entry ID' });
     }
@@ -154,148 +191,121 @@ router.put('/:id', (req, res, next) => {
       return next(error);
     }
 
-    const db = getDatabase();
-
     // Check if work entry exists and belongs to user
-    db.get(
-      'SELECT id FROM work_entries WHERE id = ? AND user_email = ?',
-      [workEntryId, req.userEmail],
-      (err, row) => {
-        if (err) {
-          console.error('Database error:', err);
-          return res.status(500).json({ error: 'Internal server error' });
-        }
+    let existing;
+    try {
+      existing = await findUserWorkEntry(workEntryId, req.userEmail);
+    } catch (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
 
-        if (!row) {
-          return res.status(404).json({ error: 'Work entry not found' });
-        }
+    if (!existing) {
+      return res.status(404).json({ error: 'Work entry not found' });
+    }
 
-        // If clientId is being updated, verify it belongs to user
-        if (value.clientId) {
-          db.get(
-            'SELECT id FROM clients WHERE id = ? AND user_email = ?',
-            [value.clientId, req.userEmail],
-            (err, clientRow) => {
-              if (err) {
-                console.error('Database error:', err);
-                return res.status(500).json({ error: 'Internal server error' });
-              }
-
-              if (!clientRow) {
-                return res.status(400).json({ error: 'Client not found or does not belong to user' });
-              }
-
-              performUpdate();
-            }
-          );
-        } else {
-          performUpdate();
-        }
-
-        function performUpdate() {
-          // Build update query dynamically
-          const updates = [];
-          const values = [];
-
-          if (value.clientId !== undefined) {
-            updates.push('client_id = ?');
-            values.push(value.clientId);
-          }
-
-          if (value.hours !== undefined) {
-            updates.push('hours = ?');
-            values.push(value.hours);
-          }
-
-          if (value.description !== undefined) {
-            updates.push('description = ?');
-            values.push(value.description || null);
-          }
-
-          if (value.date !== undefined) {
-            updates.push('date = ?');
-            values.push(value.date);
-          }
-
-          updates.push('updated_at = CURRENT_TIMESTAMP');
-          values.push(workEntryId, req.userEmail);
-
-          const query = `UPDATE work_entries SET ${updates.join(', ')} WHERE id = ? AND user_email = ?`;
-
-          db.run(query, values, function(err) {
-            if (err) {
-              console.error('Database error:', err);
-              return res.status(500).json({ error: 'Failed to update work entry' });
-            }
-
-            // Return updated work entry with client name
-            db.get(
-              `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-                      we.created_at, we.updated_at, c.name as client_name
-               FROM work_entries we
-               JOIN clients c ON we.client_id = c.id
-               WHERE we.id = ?`,
-              [workEntryId],
-              (err, row) => {
-                if (err) {
-                  console.error('Database error:', err);
-                  return res.status(500).json({ error: 'Work entry updated but failed to retrieve' });
-                }
-
-                res.json({
-                  message: 'Work entry updated successfully',
-                  workEntry: row
-                });
-              }
-            );
-          });
-        }
+    // If clientId is being updated, verify it belongs to user
+    if (value.clientId) {
+      let client;
+      try {
+        client = await findUserClient(value.clientId, req.userEmail);
+      } catch (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Internal server error' });
       }
-    );
+
+      if (!client) {
+        return res.status(400).json({ error: 'Client not found or does not belong to user' });
+      }
+    }
+
+    if (await rejectInvalidCategory(value.categoryId, res)) {
+      return;
+    }
+
+    const updates = {};
+
+    if (value.clientId !== undefined) {
+      updates.client_id = value.clientId;
+    }
+
+    if (value.hours !== undefined) {
+      updates.hours = value.hours;
+    }
+
+    if (value.description !== undefined) {
+      updates.description = value.description || null;
+    }
+
+    if (value.date !== undefined) {
+      updates.date = value.date;
+    }
+
+    if (value.categoryId !== undefined) {
+      updates.category_id = value.categoryId;
+    }
+
+    updates.updated_at = db.fn.now();
+
+    try {
+      await db('work_entries')
+        .where({ id: workEntryId, user_email: req.userEmail })
+        .update(updates);
+    } catch (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ error: 'Failed to update work entry' });
+    }
+
+    // Return updated work entry with client name
+    let row;
+    try {
+      row = await workEntriesWithClient()
+        .where({ 'we.id': workEntryId, 'we.user_email': req.userEmail })
+        .first();
+    } catch (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ error: 'Work entry updated but failed to retrieve' });
+    }
+
+    res.json({
+      message: 'Work entry updated successfully',
+      workEntry: row
+    });
   } catch (error) {
     next(error);
   }
 });
 
 // Delete work entry
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   const workEntryId = parseInt(req.params.id);
-  
+
   if (isNaN(workEntryId)) {
     return res.status(400).json({ error: 'Invalid work entry ID' });
   }
-  
-  const db = getDatabase();
-  
+
   // Check if work entry exists and belongs to user
-  db.get(
-    'SELECT id FROM work_entries WHERE id = ? AND user_email = ?',
-    [workEntryId, req.userEmail],
-    (err, row) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Internal server error' });
-      }
-      
-      if (!row) {
-        return res.status(404).json({ error: 'Work entry not found' });
-      }
-      
-      // Delete work entry
-      db.run(
-        'DELETE FROM work_entries WHERE id = ? AND user_email = ?',
-        [workEntryId, req.userEmail],
-        function(err) {
-          if (err) {
-            console.error('Database error:', err);
-            return res.status(500).json({ error: 'Failed to delete work entry' });
-          }
-          
-          res.json({ message: 'Work entry deleted successfully' });
-        }
-      );
-    }
-  );
+  let existing;
+  try {
+    existing = await findUserWorkEntry(workEntryId, req.userEmail);
+  } catch (err) {
+    console.error('Database error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+
+  if (!existing) {
+    return res.status(404).json({ error: 'Work entry not found' });
+  }
+
+  // Delete work entry
+  try {
+    await db('work_entries').where({ id: workEntryId, user_email: req.userEmail }).del();
+  } catch (err) {
+    console.error('Database error:', err);
+    return res.status(500).json({ error: 'Failed to delete work entry' });
+  }
+
+  res.json({ message: 'Work entry deleted successfully' });
 });
 
 module.exports = router;

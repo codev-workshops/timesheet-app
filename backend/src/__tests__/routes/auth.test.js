@@ -1,202 +1,139 @@
 const request = require('supertest');
-const express = require('express');
-const authRoutes = require('../../routes/auth');
-const { getDatabase } = require('../../database/init');
+const { createApp, USER } = require('../helpers/app');
+const { db, resetDatabase, insertUsers, breakTable, failOn, ignoreInsertsOn } = require('../helpers/db');
 
-jest.mock('../../database/init');
-
-const app = express();
-app.use(express.json());
-app.use('/api/auth', authRoutes);
-// Add error handler for Joi validation
-app.use((err, req, res, next) => {
-  if (err.isJoi) {
-    return res.status(400).json({ error: 'Validation error' });
-  }
-  res.status(500).json({ error: 'Internal server error' });
-});
+const app = createApp();
 
 describe('Auth Routes', () => {
-  let mockDb;
+  const ORIGINAL_ADMIN_EMAILS = process.env.ADMIN_EMAILS;
 
-  beforeEach(() => {
-    mockDb = {
-      get: jest.fn(),
-      run: jest.fn()
-    };
-    getDatabase.mockReturnValue(mockDb);
+  beforeEach(async () => {
+    delete process.env.ADMIN_EMAILS;
+    await resetDatabase();
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
+  afterAll(() => {
+    if (ORIGINAL_ADMIN_EMAILS === undefined) delete process.env.ADMIN_EMAILS;
+    else process.env.ADMIN_EMAILS = ORIGINAL_ADMIN_EMAILS;
   });
 
   describe('POST /api/auth/login', () => {
-    test('should login existing user', async () => {
-      const existingUser = {
-        email: 'existing@example.com',
-        created_at: '2024-01-01T00:00:00.000Z'
-      };
+    test('logs in an existing user (200)', async () => {
+      await db('users').insert({ email: USER, created_at: '2024-01-01 00:00:00' });
 
-      mockDb.get.mockImplementation((query, params, callback) => {
-        callback(null, existingUser);
+      const res = await request(app).post('/api/auth/login').send({ email: USER });
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({
+        message: 'Login successful',
+        user: { email: USER, createdAt: '2024-01-01 00:00:00', isAdmin: false }
       });
-
-      const response = await request(app)
-        .post('/api/auth/login')
-        .send({ email: 'existing@example.com' });
-
-      expect(response.status).toBe(200);
-      expect(response.body.message).toBe('Login successful');
-      expect(response.body.user.email).toBe('existing@example.com');
+      expect(await db('users')).toHaveLength(1);
     });
 
-    test('should create new user on first login', async () => {
-      mockDb.get.mockImplementation((query, params, callback) => {
-        callback(null, null); // User doesn't exist
-      });
+    test('creates a new user on first login (201)', async () => {
+      const res = await request(app).post('/api/auth/login').send({ email: 'new@example.com' });
 
-      mockDb.run.mockImplementation(function(query, params, callback) {
-        callback.call(this, null);
-      });
-
-      const response = await request(app)
-        .post('/api/auth/login')
-        .send({ email: 'newuser@example.com' });
-
-      expect(response.status).toBe(201);
-      expect(response.body.message).toBe('User created and logged in successfully');
-      expect(response.body.user.email).toBe('newuser@example.com');
-      expect(mockDb.run).toHaveBeenCalledWith(
-        'INSERT INTO users (email) VALUES (?)',
-        ['newuser@example.com'],
-        expect.any(Function)
-      );
+      expect(res.status).toBe(201);
+      expect(res.body.message).toBe('User created and logged in successfully');
+      expect(res.body.user.email).toBe('new@example.com');
+      expect(res.body.user.isAdmin).toBe(false);
+      expect(new Date(res.body.user.createdAt).toString()).not.toBe('Invalid Date');
+      expect(await db('users').where({ email: 'new@example.com' }).first()).toBeDefined();
     });
 
-    test('should return 400 for invalid email', async () => {
-      const response = await request(app)
-        .post('/api/auth/login')
-        .send({ email: 'invalid-email' });
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toBe('Validation error');
+    test('returns 400 for invalid email', async () => {
+      const res = await request(app).post('/api/auth/login').send({ email: 'invalid-email' });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('Validation error');
+      expect(res.body.details).toEqual([expect.stringContaining('email')]);
+      expect(await db('users')).toHaveLength(0);
     });
 
-    test('should return 400 for missing email', async () => {
-      const response = await request(app)
-        .post('/api/auth/login')
-        .send({});
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toBe('Validation error');
+    test('returns 400 for missing email', async () => {
+      const res = await request(app).post('/api/auth/login').send({});
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('Validation error');
     });
 
-    test('should handle database error when checking user', async () => {
-      mockDb.get.mockImplementation((query, params, callback) => {
-        callback(new Error('Database error'), null);
-      });
+    test('reports isAdmin for admins on login (existing and new users)', async () => {
+      process.env.ADMIN_EMAILS = `${USER},new-admin@example.com`;
+      await insertUsers(USER);
 
-      const response = await request(app)
-        .post('/api/auth/login')
-        .send({ email: 'test@example.com' });
+      let res = await request(app).post('/api/auth/login').send({ email: USER });
+      expect(res.status).toBe(200);
+      expect(res.body.user).toMatchObject({ email: USER, isAdmin: true });
 
-      expect(response.status).toBe(500);
-      expect(response.body).toEqual({ error: 'Internal server error' });
+      res = await request(app).post('/api/auth/login').send({ email: 'new-admin@example.com' });
+      expect(res.status).toBe(201);
+      expect(res.body.user).toMatchObject({ email: 'new-admin@example.com', isAdmin: true });
     });
 
-    test('should handle database error when creating user', async () => {
-      mockDb.get.mockImplementation((query, params, callback) => {
-        callback(null, null);
-      });
-
-      mockDb.run.mockImplementation((query, params, callback) => {
-        callback(new Error('Insert failed'));
-      });
-
-      const response = await request(app)
-        .post('/api/auth/login')
-        .send({ email: 'newuser@example.com' });
-
-      expect(response.status).toBe(500);
-      expect(response.body).toEqual({ error: 'Failed to create user' });
+    test('returns 500 when user lookup fails', async () => {
+      await breakTable('users');
+      const res = await request(app).post('/api/auth/login').send({ email: USER });
+      expect(res.status).toBe(500);
+      expect(res.body).toEqual({ error: 'Internal server error' });
+      expect(console.error).toHaveBeenCalled();
     });
 
-    test('should handle unexpected errors in try-catch block', async () => {
-      getDatabase.mockImplementation(() => {
-        throw new Error('Unexpected error');
-      });
-
-      const response = await request(app)
-        .post('/api/auth/login')
-        .send({ email: 'test@example.com' });
-
-      expect(response.status).toBe(500);
-      expect(response.body).toEqual({ error: 'Internal server error' });
+    test('returns 500 Failed to create user when insert fails', async () => {
+      await failOn('users', 'INSERT');
+      const res = await request(app).post('/api/auth/login').send({ email: 'new@example.com' });
+      expect(res.status).toBe(500);
+      expect(res.body).toEqual({ error: 'Failed to create user' });
     });
   });
 
   describe('GET /api/auth/me', () => {
-    test('should return current user info', async () => {
-      const user = {
-        email: 'test@example.com',
-        created_at: '2024-01-01T00:00:00.000Z'
-      };
+    test('returns current user info', async () => {
+      await db('users').insert({ email: USER, created_at: '2024-01-01 00:00:00' });
 
-      mockDb.get.mockImplementation((query, params, callback) => {
-        callback(null, user);
-      });
+      const res = await request(app).get('/api/auth/me').set('x-user-email', USER);
 
-      const response = await request(app)
-        .get('/api/auth/me')
-        .set('x-user-email', 'test@example.com');
-
-      expect(response.status).toBe(200);
-      expect(response.body.user.email).toBe('test@example.com');
-      expect(response.body.user.createdAt).toBe('2024-01-01T00:00:00.000Z');
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ user: { email: USER, createdAt: '2024-01-01 00:00:00', isAdmin: false } });
     });
 
-    test('should return 401 if no email header provided', async () => {
-      const response = await request(app).get('/api/auth/me');
-
-      expect(response.status).toBe(401);
-      expect(response.body).toEqual({ error: 'User email required in x-user-email header' });
+    test('reports isAdmin true for an ADMIN_EMAILS member', async () => {
+      process.env.ADMIN_EMAILS = 'boss@example.com, ' + USER.toUpperCase();
+      const res = await request(app).get('/api/auth/me').set('x-user-email', USER);
+      expect(res.status).toBe(200);
+      expect(res.body.user.isAdmin).toBe(true);
     });
 
-    test('should return 404 if user not found', async () => {
-      mockDb.get.mockImplementation((query, params, callback) => {
-        if (query.includes('SELECT email FROM users WHERE email = ?')) {
-          // Auth middleware check
-          callback(null, { email: 'test@example.com' });
-        } else {
-          // /me endpoint check
-          callback(null, null);
-        }
-      });
-
-      const response = await request(app)
-        .get('/api/auth/me')
-        .set('x-user-email', 'test@example.com');
-
-      expect(response.status).toBe(404);
-      expect(response.body).toEqual({ error: 'User not found' });
+    test('auto-creates the user via middleware on first call', async () => {
+      const res = await request(app).get('/api/auth/me').set('x-user-email', 'fresh@example.com');
+      expect(res.status).toBe(200);
+      expect(res.body.user.email).toBe('fresh@example.com');
+      expect(res.body.user.createdAt).toBeTruthy();
     });
 
-    test('should handle database error', async () => {
-      mockDb.get.mockImplementation((query, params, callback) => {
-        if (query.includes('SELECT email FROM users WHERE email = ?')) {
-          callback(null, { email: 'test@example.com' });
-        } else {
-          callback(new Error('Database error'), null);
-        }
-      });
-
-      const response = await request(app)
-        .get('/api/auth/me')
-        .set('x-user-email', 'test@example.com');
-
-      expect(response.status).toBe(500);
-      expect(response.body).toEqual({ error: 'Internal server error' });
+    test('returns 401 if no email header provided', async () => {
+      const res = await request(app).get('/api/auth/me');
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ error: 'User email required in x-user-email header' });
     });
+
+    test('returns 404 if user row does not exist after authentication', async () => {
+      await ignoreInsertsOn('users');
+      const res = await request(app).get('/api/auth/me').set('x-user-email', 'ghost@example.com');
+      expect(res.status).toBe(404);
+      expect(res.body).toEqual({ error: 'User not found' });
+    });
+
+    test('returns 500 when the users table is unavailable', async () => {
+      await insertUsers(USER);
+      await breakTable('users');
+      const res = await request(app).get('/api/auth/me').set('x-user-email', USER);
+      expect(res.status).toBe(500);
+      expect(res.body).toEqual({ error: 'Internal server error' });
+    });
+  });
+
+  test('unknown route returns 404', async () => {
+    const res = await request(app).get('/api/nope');
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ error: 'Route not found' });
   });
 });

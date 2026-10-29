@@ -8,8 +8,9 @@ const authRoutes = require('./routes/auth');
 const clientRoutes = require('./routes/clients');
 const workEntryRoutes = require('./routes/workEntries');
 const reportRoutes = require('./routes/reports');
+const categoryRoutes = require('./routes/categories');
 
-const { initializeDatabase } = require('./database/init');
+const { initializeDatabase, closeDatabase } = require('./database/db');
 const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -46,6 +47,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/work-entries', workEntryRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/categories', categoryRoutes);
 
 // Error handling
 app.use(errorHandler);
@@ -68,6 +70,20 @@ async function startServer() {
     process.exit(1);
   }
 }
+
+async function shutdown(signal) {
+  console.log(`${signal} received, closing database`);
+  try {
+    await closeDatabase();
+  } catch (error) {
+    console.error('Error closing database:', error);
+  } finally {
+    process.exit(0);
+  }
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 startServer();
 
