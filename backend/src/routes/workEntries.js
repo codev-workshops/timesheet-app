@@ -3,6 +3,7 @@ const { getDatabase } = require('../database/init');
 const { authenticateUser } = require('../middleware/auth');
 const { workEntrySchema, updateWorkEntrySchema } = require('../validation/schemas');
 const { checkWeeklyCap, capExceededMessage, getWeekBounds, toDateMs } = require('../utils/weeklyCap');
+const { lockUntilResponse } = require('../utils/keyedLock');
 
 const router = express.Router();
 
@@ -88,8 +89,8 @@ router.post('/', (req, res, next) => {
     const { clientId, hours, description, date } = value;
     const db = getDatabase();
 
-    // Verify client exists and belongs to user
-    db.get(
+    // Serialize the cap check and insert per user so concurrent writes can't share a stale total
+    lockUntilResponse(req.userEmail, res, () => db.get(
       'SELECT id, weekly_hours_cap FROM clients WHERE id = ? AND user_email = ?',
       [clientId, req.userEmail],
       (err, row) => {
@@ -119,7 +120,7 @@ router.post('/', (req, res, next) => {
           }
         );
       }
-    );
+    ));
 
     function insertWorkEntry() {
       // Create work entry
@@ -176,8 +177,8 @@ router.put('/:id', (req, res, next) => {
 
     const db = getDatabase();
 
-    // Check if work entry exists and belongs to user
-    db.get(
+    // Serialize the cap check and update per user so concurrent writes can't share a stale total
+    lockUntilResponse(req.userEmail, res, () => db.get(
       'SELECT id, client_id, hours, date FROM work_entries WHERE id = ? AND user_email = ?',
       [workEntryId, req.userEmail],
       (err, row) => {
@@ -302,7 +303,7 @@ router.put('/:id', (req, res, next) => {
           });
         }
       }
-    );
+    ));
   } catch (error) {
     next(error);
   }

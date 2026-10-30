@@ -125,6 +125,58 @@ describe('Weekly cap (real SQLite)', () => {
     expect(res.status).toBe(201);
   });
 
+  describe('concurrent requests', () => {
+    const weekTotal = async (id) =>
+      (await get(
+        'SELECT COALESCE(SUM(hours), 0) AS total FROM work_entries WHERE user_email = ? AND client_id = ? AND date >= ? AND date < ?',
+        ['alice@example.com', id, Date.UTC(2024, 1, 5), Date.UTC(2024, 1, 12)]
+      )).total;
+
+    const createCappedClient = async (name) => {
+      const res = await request(app).post('/api/clients').send({ name, weeklyHoursCap: 10 });
+      return res.body.client.id;
+    };
+
+    test('parallel POSTs cannot both pass the cap check against the same total', async () => {
+      const id = await createCappedClient('Race POST');
+      await request(app).post('/api/work-entries').send({ clientId: id, hours: 8, date: '2024-02-07' });
+
+      const results = await Promise.all(
+        [0, 1, 2, 3].map(() => request(app).post('/api/work-entries').send({ clientId: id, hours: 2, date: '2024-02-08' }))
+      );
+
+      expect(results.map((r) => r.status).sort()).toEqual([201, 400, 400, 400]);
+      expect(await weekTotal(id)).toBe(10);
+    });
+
+    test('parallel PUT increases cannot both pass the cap check', async () => {
+      const id = await createCappedClient('Race PUT');
+      const a = await request(app).post('/api/work-entries').send({ clientId: id, hours: 4, date: '2024-02-06' });
+      const b = await request(app).post('/api/work-entries').send({ clientId: id, hours: 4, date: '2024-02-07' });
+
+      const results = await Promise.all([
+        request(app).put(`/api/work-entries/${a.body.workEntry.id}`).send({ hours: 6 }),
+        request(app).put(`/api/work-entries/${b.body.workEntry.id}`).send({ hours: 6 })
+      ]);
+
+      expect(results.map((r) => r.status).sort()).toEqual([200, 400]);
+      expect(await weekTotal(id)).toBe(10);
+    });
+
+    test('a parallel POST and PUT cannot both pass the cap check', async () => {
+      const id = await createCappedClient('Race mixed');
+      const a = await request(app).post('/api/work-entries').send({ clientId: id, hours: 6, date: '2024-02-06' });
+
+      const results = await Promise.all([
+        request(app).put(`/api/work-entries/${a.body.workEntry.id}`).send({ hours: 8 }),
+        request(app).post('/api/work-entries').send({ clientId: id, hours: 3, date: '2024-02-09' })
+      ]);
+
+      expect(results.filter((r) => r.status >= 400)).toHaveLength(1);
+      expect(await weekTotal(id)).toBeLessThanOrEqual(10);
+    });
+  });
+
   test('report currentWeek reflects the cap and logged hours', async () => {
     jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'setTimeout'] }).setSystemTime(new Date('2024-01-17T12:00:00Z'));
     await request(app).put(`/api/clients/${clientId}`).send({ weeklyHoursCap: 40 });
