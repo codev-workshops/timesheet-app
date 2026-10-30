@@ -1,8 +1,18 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios';
+import { type LoginRequest, type LoginResponse } from '../types/api';
 
 // Use empty string to make requests relative to the current origin
 // Vite proxy will forward /api requests to the backend
 const API_BASE_URL = '';
+
+const AUTH_TOKEN_KEY = 'authToken';
+const AUTH_CREDENTIAL_PATHS = ['/api/auth/login', '/api/auth/register'];
+
+export const authTokenStorage = {
+  get: (): string | null => localStorage.getItem(AUTH_TOKEN_KEY),
+  set: (token: string): void => localStorage.setItem(AUTH_TOKEN_KEY, token),
+  clear: (): void => localStorage.removeItem(AUTH_TOKEN_KEY),
+};
 
 class ApiClient {
   private client: AxiosInstance;
@@ -16,12 +26,12 @@ class ApiClient {
       },
     });
 
-    // Request interceptor to add email header
+    // Request interceptor to add the session token
     this.client.interceptors.request.use(
       (config) => {
-        const userEmail = localStorage.getItem('userEmail');
-        if (userEmail) {
-          config.headers['x-user-email'] = userEmail;
+        const token = authTokenStorage.get();
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
       },
@@ -34,10 +44,12 @@ class ApiClient {
     this.client.interceptors.response.use(
       (response: AxiosResponse) => response,
       (error) => {
-        if (error.response?.status === 401) {
-          // Clear stored email on auth error
-          localStorage.removeItem('userEmail');
-          window.location.href = '/login';
+        const isCredentialRequest = AUTH_CREDENTIAL_PATHS.includes(error.config?.url ?? '');
+        if (error.response?.status === 401 && !isCredentialRequest) {
+          authTokenStorage.clear();
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
         }
         return Promise.reject(error);
       }
@@ -45,8 +57,13 @@ class ApiClient {
   }
 
   // Auth endpoints
-  async login(email: string) {
-    const response = await this.client.post('/api/auth/login', { email });
+  async login(credentials: LoginRequest): Promise<LoginResponse> {
+    const response = await this.client.post<LoginResponse>('/api/auth/login', credentials);
+    return response.data;
+  }
+
+  async register(credentials: LoginRequest): Promise<LoginResponse> {
+    const response = await this.client.post<LoginResponse>('/api/auth/register', credentials);
     return response.data;
   }
 

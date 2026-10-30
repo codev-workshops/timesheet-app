@@ -11,9 +11,9 @@ A full-stack web application for tracking and reporting employee hourly work acr
 - For production use, modify `backend/src/database/init.js` to use file-based SQLite instead of `:memory:`
 
 ### Authentication
-- Email-only authentication with JWT tokens
-- No password required - assumes trusted internal network
-- Anyone with a valid email can create an account and log in
+- Email + password authentication (scrypt-hashed passwords) issuing HS256 JWT bearer tokens that expire after 24 hours
+- Set `JWT_SECRET` (at least 32 characters) in production; the server refuses to start without it. In development a random per-process secret is used
+- CORS only allows `FRONTEND_URL` (default `http://localhost:5173`)
 - Consider integrating with company SSO for production use
 
 ## Features
@@ -154,14 +154,15 @@ Frontend will be running at `http://localhost:5173`
 ## Usage
 
 1. Open `http://localhost:5173` in your browser
-2. Enter any email address to log in (no password required)
+2. Create an account with your email and a password (at least 8 characters), then log in
 3. Start adding clients and tracking work hours
 4. View reports and export data as CSV or PDF
 
 ## API Endpoints
 
 ### Authentication
-- `POST /api/auth/login` - Login with email, returns JWT token
+- `POST /api/auth/register` - Create an account with email and password, returns JWT token
+- `POST /api/auth/login` - Login with email and password, returns JWT token
 - `GET /api/auth/me` - Get current user info (requires auth)
 
 ### Clients
@@ -272,7 +273,7 @@ See `backend/DEPLOYMENT.md` for detailed production deployment instructions.
 ## Known Limitations
 
 1. **In-memory database** - All data is lost on server restart
-2. **Email-only auth** - No password protection, assumes trusted network
+2. **Basic password auth** - No email verification, password reset, or SSO
 3. **No user roles** - All users have equal access to all data
 4. **Single-server architecture** - Not designed for horizontal scaling
 5. **No real-time updates** - Changes require page refresh

@@ -1,57 +1,91 @@
 const express = require('express');
 const { getDatabase } = require('../database/init');
-const { emailSchema } = require('../validation/schemas');
-const { authenticateUser } = require('../middleware/auth');
+const { loginSchema, registerSchema } = require('../validation/schemas');
+const { authenticateUser, issueToken } = require('../middleware/auth');
+const { hashPassword, verifyPassword } = require('../utils/password');
 
 const router = express.Router();
 
-// Login endpoint - creates user if doesn't exist
-router.post('/login', async (req, res, next) => {
+function dbGet(db, sql, params) {
+  return new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
+  });
+}
+
+function dbRun(db, sql, params) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, (err) => (err ? reject(err) : resolve()));
+  });
+}
+
+function isUniqueViolation(err) {
+  return Boolean(err && typeof err.code === 'string' && err.code.startsWith('SQLITE_CONSTRAINT'));
+}
+
+router.post('/register', async (req, res, next) => {
+  const { error, value } = registerSchema.validate(req.body);
+  if (error) {
+    return next(error);
+  }
+
+  const { email, password } = value;
   try {
-    const { error, value } = emailSchema.validate(req.body);
-    if (error) {
-      return next(error);
+    const db = getDatabase();
+    const existing = await dbGet(db, 'SELECT email FROM users WHERE email = ?', [email]);
+    if (existing) {
+      return res.status(409).json({ error: 'An account with this email already exists' });
     }
 
-    const { email } = value;
-    const db = getDatabase();
+    const passwordHash = await hashPassword(password);
+    await dbRun(db, 'INSERT INTO users (email, password_hash) VALUES (?, ?)', [email, passwordHash]);
 
-    // Check if user exists
-    db.get('SELECT email, created_at FROM users WHERE email = ?', [email], (err, row) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Internal server error' });
-      }
-
-      if (row) {
-        // User exists
-        return res.json({
-          message: 'Login successful',
-          user: {
-            email: row.email,
-            createdAt: row.created_at
-          }
-        });
-      } else {
-        // Create new user
-        db.run('INSERT INTO users (email) VALUES (?)', [email], function(err) {
-          if (err) {
-            console.error('Error creating user:', err);
-            return res.status(500).json({ error: 'Failed to create user' });
-          }
-
-          res.status(201).json({
-            message: 'User created and logged in successfully',
-            user: {
-              email: email,
-              createdAt: new Date().toISOString()
-            }
-          });
-        });
+    res.status(201).json({
+      message: 'User registered successfully',
+      token: issueToken(email),
+      user: {
+        email,
+        createdAt: new Date().toISOString()
       }
     });
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      return res.status(409).json({ error: 'An account with this email already exists' });
+    }
+    console.error('Error registering user:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/login', async (req, res, next) => {
+  const { error, value } = loginSchema.validate(req.body);
+  if (error) {
+    return next(error);
+  }
+
+  const { email, password } = value;
+  try {
+    const db = getDatabase();
+    const row = await dbGet(
+      db,
+      'SELECT email, password_hash, created_at FROM users WHERE email = ?',
+      [email]
+    );
+    const isValid = await verifyPassword(password, row ? row.password_hash : null);
+    if (!row || !isValid) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    res.json({
+      message: 'Login successful',
+      token: issueToken(row.email),
+      user: {
+        email: row.email,
+        createdAt: row.created_at
+      }
+    });
+  } catch (err) {
+    console.error('Error logging in:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

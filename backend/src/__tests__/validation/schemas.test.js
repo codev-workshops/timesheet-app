@@ -3,7 +3,8 @@ const {
   workEntrySchema,
   updateWorkEntrySchema,
   updateClientSchema,
-  emailSchema
+  loginSchema,
+  registerSchema
 } = require('../../validation/schemas');
 
 describe('Validation Schemas', () => {
@@ -290,39 +291,42 @@ describe('Validation Schemas', () => {
     });
   });
 
-  describe('emailSchema', () => {
-    test('should validate valid email', () => {
-      const data = {
-        email: 'test@example.com'
-      };
-
-      const { error } = emailSchema.validate(data);
+  describe('loginSchema', () => {
+    test('should validate email and password', () => {
+      const { error } = loginSchema.validate({ email: 'test@example.com', password: 'secret' });
       expect(error).toBeUndefined();
+    });
+
+    test('should require password', () => {
+      const { error } = loginSchema.validate({ email: 'test@example.com' });
+      expect(error).toBeDefined();
     });
 
     test('should reject invalid email', () => {
-      const data = {
-        email: 'not-an-email'
-      };
-
-      const { error } = emailSchema.validate(data);
+      const { error } = loginSchema.validate({ email: 'invalid', password: 'secret' });
       expect(error).toBeDefined();
     });
 
-    test('should reject missing email', () => {
-      const data = {};
-
-      const { error } = emailSchema.validate(data);
+    test('should reject password longer than 128 characters', () => {
+      const { error } = loginSchema.validate({ email: 'test@example.com', password: 'a'.repeat(129) });
       expect(error).toBeDefined();
     });
+  });
 
-    test('should accept email with subdomain', () => {
-      const data = {
-        email: 'user@mail.example.com'
-      };
-
-      const { error } = emailSchema.validate(data);
+  describe('registerSchema', () => {
+    test('should validate email and password of at least 8 characters', () => {
+      const { error } = registerSchema.validate({ email: 'test@example.com', password: 'longenough' });
       expect(error).toBeUndefined();
+    });
+
+    test('should reject password shorter than 8 characters', () => {
+      const { error } = registerSchema.validate({ email: 'test@example.com', password: 'short' });
+      expect(error).toBeDefined();
+    });
+
+    test('should require email', () => {
+      const { error } = registerSchema.validate({ password: 'longenough' });
+      expect(error).toBeDefined();
     });
   });
 });
