@@ -1,4 +1,5 @@
-const { authenticateUser } = require('../../middleware/auth');
+const jwt = require('jsonwebtoken');
+const { authenticateUser, issueToken } = require('../../middleware/auth');
 const { getDatabase } = require('../../database/init');
 
 jest.mock('../../database/init');
@@ -7,20 +8,16 @@ describe('Authentication Middleware', () => {
   let req, res, next, mockDb;
 
   beforeEach(() => {
-    req = {
-      headers: {}
-    };
+    req = { headers: {} };
     res = {
       status: jest.fn().mockReturnThis(),
       json: jest.fn()
     };
     next = jest.fn();
-    
     mockDb = {
       get: jest.fn(),
       run: jest.fn()
     };
-    
     getDatabase.mockReturnValue(mockDb);
   });
 
@@ -28,53 +25,91 @@ describe('Authentication Middleware', () => {
     jest.clearAllMocks();
   });
 
-  describe('Email Header Validation', () => {
-    test('should return 401 if x-user-email header is missing', () => {
-      authenticateUser(req, res, next);
+  function expectRejected(status, error) {
+    expect(res.status).toHaveBeenCalledWith(status);
+    expect(res.json).toHaveBeenCalledWith({ error });
+    expect(next).not.toHaveBeenCalled();
+  }
 
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({
-        error: 'User email required in x-user-email header'
-      });
-      expect(next).not.toHaveBeenCalled();
+  describe('Missing or untrusted credentials', () => {
+    test('should return 401 if Authorization header is missing', () => {
+      authenticateUser(req, res, next);
+      expectRejected(401, 'Authentication required');
     });
 
-    test('should return 400 if email format is invalid', () => {
-      req.headers['x-user-email'] = 'invalid-email';
+    test('should ignore x-user-email header and return 401', () => {
+      req.headers['x-user-email'] = 'victim@example.com';
 
       authenticateUser(req, res, next);
 
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({
-        error: 'Invalid email format'
-      });
-      expect(next).not.toHaveBeenCalled();
+      expectRejected(401, 'Authentication required');
+      expect(mockDb.get).not.toHaveBeenCalled();
+      expect(req.userEmail).toBeUndefined();
     });
 
-    test('should accept valid email format', () => {
-      req.headers['x-user-email'] = 'test@example.com';
-      
-      mockDb.get.mockImplementation((query, params, callback) => {
-        callback(null, { email: 'test@example.com' });
+    test('should return 401 for a non-Bearer scheme', () => {
+      req.headers.authorization = `Basic ${issueToken('test@example.com')}`;
+      authenticateUser(req, res, next);
+      expectRejected(401, 'Authentication required');
+    });
+
+    test('should return 401 for a malformed token', () => {
+      req.headers.authorization = 'Bearer not-a-jwt';
+      authenticateUser(req, res, next);
+      expectRejected(401, 'Invalid or expired token');
+    });
+
+    test('should return 401 for a token signed with another secret', () => {
+      const forged = jwt.sign({}, 'attacker-controlled-secret-attacker-controlled', {
+        subject: 'victim@example.com'
       });
+      req.headers.authorization = `Bearer ${forged}`;
 
       authenticateUser(req, res, next);
 
-      expect(mockDb.get).toHaveBeenCalled();
+      expectRejected(401, 'Invalid or expired token');
+      expect(mockDb.get).not.toHaveBeenCalled();
+    });
+
+    test('should return 401 for an unsigned (alg none) token', () => {
+      const unsigned = jwt.sign({ sub: 'victim@example.com' }, null, { algorithm: 'none' });
+      req.headers.authorization = `Bearer ${unsigned}`;
+      authenticateUser(req, res, next);
+      expectRejected(401, 'Invalid or expired token');
+    });
+
+    test('should return 401 for an expired token', () => {
+      jest.useFakeTimers();
+      try {
+        const token = issueToken('test@example.com');
+        jest.setSystemTime(Date.now() + 25 * 60 * 60 * 1000);
+        req.headers.authorization = `Bearer ${token}`;
+
+        authenticateUser(req, res, next);
+
+        expectRejected(401, 'Invalid or expired token');
+      } finally {
+        jest.useRealTimers();
+      }
     });
   });
 
-  describe('Existing User Authentication', () => {
-    test('should authenticate existing user and call next()', (done) => {
-      req.headers['x-user-email'] = 'existing@example.com';
-      
+  describe('Valid token', () => {
+    test('should derive req.userEmail from the token subject', (done) => {
+      req.headers.authorization = `Bearer ${issueToken('existing@example.com')}`;
+      req.headers['x-user-email'] = 'victim@example.com';
       mockDb.get.mockImplementation((query, params, callback) => {
-        callback(null, { email: 'existing@example.com' });
+        callback(null, { email: params[0] });
       });
 
       authenticateUser(req, res, next);
 
       setImmediate(() => {
+        expect(mockDb.get).toHaveBeenCalledWith(
+          'SELECT email FROM users WHERE email = ?',
+          ['existing@example.com'],
+          expect.any(Function)
+        );
         expect(req.userEmail).toBe('existing@example.com');
         expect(next).toHaveBeenCalled();
         expect(res.status).not.toHaveBeenCalled();
@@ -82,9 +117,23 @@ describe('Authentication Middleware', () => {
       });
     });
 
+    test('should return 401 and not create a user when the account does not exist', (done) => {
+      req.headers.authorization = `Bearer ${issueToken('deleted@example.com')}`;
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, undefined);
+      });
+
+      authenticateUser(req, res, next);
+
+      setImmediate(() => {
+        expectRejected(401, 'Invalid or expired token');
+        expect(mockDb.run).not.toHaveBeenCalled();
+        done();
+      });
+    });
+
     test('should handle database error when checking user', (done) => {
-      req.headers['x-user-email'] = 'test@example.com';
-      
+      req.headers.authorization = `Bearer ${issueToken('test@example.com')}`;
       mockDb.get.mockImplementation((query, params, callback) => {
         callback(new Error('Database error'), null);
       });
@@ -92,94 +141,9 @@ describe('Authentication Middleware', () => {
       authenticateUser(req, res, next);
 
       setImmediate(() => {
-        expect(res.status).toHaveBeenCalledWith(500);
-        expect(res.json).toHaveBeenCalledWith({
-          error: 'Internal server error'
-        });
-        expect(next).not.toHaveBeenCalled();
+        expectRejected(500, 'Internal server error');
         done();
       });
-    });
-  });
-
-  describe('New User Creation', () => {
-    test('should create new user if not exists and call next()', (done) => {
-      req.headers['x-user-email'] = 'newuser@example.com';
-      
-      mockDb.get.mockImplementation((query, params, callback) => {
-        callback(null, null); // User doesn't exist
-      });
-      
-      mockDb.run.mockImplementation((query, params, callback) => {
-        callback(null);
-      });
-
-      authenticateUser(req, res, next);
-
-      setImmediate(() => {
-        expect(mockDb.run).toHaveBeenCalledWith(
-          'INSERT INTO users (email) VALUES (?)',
-          ['newuser@example.com'],
-          expect.any(Function)
-        );
-        expect(req.userEmail).toBe('newuser@example.com');
-        expect(next).toHaveBeenCalled();
-        done();
-      });
-    });
-
-    test('should handle error when creating new user', (done) => {
-      req.headers['x-user-email'] = 'newuser@example.com';
-      
-      mockDb.get.mockImplementation((query, params, callback) => {
-        callback(null, null);
-      });
-      
-      mockDb.run.mockImplementation((query, params, callback) => {
-        callback(new Error('Insert failed'));
-      });
-
-      authenticateUser(req, res, next);
-
-      setImmediate(() => {
-        expect(res.status).toHaveBeenCalledWith(500);
-        expect(res.json).toHaveBeenCalledWith({
-          error: 'Failed to create user'
-        });
-        expect(next).not.toHaveBeenCalled();
-        done();
-      });
-    });
-  });
-
-  describe('Email Format Edge Cases', () => {
-    test('should reject email without @', () => {
-      req.headers['x-user-email'] = 'notanemail';
-      authenticateUser(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(400);
-    });
-
-    test('should reject email without domain', () => {
-      req.headers['x-user-email'] = 'test@';
-      authenticateUser(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(400);
-    });
-
-    test('should reject email without TLD', () => {
-      req.headers['x-user-email'] = 'test@domain';
-      authenticateUser(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(400);
-    });
-
-    test('should accept email with subdomain', () => {
-      req.headers['x-user-email'] = 'test@mail.example.com';
-      
-      mockDb.get.mockImplementation((query, params, callback) => {
-        callback(null, { email: 'test@mail.example.com' });
-      });
-
-      authenticateUser(req, res, next);
-      expect(mockDb.get).toHaveBeenCalled();
     });
   });
 });

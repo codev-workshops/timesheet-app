@@ -9,8 +9,8 @@
 - For production, consider switching to file-based SQLite or a proper database
 
 ### Authentication Security
-- Email-only authentication assumes trusted network environment
-- No password protection - anyone with a valid company email can access
+- Email + password login; passwords are stored as scrypt hashes
+- Set `JWT_SECRET` (at least 32 random characters) in production; the server refuses to start without it
 - Consider integrating with company SSO for production use
 - JWT tokens expire after 24 hours
 
