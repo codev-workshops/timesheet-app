@@ -184,4 +184,120 @@ describe('Database Initialization', () => {
       expect(workEntriesQuery[0]).toContain('FOREIGN KEY (user_email) REFERENCES users (email) ON DELETE CASCADE');
     });
   });
+  describe('closeDatabase lifecycle', () => {
+    let initModule;
+    let sqlite3Mock;
+
+    beforeEach(() => {
+      // Earlier tests may leave an erroring sqlite3 mock registered via doMock
+      jest.doMock('sqlite3', () => {
+        const mockDatabase = {
+          serialize: jest.fn((callback) => callback()),
+          run: jest.fn((query, callback) => {
+            if (typeof callback === 'function') callback(null);
+          }),
+          close: jest.fn((callback) => callback(null))
+        };
+
+        return {
+          verbose: jest.fn(() => ({
+            Database: jest.fn((path, callback) => {
+              callback(null);
+              return mockDatabase;
+            })
+          }))
+        };
+      });
+
+      jest.isolateModules(() => {
+        sqlite3Mock = require('sqlite3');
+        initModule = require('../../database/init');
+      });
+    });
+
+    test('should resolve immediately when no database has been opened', async () => {
+      await expect(initModule.closeDatabase()).resolves.toBeUndefined();
+
+      expect(sqlite3Mock.verbose).toHaveBeenCalled();
+      expect(consoleLogSpy).not.toHaveBeenCalledWith('Database connection closed');
+    });
+
+    test('should close an open database and resolve', async () => {
+      const db = initModule.getDatabase();
+
+      await expect(initModule.closeDatabase()).resolves.toBeUndefined();
+
+      expect(db.close).toHaveBeenCalledTimes(1);
+      expect(consoleLogSpy).toHaveBeenCalledWith('Database connection closed');
+    });
+
+    test('should resolve without closing again when already closed', async () => {
+      const db = initModule.getDatabase();
+      await initModule.closeDatabase();
+      db.close.mockClear();
+
+      await expect(initModule.closeDatabase()).resolves.toBeUndefined();
+
+      expect(db.close).not.toHaveBeenCalled();
+    });
+
+    test('should resolve after close error and mark database as closed', async () => {
+      const db = initModule.getDatabase();
+      db.close.mockImplementationOnce((callback) => callback(new Error('Close error')));
+
+      await expect(initModule.closeDatabase()).resolves.toBeUndefined();
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Error closing database:', expect.any(Error));
+
+      db.close.mockClear();
+      await initModule.closeDatabase();
+      expect(db.close).not.toHaveBeenCalled();
+    });
+
+    test('should wait for an in-progress close to finish on concurrent calls', async () => {
+      jest.useFakeTimers();
+      try {
+        const db = initModule.getDatabase();
+        let finishClose;
+        db.close.mockImplementationOnce((callback) => {
+          finishClose = () => callback(null);
+        });
+
+        const firstClose = initModule.closeDatabase();
+        let secondResolved = false;
+        const secondClose = initModule.closeDatabase().then(() => {
+          secondResolved = true;
+        });
+
+        expect(db.close).toHaveBeenCalledTimes(1);
+
+        jest.advanceTimersByTime(50);
+        await Promise.resolve();
+        expect(secondResolved).toBe(false);
+
+        finishClose();
+        await firstClose;
+
+        jest.advanceTimersByTime(10);
+        await secondClose;
+
+        expect(secondResolved).toBe(true);
+        expect(db.close).toHaveBeenCalledTimes(1);
+        expect(jest.getTimerCount()).toBe(0);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    test('should open a new connection after close and allow closing it again', async () => {
+      const db = initModule.getDatabase();
+      await initModule.closeDatabase();
+      db.close.mockClear();
+
+      const reopened = initModule.getDatabase();
+      expect(reopened).toBeDefined();
+
+      await initModule.closeDatabase();
+      expect(reopened.close).toHaveBeenCalledTimes(1);
+    });
+  });
 });
