@@ -1,10 +1,8 @@
 const express = require('express');
 const { getDatabase } = require('../database/init');
 const { authenticateUser } = require('../middleware/auth');
-const createCsvWriter = require('csv-writer').createObjectCsvWriter;
+const createCsvStringifier = require('csv-writer').createObjectCsvStringifier;
 const PDFDocument = require('pdfkit');
-const path = require('path');
-const fs = require('fs');
 
 const router = express.Router();
 
@@ -100,46 +98,28 @@ router.get('/export/csv/:clientId', (req, res) => {
             return res.status(500).json({ error: 'Internal server error' });
           }
           
-          // Create temporary CSV file
           const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
           const filename = `${client.name.replace(/[^a-zA-Z0-9]/g, '_')}_report_${timestamp}.csv`;
-          const tempPath = path.join(__dirname, '../../temp', filename);
-          
-          // Ensure temp directory exists
-          const tempDir = path.dirname(tempPath);
-          if (!fs.existsSync(tempDir)) {
-            fs.mkdirSync(tempDir, { recursive: true });
-          }
-          
-          const csvWriter = createCsvWriter({
-            path: tempPath,
-            header: [
-              { id: 'date', title: 'Date' },
-              { id: 'hours', title: 'Hours' },
-              { id: 'description', title: 'Description' },
-              { id: 'created_at', title: 'Created At' }
-            ]
-          });
-          
-          csvWriter.writeRecords(workEntries)
-            .then(() => {
-              // Send file and clean up
-              res.download(tempPath, filename, (err) => {
-                if (err) {
-                  console.error('Error sending file:', err);
-                }
-                // Clean up temp file
-                fs.unlink(tempPath, (unlinkErr) => {
-                  if (unlinkErr) {
-                    console.error('Error deleting temp file:', unlinkErr);
-                  }
-                });
-              });
-            })
-            .catch((error) => {
-              console.error('Error creating CSV:', error);
-              res.status(500).json({ error: 'Failed to generate CSV report' });
+
+          let csv;
+          try {
+            const csvStringifier = createCsvStringifier({
+              header: [
+                { id: 'date', title: 'Date' },
+                { id: 'hours', title: 'Hours' },
+                { id: 'description', title: 'Description' },
+                { id: 'created_at', title: 'Created At' }
+              ]
             });
+            csv = csvStringifier.getHeaderString() + csvStringifier.stringifyRecords(workEntries);
+          } catch (error) {
+            console.error('Error creating CSV:', error);
+            return res.status(500).json({ error: 'Failed to generate CSV report' });
+          }
+
+          res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+          res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+          res.send(csv);
         }
       );
     }
