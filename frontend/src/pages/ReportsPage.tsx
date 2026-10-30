@@ -32,7 +32,7 @@ import apiClient from '../api/client';
 import { type ClientReport } from '../types/api';
 
 const ReportsPage: React.FC = () => {
-  const [selectedClientId, setSelectedClientId] = useState<number>(0);
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
   const [error, setError] = useState('');
 
   const { data: clientsData, isLoading: clientsLoading } = useQuery({
@@ -42,16 +42,16 @@ const ReportsPage: React.FC = () => {
 
   const { data: reportData, isLoading: reportLoading } = useQuery({
     queryKey: ['clientReport', selectedClientId],
-    queryFn: () => apiClient.getClientReport(selectedClientId),
-    enabled: selectedClientId > 0,
+    queryFn: () => apiClient.getClientReport(selectedClientId as number),
+    enabled: selectedClientId !== null,
   });
 
   const clients = clientsData?.clients || [];
   const report = reportData as ClientReport | undefined;
 
   const handleExportCsv = async () => {
-    if (!selectedClientId) return;
-    
+    if (selectedClientId === null) return;
+
     try {
       const blob = await apiClient.exportClientReportCsv(selectedClientId);
       const url = window.URL.createObjectURL(blob);
@@ -70,7 +70,7 @@ const ReportsPage: React.FC = () => {
   };
 
   const handleExportPdf = async () => {
-    if (!selectedClientId) return;
+    if (selectedClientId === null) return;
 
     try {
       const blob = await apiClient.exportClientReportPdf(selectedClientId);
@@ -126,13 +126,22 @@ const ReportsPage: React.FC = () => {
             <Grid container spacing={3} alignItems="center">
               <Grid size={{ xs: 12, md: 6 }}>
                 <FormControl fullWidth>
-                  <InputLabel>Select Client</InputLabel>
-                  <Select
-                    value={selectedClientId}
-                    onChange={(e) => setSelectedClientId(Number(e.target.value))}
+                  <InputLabel id="report-client-label" shrink>Select Client</InputLabel>
+                  <Select<number | ''>
+                    labelId="report-client-label"
+                    id="report-client"
                     label="Select Client"
+                    notched
+                    displayEmpty
+                    value={selectedClientId ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setSelectedClientId(v === '' ? null : Number(v));
+                    }}
                   >
-                    <MenuItem value={0}>Choose a client...</MenuItem>
+                    <MenuItem value="" disabled>
+                      Choose a client...
+                    </MenuItem>
                     {clients.map((c: { id: number; name: string }) => (
                       <MenuItem key={c.id} value={c.id}>
                         {c.name}
@@ -146,7 +155,7 @@ const ReportsPage: React.FC = () => {
                   <Tooltip title="Export as CSV">
                     <IconButton
                       onClick={handleExportCsv}
-                      disabled={!selectedClientId || reportLoading}
+                      disabled={selectedClientId === null || reportLoading}
                       color="primary"
                       size="large"
                     >
@@ -156,7 +165,7 @@ const ReportsPage: React.FC = () => {
                   <Tooltip title="Export as PDF">
                     <IconButton
                       onClick={handleExportPdf}
-                      disabled={!selectedClientId || reportLoading}
+                      disabled={selectedClientId === null || reportLoading}
                       color="error"
                       size="large"
                     >
