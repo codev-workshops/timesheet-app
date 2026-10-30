@@ -6,11 +6,13 @@ const path = require('path');
 
 jest.mock('../../database/init');
 jest.mock('fs');
-jest.mock('csv-writer', () => ({
-  createObjectCsvWriter: jest.fn(() => ({
-    writeRecords: jest.fn().mockResolvedValue(undefined)
-  }))
-}));
+jest.mock('csv-writer', () => {
+  const actual = jest.requireActual('csv-writer');
+  return {
+    ...actual,
+    createObjectCsvStringifier: jest.fn(actual.createObjectCsvStringifier)
+  };
+});
 jest.mock('pdfkit', () => {
   return jest.fn().mockImplementation(() => ({
     fontSize: jest.fn().mockReturnThis(),
@@ -29,7 +31,7 @@ jest.mock('pdfkit', () => {
 const reportRoutes = require('../../routes/reports');
 jest.mock('../../middleware/auth', () => ({
   authenticateUser: (req, res, next) => {
-    req.userEmail = 'test@example.com';
+    req.userEmail = req.headers['x-test-user'] || 'test@example.com';
     next();
   }
 }));
@@ -302,7 +304,7 @@ describe('Report Routes', () => {
   });
 
   describe('CSV Export Success Path', () => {
-    test('should handle CSV write error', async () => {
+    test('should handle CSV generation error', async () => {
       const mockClient = { id: 1, name: 'Test Client' };
       const mockWorkEntries = [
         { date: '2024-01-01', hours: 5, description: 'Work 1', created_at: '2024-01-01' }
@@ -317,9 +319,12 @@ describe('Report Routes', () => {
       });
 
       const csvWriter = require('csv-writer');
-      csvWriter.createObjectCsvWriter.mockReturnValue({
-        writeRecords: jest.fn().mockRejectedValue(new Error('Write failed'))
-      });
+      csvWriter.createObjectCsvStringifier.mockImplementationOnce(() => ({
+        getHeaderString: () => 'Date,Hours,Description,Created At\n',
+        stringifyRecords: () => {
+          throw new Error('Stringify failed');
+        }
+      }));
 
       const response = await request(app).get('/api/reports/export/csv/1');
 
@@ -338,11 +343,6 @@ describe('Report Routes', () => {
         callback(null, []);
       });
 
-      const csvWriter = require('csv-writer');
-      csvWriter.createObjectCsvWriter.mockReturnValue({
-        writeRecords: jest.fn().mockRejectedValue(new Error('Write failed'))
-      });
-
       await request(app).get('/api/reports/export/csv/1');
 
       expect(mockDb.get).toHaveBeenCalledWith(
@@ -352,10 +352,10 @@ describe('Report Routes', () => {
       );
     });
 
-    test('should create temp directory if it does not exist', async () => {
+    test('should send CSV directly in the response without touching the filesystem', async () => {
       const mockClient = { id: 1, name: 'Test Client' };
       const mockWorkEntries = [
-        { date: '2024-01-01', hours: 5, description: 'Work 1', created_at: '2024-01-01' }
+        { date: '2024-01-01', hours: 5, description: 'Work, with comma', created_at: '2024-01-01' }
       ];
 
       mockDb.get.mockImplementation((query, params, callback) => {
@@ -366,40 +366,45 @@ describe('Report Routes', () => {
         callback(null, mockWorkEntries);
       });
 
-      fs.existsSync.mockReturnValue(false);
+      const response = await request(app).get('/api/reports/export/csv/1');
 
-      const csvWriter = require('csv-writer');
-      csvWriter.createObjectCsvWriter.mockReturnValue({
-        writeRecords: jest.fn().mockRejectedValue(new Error('Write failed'))
-      });
-
-      await request(app).get('/api/reports/export/csv/1');
-
-      expect(fs.mkdirSync).toHaveBeenCalledWith(expect.any(String), { recursive: true });
+      expect(response.status).toBe(200);
+      expect(response.headers['content-type']).toMatch(/^text\/csv/);
+      expect(response.headers['content-disposition']).toMatch(
+        /^attachment; filename="Test_Client_report_.*\.csv"$/
+      );
+      expect(response.text).toBe(
+        'Date,Hours,Description,Created At\n2024-01-01,5,"Work, with comma",2024-01-01\n'
+      );
+      expect(fs.mkdirSync).not.toHaveBeenCalled();
+      expect(fs.unlink).not.toHaveBeenCalled();
     });
 
-    test('should not create temp directory if it exists', async () => {
-      const mockClient = { id: 1, name: 'Test Client' };
-      const mockWorkEntries = [];
-
+    test('should keep concurrent exports for the same client name isolated per user', async () => {
       mockDb.get.mockImplementation((query, params, callback) => {
-        callback(null, mockClient);
+        callback(null, { id: 1, name: 'Acme Corp' });
       });
 
       mockDb.all.mockImplementation((query, params, callback) => {
-        callback(null, mockWorkEntries);
+        const [, userEmail] = params;
+        setImmediate(() =>
+          callback(null, [
+            { date: '2024-01-01', hours: 1, description: `entry for ${userEmail}`, created_at: '2024-01-01' }
+          ])
+        );
       });
 
-      fs.existsSync.mockReturnValue(true);
+      const [alice, bob] = await Promise.all([
+        request(app).get('/api/reports/export/csv/1').set('x-test-user', 'alice@acme.com'),
+        request(app).get('/api/reports/export/csv/1').set('x-test-user', 'bob@globex.com')
+      ]);
 
-      const csvWriter = require('csv-writer');
-      csvWriter.createObjectCsvWriter.mockReturnValue({
-        writeRecords: jest.fn().mockRejectedValue(new Error('Write failed'))
-      });
-
-      await request(app).get('/api/reports/export/csv/1');
-
-      expect(fs.mkdirSync).not.toHaveBeenCalled();
+      expect(alice.status).toBe(200);
+      expect(bob.status).toBe(200);
+      expect(alice.text).toContain('entry for alice@acme.com');
+      expect(alice.text).not.toContain('bob@globex.com');
+      expect(bob.text).toContain('entry for bob@globex.com');
+      expect(bob.text).not.toContain('alice@acme.com');
     });
   });
 
