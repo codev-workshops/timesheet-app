@@ -217,14 +217,13 @@ router.get('/export/pdf/:clientId', (req, res) => {
           
           // Add work entries
           workEntries.forEach((entry, index) => {
-            const y = doc.y;
-            
             // Check if we need a new page
-            if (y > 700) {
+            if (doc.y > 700) {
               doc.addPage();
             }
             
-            doc.text(entry.date, 50, doc.y, { width: 100 });
+            const y = doc.y;
+            doc.text(entry.date, 50, y, { width: 100 });
             doc.text(entry.hours.toString(), 150, y, { width: 80 });
             doc.text(entry.description || 'No description', 230, y, { width: 300 });
             doc.moveDown();
