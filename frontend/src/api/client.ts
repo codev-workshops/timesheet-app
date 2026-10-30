@@ -1,4 +1,8 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios';
+import { type LoginResponse } from '../types/api';
+
+export const AUTH_TOKEN_KEY = 'authToken';
+const AUTH_CREDENTIAL_PATHS = ['/api/auth/login', '/api/auth/register'];
 
 // Use empty string to make requests relative to the current origin
 // Vite proxy will forward /api requests to the backend
@@ -16,12 +20,12 @@ class ApiClient {
       },
     });
 
-    // Request interceptor to add email header
+    // Request interceptor to add the session token
     this.client.interceptors.request.use(
       (config) => {
-        const userEmail = localStorage.getItem('userEmail');
-        if (userEmail) {
-          config.headers['x-user-email'] = userEmail;
+        const token = localStorage.getItem(AUTH_TOKEN_KEY);
+        if (token) {
+          config.headers['Authorization'] = `Bearer ${token}`;
         }
         return config;
       },
@@ -34,10 +38,13 @@ class ApiClient {
     this.client.interceptors.response.use(
       (response: AxiosResponse) => response,
       (error) => {
-        if (error.response?.status === 401) {
-          // Clear stored email on auth error
-          localStorage.removeItem('userEmail');
-          window.location.href = '/login';
+        const isCredentialRequest = AUTH_CREDENTIAL_PATHS.includes(error.config?.url ?? '');
+        if (error.response?.status === 401 && !isCredentialRequest) {
+          // Clear the stored token when the session is no longer valid
+          localStorage.removeItem(AUTH_TOKEN_KEY);
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
         }
         return Promise.reject(error);
       }
@@ -45,8 +52,13 @@ class ApiClient {
   }
 
   // Auth endpoints
-  async login(email: string) {
-    const response = await this.client.post('/api/auth/login', { email });
+  async login(email: string, password: string): Promise<LoginResponse> {
+    const response = await this.client.post('/api/auth/login', { email, password });
+    return response.data;
+  }
+
+  async register(email: string, password: string): Promise<LoginResponse> {
+    const response = await this.client.post('/api/auth/register', { email, password });
     return response.data;
   }
 

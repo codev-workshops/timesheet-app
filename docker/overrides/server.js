@@ -35,11 +35,19 @@ app.use(helmet({
   strictTransportSecurity: false,
 }));
 
-// CORS configuration - in production, same origin so allow all
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production' ? true : (process.env.FRONTEND_URL || 'http://localhost:5173'),
-  credentials: true
-}));
+// CORS: the SPA is served from this same origin in production, so cross-origin
+// access is off unless FRONTEND_URL lists trusted origins (comma-separated).
+const defaultFrontendUrl = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5173';
+const allowedOrigins = (process.env.FRONTEND_URL || defaultFrontendUrl)
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+if (allowedOrigins.length > 0) {
+  app.use(cors({
+    origin: allowedOrigins,
+    allowedHeaders: ['Content-Type', 'Authorization']
+  }));
+}
 
 // Rate limiting
 const limiter = rateLimit({
@@ -47,6 +55,14 @@ const limiter = rateLimit({
   max: 100 // limit each IP to 100 requests per windowMs
 });
 app.use(limiter);
+
+// Stricter limit on credential endpoints to slow password guessing
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20
+});
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
 
 // Logging
 app.use(morgan('combined'));

@@ -14,7 +14,8 @@ A Node.js/Express backend API for employee time tracking application with SQLite
 ## API Endpoints
 
 ### Authentication
-- `POST /api/auth/login` - User login with email
+- `POST /api/auth/register` - Create an account with email and password
+- `POST /api/auth/login` - Log in with email and password, returns a JWT
 - `GET /api/auth/me` - Get current user info
 
 ### Clients
@@ -60,17 +61,21 @@ npm start
 
 ## Authentication
 
-The API uses simple email-based authentication. Include the user's email in the `x-user-email` header for all authenticated requests.
+Users sign up with `POST /api/auth/register` and log in with `POST /api/auth/login`, both taking `{ "email", "password" }` (password: 8-128 characters; emails are stored lowercase). Both return a signed JWT (`token`, HS256, 24h by default). Send it on every authenticated request:
 
-Example:
 ```
-x-user-email: user@company.com
+Authorization: Bearer <token>
 ```
+
+The signing secret comes from `JWT_SECRET` (at least 32 characters). If it is unset, the server generates a random secret at startup, so tokens stop working after a restart. The `x-user-email` header is no longer accepted.
+
+CORS only allows the origins listed in `FRONTEND_URL` (comma-separated, default `http://localhost:5173`).
 
 ## Database Schema
 
 ### Users
 - `email` (TEXT, PRIMARY KEY)
+- `password_hash` (TEXT, scrypt)
 - `created_at` (DATETIME)
 
 ### Clients

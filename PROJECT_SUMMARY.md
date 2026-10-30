@@ -145,8 +145,7 @@ Open http://localhost:5173 and log in with any email address.
 - For production, modify `backend/src/database/init.js` to use file-based SQLite
 
 ### Authentication
-- Email-only authentication (no password)
-- Assumes trusted internal network
+- Email and password authentication with signed JWTs
 - Consider SSO integration for production
 
 ### Environment Variables
