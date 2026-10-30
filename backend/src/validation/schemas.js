@@ -4,7 +4,8 @@ const clientSchema = Joi.object({
   name: Joi.string().trim().min(1).max(255).required(),
   description: Joi.string().trim().max(1000).optional().allow(''),
   department: Joi.string().trim().max(255).optional().allow(''),
-  email: Joi.string().trim().email().max(255).optional().allow('')
+  email: Joi.string().trim().email().max(255).optional().allow(''),
+  weeklyHoursCap: Joi.number().positive().max(168).precision(2).allow(null).default(40)
 });
 
 const workEntrySchema = Joi.object({
@@ -25,7 +26,8 @@ const updateClientSchema = Joi.object({
   name: Joi.string().trim().min(1).max(255).optional(),
   description: Joi.string().trim().max(1000).optional().allow(''),
   department: Joi.string().trim().max(255).optional().allow(''),
-  email: Joi.string().trim().email().max(255).optional().allow('')
+  email: Joi.string().trim().email().max(255).optional().allow(''),
+  weeklyHoursCap: Joi.number().positive().max(168).precision(2).allow(null).optional()
 }).min(1); // At least one field must be provided
 
 const emailSchema = Joi.object({

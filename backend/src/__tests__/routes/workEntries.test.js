@@ -223,6 +223,314 @@ describe('Work Entry Routes', () => {
     });
   });
 
+  describe('POST /api/work-entries - Weekly cap', () => {
+    // 2024-01-17 is a Wednesday; its Mon–Sun week is 2024-01-15 .. 2024-01-21
+    const weekStart = Date.UTC(2024, 0, 15);
+    const weekEnd = Date.UTC(2024, 0, 22);
+
+    const mockClientAndTotal = (cap, total) => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        if (query.includes('FROM clients')) {
+          callback(null, { id: 1, weekly_hours_cap: cap });
+        } else if (query.includes('SUM(hours)')) {
+          callback(null, { total });
+        } else {
+          callback(null, { id: 1, client_id: 1, hours: 5, date: '2024-01-17', client_name: 'Client A' });
+        }
+      });
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        this.lastID = 1;
+        callback.call(this, null);
+      });
+    };
+
+    test('should reject entry that pushes week total past the cap', async () => {
+      mockClientAndTotal(40, 38);
+
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 5, date: '2024-01-17' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toMatch(/Weekly hours cap exceeded/);
+      expect(response.body.error).toContain('43h');
+      expect(response.body.error).toContain('cap 40h');
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('should allow entry that exactly reaches the cap', async () => {
+      mockClientAndTotal(40, 35);
+
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 5, date: '2024-01-17' });
+
+      expect(response.status).toBe(201);
+    });
+
+    test('should store the date as epoch milliseconds', async () => {
+      mockClientAndTotal(40, 0);
+
+      await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 5, date: '2024-01-17' });
+
+      expect(mockDb.run).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO work_entries'),
+        [1, 'test@example.com', 5, null, Date.UTC(2024, 0, 17)],
+        expect.any(Function)
+      );
+    });
+
+    test('should query the Mon–Sun week containing the entry date, scoped to user and client', async () => {
+      mockClientAndTotal(40, 0);
+
+      await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 5, date: '2024-01-17' });
+
+      expect(mockDb.get).toHaveBeenCalledWith(
+        expect.stringContaining('SUM(hours)'),
+        ['test@example.com', 1, weekStart, weekEnd],
+        expect.any(Function)
+      );
+    });
+
+    test('should treat Sunday as the last day of the week', async () => {
+      mockClientAndTotal(40, 0);
+
+      await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 5, date: '2024-01-21' });
+
+      expect(mockDb.get).toHaveBeenCalledWith(
+        expect.stringContaining('SUM(hours)'),
+        ['test@example.com', 1, weekStart, weekEnd],
+        expect.any(Function)
+      );
+    });
+
+    test('should skip the weekly total query when the client has no cap', async () => {
+      mockClientAndTotal(null, 100);
+
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 24, date: '2024-01-17' });
+
+      expect(response.status).toBe(201);
+      expect(mockDb.get).not.toHaveBeenCalledWith(
+        expect.stringContaining('SUM(hours)'),
+        expect.anything(),
+        expect.any(Function)
+      );
+    });
+
+    test('should handle database error when summing weekly hours', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        if (query.includes('FROM clients')) {
+          callback(null, { id: 1, weekly_hours_cap: 40 });
+        } else {
+          callback(new Error('Database error'), null);
+        }
+      });
+
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 5, date: '2024-01-17' });
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Internal server error' });
+    });
+  });
+
+  describe('PUT /api/work-entries/:id - Weekly cap', () => {
+    const existingEntry = { id: 1, client_id: 1, hours: 8, date: Date.UTC(2024, 0, 17) };
+
+    const mockUpdateScenario = (cap, totalExcludingSelf) => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        if (query.includes('FROM clients')) {
+          callback(null, { id: 1, weekly_hours_cap: cap });
+        } else if (query.includes('SUM(hours)')) {
+          callback(null, { total: totalExcludingSelf });
+        } else if (query.includes('work_entries we')) {
+          callback(null, { ...existingEntry, client_name: 'Client A' });
+        } else {
+          callback(null, existingEntry);
+        }
+      });
+      mockDb.run.mockImplementation((query, params, callback) => callback(null));
+    };
+
+    test('should reject raising hours past the cap', async () => {
+      mockUpdateScenario(40, 32);
+
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ hours: 10 });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toMatch(/Weekly hours cap exceeded/);
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('should exclude the entry itself from the weekly total', async () => {
+      // Others (excluding this entry) total 30h; raising this entry 8h -> 9h gives 39h, within the 40h cap.
+      // The SUM query must carry the `id != ?` exclusion so the entry's old 8h is not double-counted.
+      mockUpdateScenario(40, 30);
+
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ hours: 9 });
+
+      expect(response.status).toBe(200);
+      expect(mockDb.get).toHaveBeenCalledWith(
+        expect.stringContaining('AND id != ?'),
+        ['test@example.com', 1, Date.UTC(2024, 0, 15), Date.UTC(2024, 0, 22), 1],
+        expect.any(Function)
+      );
+    });
+
+    test('should allow reducing hours when the week is already over the cap', async () => {
+      // Others total 45h against a 40h cap; shrinking this entry 8h -> 4h must still be allowed
+      mockUpdateScenario(40, 45);
+
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ hours: 4 });
+
+      expect(response.status).toBe(200);
+      expect(mockDb.get).not.toHaveBeenCalledWith(
+        expect.stringContaining('SUM(hours)'),
+        expect.anything(),
+        expect.any(Function)
+      );
+    });
+
+    test('should allow re-saving the same hours when the week is already over the cap', async () => {
+      mockUpdateScenario(40, 45);
+
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ hours: 8 });
+
+      expect(response.status).toBe(200);
+    });
+
+    test('should not grant the reduce allowance when the entry moves to a different week', async () => {
+      // Moving an 8h entry (reduced to 6h) into a week whose others already total 36h -> 42 > 40
+      mockUpdateScenario(40, 36);
+
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ hours: 6, date: '2024-01-24' });
+
+      expect(response.status).toBe(400);
+      expect(mockDb.get).toHaveBeenCalledWith(
+        expect.stringContaining('SUM(hours)'),
+        ['test@example.com', 1, Date.UTC(2024, 0, 22), Date.UTC(2024, 0, 29), 1],
+        expect.any(Function)
+      );
+    });
+
+    test('should compose new hours and new date when both change', async () => {
+      mockUpdateScenario(40, 30);
+
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ hours: 10, date: '2024-01-24' });
+
+      expect(response.status).toBe(200);
+      expect(mockDb.get).toHaveBeenCalledWith(
+        expect.stringContaining('SUM(hours)'),
+        ['test@example.com', 1, Date.UTC(2024, 0, 22), Date.UTC(2024, 0, 29), 1],
+        expect.any(Function)
+      );
+      expect(mockDb.run).toHaveBeenCalledWith(
+        expect.stringContaining('date = ?'),
+        expect.arrayContaining([Date.UTC(2024, 0, 24)]),
+        expect.any(Function)
+      );
+    });
+
+    test('should check the cap of the new client when reassigning', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        if (query.includes('FROM clients')) {
+          expect(params).toEqual([2, 'test@example.com']);
+          callback(null, { id: 2, weekly_hours_cap: 5 });
+        } else if (query.includes('SUM(hours)')) {
+          expect(params[1]).toBe(2);
+          callback(null, { total: 0 });
+        } else {
+          callback(null, existingEntry);
+        }
+      });
+
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ clientId: 2 });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('cap 5h');
+    });
+
+    test('should skip the cap check when reassigning to a client with no cap', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        if (query.includes('FROM clients')) {
+          callback(null, { id: 2, weekly_hours_cap: null });
+        } else if (query.includes('work_entries we')) {
+          callback(null, { ...existingEntry, client_id: 2, client_name: 'Client B' });
+        } else {
+          callback(null, existingEntry);
+        }
+      });
+      mockDb.run.mockImplementation((query, params, callback) => callback(null));
+
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ clientId: 2 });
+
+      expect(response.status).toBe(200);
+      expect(mockDb.get).not.toHaveBeenCalledWith(
+        expect.stringContaining('SUM(hours)'),
+        expect.anything(),
+        expect.any(Function)
+      );
+    });
+
+    test('should return 400 when the entry\'s own client cannot be found', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        if (query.includes('FROM clients')) {
+          callback(null, null);
+        } else {
+          callback(null, existingEntry);
+        }
+      });
+
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ hours: 2 });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Client not found or does not belong to user' });
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('should not check the cap for description-only updates', async () => {
+      mockUpdateScenario(1, 100);
+
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ description: 'Just a note' });
+
+      expect(response.status).toBe(200);
+      expect(mockDb.get).not.toHaveBeenCalledWith(
+        expect.stringContaining('SUM(hours)'),
+        expect.anything(),
+        expect.any(Function)
+      );
+    });
+  });
+
   describe('PUT /api/work-entries/:id', () => {
     test('should update work entry hours', async () => {
       mockDb.get.mockImplementation((query, params, callback) => {
@@ -481,13 +789,11 @@ describe('Work Entry Routes', () => {
     });
 
     test('should handle error retrieving work entry after update', async () => {
-      let getCallCount = 0;
       mockDb.get.mockImplementation((query, params, callback) => {
-        getCallCount++;
-        if (getCallCount === 1) {
-          callback(null, { id: 1 });
-        } else {
+        if (query.includes('work_entries we')) {
           callback(new Error('Retrieval failed'), null);
+        } else {
+          callback(null, { id: 1 });
         }
       });
 

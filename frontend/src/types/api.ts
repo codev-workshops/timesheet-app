@@ -9,6 +9,7 @@ export interface Client {
   description: string | null;
   department: string | null;
   email: string | null;
+  weekly_hours_cap: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -28,11 +29,20 @@ export interface WorkEntryWithClient extends WorkEntry {
   client_name: string;
 }
 
+export interface CurrentWeekSummary {
+  weekStart: string;
+  weekEnd: string;
+  weeklyHoursCap: number | null;
+  hoursThisWeek: number;
+  remainingHours: number | null;
+}
+
 export interface ClientReport {
   client: Client;
   workEntries: WorkEntry[];
   totalHours: number;
   entryCount: number;
+  currentWeek: CurrentWeekSummary;
 }
 
 export interface CreateClientRequest {
@@ -40,6 +50,7 @@ export interface CreateClientRequest {
   description?: string;
   department?: string;
   email?: string;
+  weeklyHoursCap?: number | null;
 }
 
 export interface UpdateClientRequest {
@@ -47,6 +58,7 @@ export interface UpdateClientRequest {
   description?: string;
   department?: string;
   email?: string;
+  weeklyHoursCap?: number | null;
 }
 
 export interface CreateWorkEntryRequest {

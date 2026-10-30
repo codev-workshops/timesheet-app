@@ -2,6 +2,7 @@ const express = require('express');
 const { getDatabase } = require('../database/init');
 const { authenticateUser } = require('../middleware/auth');
 const { workEntrySchema, updateWorkEntrySchema } = require('../validation/schemas');
+const { checkWeeklyCap, capExceededMessage, getWeekBounds, toDateMs } = require('../utils/weeklyCap');
 
 const router = express.Router();
 
@@ -89,7 +90,7 @@ router.post('/', (req, res, next) => {
 
     // Verify client exists and belongs to user
     db.get(
-      'SELECT id FROM clients WHERE id = ? AND user_email = ?',
+      'SELECT id, weekly_hours_cap FROM clients WHERE id = ? AND user_email = ?',
       [clientId, req.userEmail],
       (err, row) => {
         if (err) {
@@ -101,40 +102,59 @@ router.post('/', (req, res, next) => {
           return res.status(400).json({ error: 'Client not found or does not belong to user' });
         }
 
-        // Create work entry
-        db.run(
-          'INSERT INTO work_entries (client_id, user_email, hours, description, date) VALUES (?, ?, ?, ?, ?)',
-          [clientId, req.userEmail, hours, description || null, date],
-          function(err) {
+        checkWeeklyCap(
+          db,
+          { userEmail: req.userEmail, clientId, date, hours, cap: row.weekly_hours_cap },
+          (err, result) => {
             if (err) {
               console.error('Database error:', err);
-              return res.status(500).json({ error: 'Failed to create work entry' });
+              return res.status(500).json({ error: 'Internal server error' });
             }
 
-            // Return the created work entry with client name
-            db.get(
-              `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-                      we.created_at, we.updated_at, c.name as client_name
-               FROM work_entries we
-               JOIN clients c ON we.client_id = c.id
-               WHERE we.id = ?`,
-              [this.lastID],
-              (err, row) => {
-                if (err) {
-                  console.error('Database error:', err);
-                  return res.status(500).json({ error: 'Work entry created but failed to retrieve' });
-                }
+            if (!result.ok) {
+              return res.status(400).json({ error: capExceededMessage(result.total, result.cap) });
+            }
 
-                res.status(201).json({
-                  message: 'Work entry created successfully',
-                  workEntry: row
-                });
-              }
-            );
+            insertWorkEntry();
           }
         );
       }
     );
+
+    function insertWorkEntry() {
+      // Create work entry
+      db.run(
+        'INSERT INTO work_entries (client_id, user_email, hours, description, date) VALUES (?, ?, ?, ?, ?)',
+        [clientId, req.userEmail, hours, description || null, toDateMs(date)],
+        function(err) {
+          if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ error: 'Failed to create work entry' });
+          }
+
+          // Return the created work entry with client name
+          db.get(
+            `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
+                    we.created_at, we.updated_at, c.name as client_name
+             FROM work_entries we
+             JOIN clients c ON we.client_id = c.id
+             WHERE we.id = ?`,
+            [this.lastID],
+            (err, row) => {
+              if (err) {
+                console.error('Database error:', err);
+                return res.status(500).json({ error: 'Work entry created but failed to retrieve' });
+              }
+
+              res.status(201).json({
+                message: 'Work entry created successfully',
+                workEntry: row
+              });
+            }
+          );
+        }
+      );
+    }
   } catch (error) {
     next(error);
   }
@@ -158,7 +178,7 @@ router.put('/:id', (req, res, next) => {
 
     // Check if work entry exists and belongs to user
     db.get(
-      'SELECT id FROM work_entries WHERE id = ? AND user_email = ?',
+      'SELECT id, client_id, hours, date FROM work_entries WHERE id = ? AND user_email = ?',
       [workEntryId, req.userEmail],
       (err, row) => {
         if (err) {
@@ -170,11 +190,14 @@ router.put('/:id', (req, res, next) => {
           return res.status(404).json({ error: 'Work entry not found' });
         }
 
-        // If clientId is being updated, verify it belongs to user
-        if (value.clientId) {
+        const affectsCap = value.clientId !== undefined || value.hours !== undefined || value.date !== undefined;
+        const effectiveClientId = value.clientId !== undefined ? value.clientId : row.client_id;
+
+        // Verify the (possibly new) client belongs to the user and enforce its weekly cap
+        if (affectsCap) {
           db.get(
-            'SELECT id FROM clients WHERE id = ? AND user_email = ?',
-            [value.clientId, req.userEmail],
+            'SELECT id, weekly_hours_cap FROM clients WHERE id = ? AND user_email = ?',
+            [effectiveClientId, req.userEmail],
             (err, clientRow) => {
               if (err) {
                 console.error('Database error:', err);
@@ -185,7 +208,35 @@ router.put('/:id', (req, res, next) => {
                 return res.status(400).json({ error: 'Client not found or does not belong to user' });
               }
 
-              performUpdate();
+              const effectiveDate = value.date !== undefined ? value.date : row.date;
+              const previousHours = Number(row.hours);
+              const sameBucket = effectiveClientId === row.client_id
+                && getWeekBounds(effectiveDate).start === getWeekBounds(row.date).start;
+
+              checkWeeklyCap(
+                db,
+                {
+                  userEmail: req.userEmail,
+                  clientId: effectiveClientId,
+                  date: effectiveDate,
+                  hours: value.hours !== undefined ? value.hours : previousHours,
+                  cap: clientRow.weekly_hours_cap,
+                  excludeEntryId: workEntryId,
+                  previousHours: sameBucket ? previousHours : undefined
+                },
+                (err, result) => {
+                  if (err) {
+                    console.error('Database error:', err);
+                    return res.status(500).json({ error: 'Internal server error' });
+                  }
+
+                  if (!result.ok) {
+                    return res.status(400).json({ error: capExceededMessage(result.total, result.cap) });
+                  }
+
+                  performUpdate();
+                }
+              );
             }
           );
         } else {
@@ -214,7 +265,7 @@ router.put('/:id', (req, res, next) => {
 
           if (value.date !== undefined) {
             updates.push('date = ?');
-            values.push(value.date);
+            values.push(toDateMs(value.date));
           }
 
           updates.push('updated_at = CURRENT_TIMESTAMP');

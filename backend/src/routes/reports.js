@@ -5,8 +5,26 @@ const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const PDFDocument = require('pdfkit');
 const path = require('path');
 const fs = require('fs');
+const { getWeekBounds } = require('../utils/weeklyCap');
 
 const router = express.Router();
+
+// Summarise hours logged in the current Mon–Sun week against the client's cap
+function currentWeekSummary(workEntries, cap) {
+  const { start, end } = getWeekBounds(Date.now());
+  const hoursThisWeek = Math.round(workEntries.reduce((sum, entry) => {
+    const t = new Date(entry.date).getTime();
+    return t >= start && t < end ? sum + parseFloat(entry.hours) : sum;
+  }, 0) * 100) / 100;
+
+  return {
+    weekStart: new Date(start).toISOString().slice(0, 10),
+    weekEnd: new Date(end - 1).toISOString().slice(0, 10),
+    weeklyHoursCap: cap === undefined ? null : cap,
+    hoursThisWeek,
+    remainingHours: cap === null || cap === undefined ? null : Math.max(0, Math.round((cap - hoursThisWeek) * 100) / 100)
+  };
+}
 
 // All routes require authentication
 router.use(authenticateUser);
@@ -23,7 +41,7 @@ router.get('/client/:clientId', (req, res) => {
   
   // Verify client belongs to user
   db.get(
-    'SELECT id, name FROM clients WHERE id = ? AND user_email = ?',
+    'SELECT id, name, weekly_hours_cap FROM clients WHERE id = ? AND user_email = ?',
     [clientId, req.userEmail],
     (err, client) => {
       if (err) {
@@ -55,7 +73,8 @@ router.get('/client/:clientId', (req, res) => {
             client: client,
             workEntries: workEntries,
             totalHours: totalHours,
-            entryCount: workEntries.length
+            entryCount: workEntries.length,
+            currentWeek: currentWeekSummary(workEntries, client.weekly_hours_cap)
           });
         }
       );

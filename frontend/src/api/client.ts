@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios';
+import type { CreateClientRequest, UpdateClientRequest } from '../types/api';
 
 // Use empty string to make requests relative to the current origin
 // Vite proxy will forward /api requests to the backend
@@ -66,12 +67,12 @@ class ApiClient {
     return response.data;
   }
 
-  async createClient(clientData: { name: string; description?: string; department?: string; email?: string }) {
+  async createClient(clientData: CreateClientRequest) {
     const response = await this.client.post('/api/clients', clientData);
     return response.data;
   }
 
-  async updateClient(id: number, clientData: { name?: string; description?: string; department?: string; email?: string }) {
+  async updateClient(id: number, clientData: UpdateClientRequest) {
     const response = await this.client.put(`/api/clients/${id}`, clientData);
     return response.data;
   }

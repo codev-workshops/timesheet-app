@@ -29,7 +29,19 @@ import {
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../api/client';
-import { type ClientReport } from '../types/api';
+import { type ClientReport, type CurrentWeekSummary } from '../types/api';
+
+const formatHours = (h: number) => String(Number(h.toFixed(2)));
+
+const remainingChip = (week: CurrentWeekSummary) => {
+  if (week.remainingHours === null) {
+    return { label: `${formatHours(week.hoursThisWeek)}h this week · no cap`, color: 'default' as const };
+  }
+  if (week.remainingHours === 0) {
+    return { label: 'Weekly cap reached', color: 'error' as const };
+  }
+  return { label: `${formatHours(week.remainingHours)}h left this week`, color: 'success' as const };
+};
 
 const ReportsPage: React.FC = () => {
   const [selectedClientId, setSelectedClientId] = useState<number>(0);
@@ -176,8 +188,13 @@ const ReportsPage: React.FC = () => {
 
           {selectedClient && report && (
             <>
+                <Box display="flex" alignItems="center" gap={2} sx={{ mb: 2 }}>
+                  <Typography variant="h5">{selectedClient.name}</Typography>
+                  <Chip size="small" variant="outlined" {...remainingChip(report.currentWeek)} />
+                </Box>
+
                 <Grid container spacing={3} sx={{ mb: 3 }}>
-                  <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                  <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                     <Card>
                     <CardContent>
                       <Typography color="textSecondary" gutterBottom>
@@ -189,7 +206,7 @@ const ReportsPage: React.FC = () => {
                     </CardContent>
                   </Card>
                 </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                   <Card>
                     <CardContent>
                       <Typography color="textSecondary" gutterBottom>
@@ -201,7 +218,7 @@ const ReportsPage: React.FC = () => {
                     </CardContent>
                   </Card>
                 </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                   <Card>
                     <CardContent>
                       <Typography color="textSecondary" gutterBottom>
@@ -209,6 +226,27 @@ const ReportsPage: React.FC = () => {
                       </Typography>
                       <Typography variant="h4" component="div">
                         {report.entryCount > 0 ? (report.totalHours / report.entryCount).toFixed(2) : '0.00'}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                  <Card>
+                    <CardContent>
+                      <Typography color="textSecondary" gutterBottom>
+                        Remaining This Week
+                      </Typography>
+                      <Typography
+                        variant="h4"
+                        component="div"
+                        color={report.currentWeek.remainingHours === 0 ? 'error' : undefined}
+                      >
+                        {report.currentWeek.remainingHours === null ? '∞' : formatHours(report.currentWeek.remainingHours)}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {formatHours(report.currentWeek.hoursThisWeek)}h logged
+                        {report.currentWeek.weeklyHoursCap !== null && ` of ${formatHours(report.currentWeek.weeklyHoursCap)}h cap`}
+                        {` (${report.currentWeek.weekStart} – ${report.currentWeek.weekEnd})`}
                       </Typography>
                     </CardContent>
                   </Card>
