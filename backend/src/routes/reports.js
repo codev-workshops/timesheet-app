@@ -1,6 +1,8 @@
 const express = require('express');
 const { getDatabase } = require('../database/init');
 const { authenticateUser } = require('../middleware/auth');
+const { validate } = require('../middleware/validate');
+const { clientIdParamSchema } = require('../validation/schemas');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const PDFDocument = require('pdfkit');
 const path = require('path');
@@ -8,16 +10,14 @@ const fs = require('fs');
 
 const router = express.Router();
 
+const validateClientId = validate('params', clientIdParamSchema, 'Invalid client ID');
+
 // All routes require authentication
 router.use(authenticateUser);
 
 // Get hourly report for specific client
-router.get('/client/:clientId', (req, res) => {
-  const clientId = parseInt(req.params.clientId);
-  
-  if (isNaN(clientId)) {
-    return res.status(400).json({ error: 'Invalid client ID' });
-  }
+router.get('/client/:clientId', validateClientId, (req, res) => {
+  const clientId = req.params.clientId;
   
   const db = getDatabase();
   
@@ -64,12 +64,8 @@ router.get('/client/:clientId', (req, res) => {
 });
 
 // Export client report as CSV
-router.get('/export/csv/:clientId', (req, res) => {
-  const clientId = parseInt(req.params.clientId);
-  
-  if (isNaN(clientId)) {
-    return res.status(400).json({ error: 'Invalid client ID' });
-  }
+router.get('/export/csv/:clientId', validateClientId, (req, res) => {
+  const clientId = req.params.clientId;
   
   const db = getDatabase();
   
@@ -147,12 +143,8 @@ router.get('/export/csv/:clientId', (req, res) => {
 });
 
 // Export client report as PDF
-router.get('/export/pdf/:clientId', (req, res) => {
-  const clientId = parseInt(req.params.clientId);
-  
-  if (isNaN(clientId)) {
-    return res.status(400).json({ error: 'Invalid client ID' });
-  }
+router.get('/export/pdf/:clientId', validateClientId, (req, res) => {
+  const clientId = req.params.clientId;
   
   const db = getDatabase();
   

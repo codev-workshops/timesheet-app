@@ -11,7 +11,7 @@ A full-stack web application for tracking and reporting employee hourly work acr
 - For production use, modify `backend/src/database/init.js` to use file-based SQLite instead of `:memory:`
 
 ### Authentication
-- Email-only authentication with JWT tokens
+- Email and password authentication with signed JWT tokens
 - No password required - assumes trusted internal network
 - Anyone with a valid email can create an account and log in
 - Consider integrating with company SSO for production use
@@ -272,7 +272,7 @@ See `backend/DEPLOYMENT.md` for detailed production deployment instructions.
 ## Known Limitations
 
 1. **In-memory database** - All data is lost on server restart
-2. **Email-only auth** - No password protection, assumes trusted network
+2. **Password auth only** - No SSO, password reset, or email verification
 3. **No user roles** - All users have equal access to all data
 4. **Single-server architecture** - Not designed for horizontal scaling
 5. **No real-time updates** - Changes require page refresh

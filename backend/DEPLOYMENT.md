@@ -9,10 +9,11 @@
 - For production, consider switching to file-based SQLite or a proper database
 
 ### Authentication Security
-- Email-only authentication assumes trusted network environment
-- No password protection - anyone with a valid company email can access
+- Users log in with email and password (scrypt-hashed); the API accepts only signed JWTs in the `Authorization: Bearer` header
+- Set `JWT_SECRET` (32+ characters); without it a random secret is generated at startup and every session ends on restart
+- JWT tokens expire after 24 hours (`JWT_EXPIRES_IN` to change)
+- Accounts created before password login (no `password_hash`) cannot log in and must be re-created or given a password by an administrator
 - Consider integrating with company SSO for production use
-- JWT tokens expire after 24 hours
 
 ## Environment Configuration
 
@@ -91,7 +92,7 @@ WantedBy=multi-user.target
 ## Security Hardening
 
 1. **Use HTTPS in production**
-2. **Set up proper CORS for your domain**
+2. **Set up proper CORS for your domain**: `FRONTEND_URL` is an explicit, comma-separated origin allowlist. The Docker image serves the SPA from the API's origin, so it enables no CORS unless `FRONTEND_URL` is set
 3. **Consider rate limiting adjustments**
 4. **Monitor for unusual authentication patterns**
 5. **Regular security updates for dependencies**

@@ -32,10 +32,33 @@ const emailSchema = Joi.object({
   email: Joi.string().email().required()
 });
 
+const credentialsSchema = Joi.object({
+  email: Joi.string().trim().lowercase().email().max(255).required(),
+  password: Joi.string().min(8).max(128).required()
+});
+
+const positiveId = Joi.number().integer().positive().required();
+
+const idParamSchema = Joi.object({
+  id: positiveId
+});
+
+const clientIdParamSchema = Joi.object({
+  clientId: positiveId
+});
+
+const workEntryQuerySchema = Joi.object({
+  clientId: Joi.number().integer().positive().empty('').optional()
+}).unknown(true);
+
 module.exports = {
   clientSchema,
   workEntrySchema,
   updateWorkEntrySchema,
   updateClientSchema,
-  emailSchema
+  emailSchema,
+  credentialsSchema,
+  idParamSchema,
+  clientIdParamSchema,
+  workEntryQuerySchema
 };

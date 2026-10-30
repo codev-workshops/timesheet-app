@@ -1,7 +1,15 @@
 const express = require('express');
 const { getDatabase } = require('../database/init');
 const { authenticateUser } = require('../middleware/auth');
-const { workEntrySchema, updateWorkEntrySchema } = require('../validation/schemas');
+const { validate } = require('../middleware/validate');
+const {
+  workEntrySchema,
+  updateWorkEntrySchema,
+  idParamSchema,
+  workEntryQuerySchema
+} = require('../validation/schemas');
+
+const validateWorkEntryId = validate('params', idParamSchema, 'Invalid work entry ID');
 
 const router = express.Router();
 
@@ -9,7 +17,7 @@ const router = express.Router();
 router.use(authenticateUser);
 
 // Get all work entries for authenticated user (with optional client filter)
-router.get('/', (req, res) => {
+router.get('/', validate('query', workEntryQuerySchema, 'Invalid client ID'), (req, res) => {
   const { clientId } = req.query;
   const db = getDatabase();
   
@@ -23,13 +31,9 @@ router.get('/', (req, res) => {
   
   const params = [req.userEmail];
   
-  if (clientId) {
-    const clientIdNum = parseInt(clientId);
-    if (isNaN(clientIdNum)) {
-      return res.status(400).json({ error: 'Invalid client ID' });
-    }
+  if (clientId !== undefined) {
     query += ' AND we.client_id = ?';
-    params.push(clientIdNum);
+    params.push(clientId);
   }
   
   query += ' ORDER BY we.date DESC, we.created_at DESC';
@@ -45,12 +49,8 @@ router.get('/', (req, res) => {
 });
 
 // Get specific work entry
-router.get('/:id', (req, res) => {
-  const workEntryId = parseInt(req.params.id);
-  
-  if (isNaN(workEntryId)) {
-    return res.status(400).json({ error: 'Invalid work entry ID' });
-  }
+router.get('/:id', validateWorkEntryId, (req, res) => {
+  const workEntryId = req.params.id;
   
   const db = getDatabase();
   
@@ -77,12 +77,9 @@ router.get('/:id', (req, res) => {
 });
 
 // Create new work entry
-router.post('/', (req, res, next) => {
+router.post('/', validate('body', workEntrySchema), (req, res, next) => {
   try {
-    const { error, value } = workEntrySchema.validate(req.body);
-    if (error) {
-      return next(error);
-    }
+    const value = req.body;
 
     const { clientId, hours, description, date } = value;
     const db = getDatabase();
@@ -141,18 +138,11 @@ router.post('/', (req, res, next) => {
 });
 
 // Update work entry
-router.put('/:id', (req, res, next) => {
+router.put('/:id', validateWorkEntryId, validate('body', updateWorkEntrySchema), (req, res, next) => {
   try {
-    const workEntryId = parseInt(req.params.id);
-    
-    if (isNaN(workEntryId)) {
-      return res.status(400).json({ error: 'Invalid work entry ID' });
-    }
+    const workEntryId = req.params.id;
 
-    const { error, value } = updateWorkEntrySchema.validate(req.body);
-    if (error) {
-      return next(error);
-    }
+    const value = req.body;
 
     const db = getDatabase();
 
@@ -258,12 +248,8 @@ router.put('/:id', (req, res, next) => {
 });
 
 // Delete work entry
-router.delete('/:id', (req, res) => {
-  const workEntryId = parseInt(req.params.id);
-  
-  if (isNaN(workEntryId)) {
-    return res.status(400).json({ error: 'Invalid work entry ID' });
-  }
+router.delete('/:id', validateWorkEntryId, (req, res) => {
+  const workEntryId = req.params.id;
   
   const db = getDatabase();
   
