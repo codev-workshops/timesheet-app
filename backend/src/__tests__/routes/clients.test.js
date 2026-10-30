@@ -170,6 +170,52 @@ describe('Client Routes', () => {
       expect(response.status).toBe(201);
     });
 
+    test('should insert default weekly cap of 40 when not provided', async () => {
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        this.lastID = 1;
+        callback.call(this, null);
+      });
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, name: 'Client', weekly_hours_cap: 40 });
+      });
+
+      const response = await request(app)
+        .post('/api/clients')
+        .send({ name: 'Client' });
+
+      expect(response.status).toBe(201);
+      expect(mockDb.run).toHaveBeenCalledWith(
+        expect.stringContaining('weekly_hours_cap'),
+        ['Client', null, null, null, 40, 'test@example.com'],
+        expect.any(Function)
+      );
+    });
+
+    test('should insert explicit weekly cap, including null for no cap', async () => {
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        this.lastID = 1;
+        callback.call(this, null);
+      });
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, name: 'Client', weekly_hours_cap: null });
+      });
+
+      await request(app).post('/api/clients').send({ name: 'Client', weeklyHoursCap: 20 });
+      expect(mockDb.run.mock.calls[0][1][4]).toBe(20);
+
+      await request(app).post('/api/clients').send({ name: 'Client', weeklyHoursCap: null });
+      expect(mockDb.run.mock.calls[1][1][4]).toBeNull();
+    });
+
+    test('should return 400 for invalid weekly cap', async () => {
+      const response = await request(app)
+        .post('/api/clients')
+        .send({ name: 'Client', weeklyHoursCap: -1 });
+
+      expect(response.status).toBe(400);
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
     test('should return 400 for missing name', async () => {
       const response = await request(app)
         .post('/api/clients')
@@ -223,6 +269,42 @@ describe('Client Routes', () => {
       expect(response.status).toBe(200);
       expect(response.body.message).toBe('Client updated successfully');
       expect(response.body.client).toEqual(updatedClient);
+    });
+
+    test('should update weekly hours cap', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, name: 'Client', weekly_hours_cap: 30 });
+      });
+      mockDb.run.mockImplementation((query, params, callback) => callback(null));
+
+      const response = await request(app)
+        .put('/api/clients/1')
+        .send({ weeklyHoursCap: 30 });
+
+      expect(response.status).toBe(200);
+      expect(mockDb.run).toHaveBeenCalledWith(
+        expect.stringContaining('weekly_hours_cap = ?'),
+        [30, 1, 'test@example.com'],
+        expect.any(Function)
+      );
+    });
+
+    test('should clear weekly hours cap when null is provided', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, name: 'Client', weekly_hours_cap: null });
+      });
+      mockDb.run.mockImplementation((query, params, callback) => callback(null));
+
+      const response = await request(app)
+        .put('/api/clients/1')
+        .send({ weeklyHoursCap: null });
+
+      expect(response.status).toBe(200);
+      expect(mockDb.run).toHaveBeenCalledWith(
+        expect.stringContaining('weekly_hours_cap = ?'),
+        [null, 1, 'test@example.com'],
+        expect.any(Function)
+      );
     });
 
     test('should update client description', async () => {

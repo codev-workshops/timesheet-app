@@ -13,7 +13,7 @@ router.get('/', (req, res) => {
   const db = getDatabase();
   
   db.all(
-    'SELECT id, name, description, department, email, created_at, updated_at FROM clients WHERE user_email = ? ORDER BY name',
+    'SELECT id, name, description, department, email, created_at, updated_at, weekly_hours_cap FROM clients WHERE user_email = ? ORDER BY name',
     [req.userEmail],
     (err, rows) => {
       if (err) {
@@ -37,7 +37,7 @@ router.get('/:id', (req, res) => {
   const db = getDatabase();
   
   db.get(
-    'SELECT id, name, description, department, email, created_at, updated_at FROM clients WHERE id = ? AND user_email = ?',
+    'SELECT id, name, description, department, email, created_at, updated_at, weekly_hours_cap FROM clients WHERE id = ? AND user_email = ?',
     [clientId, req.userEmail],
     (err, row) => {
       if (err) {
@@ -62,12 +62,12 @@ router.post('/', (req, res, next) => {
       return next(error);
     }
 
-    const { name, description, department, email } = value;
+    const { name, description, department, email, weeklyHoursCap } = value;
     const db = getDatabase();
 
     db.run(
-      'INSERT INTO clients (name, description, department, email, user_email) VALUES (?, ?, ?, ?, ?)',
-      [name, description || null, department || null, email || null, req.userEmail],
+      'INSERT INTO clients (name, description, department, email, weekly_hours_cap, user_email) VALUES (?, ?, ?, ?, ?, ?)',
+      [name, description || null, department || null, email || null, weeklyHoursCap, req.userEmail],
       function(err) {
         if (err) {
           console.error('Database error:', err);
@@ -76,7 +76,7 @@ router.post('/', (req, res, next) => {
 
         // Return the created client
         db.get(
-          'SELECT id, name, description, department, email, created_at, updated_at FROM clients WHERE id = ?',
+          'SELECT id, name, description, department, email, created_at, updated_at, weekly_hours_cap FROM clients WHERE id = ?',
           [this.lastID],
           (err, row) => {
             if (err) {
@@ -151,6 +151,11 @@ router.put('/:id', (req, res, next) => {
           values.push(value.email || null);
         }
 
+        if (value.weeklyHoursCap !== undefined) {
+          updates.push('weekly_hours_cap = ?');
+          values.push(value.weeklyHoursCap);
+        }
+
         updates.push('updated_at = CURRENT_TIMESTAMP');
         values.push(clientId, req.userEmail);
 
@@ -164,7 +169,7 @@ router.put('/:id', (req, res, next) => {
 
           // Return updated client
           db.get(
-            'SELECT id, name, description, department, email, created_at, updated_at FROM clients WHERE id = ?',
+            'SELECT id, name, description, department, email, created_at, updated_at, weekly_hours_cap FROM clients WHERE id = ?',
             [clientId],
             (err, row) => {
               if (err) {

@@ -171,6 +171,17 @@ describe('Database Initialization', () => {
       expect(clientTableQuery[0]).toContain('FOREIGN KEY (user_email) REFERENCES users (email) ON DELETE CASCADE');
     });
 
+    test('clients table should have a weekly hours cap defaulting to 40', async () => {
+      const db = getDatabase();
+      await initializeDatabase();
+
+      const clientTableQuery = db.run.mock.calls.find(call =>
+        call[0].includes('CREATE TABLE IF NOT EXISTS clients')
+      );
+
+      expect(clientTableQuery[0]).toContain('weekly_hours_cap REAL DEFAULT 40');
+    });
+
     test('work_entries table should have foreign keys', async () => {
       const db = getDatabase();
       await initializeDatabase();

@@ -101,6 +101,87 @@ describe('Report Routes', () => {
       expect(response.body.entryCount).toBe(0);
     });
 
+    describe('currentWeek summary', () => {
+      // Today is pinned to Wed 2024-01-17; the current Mon–Sun week is 2024-01-15 .. 2024-01-21
+      beforeEach(() => {
+        jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] }).setSystemTime(new Date('2024-01-17T12:00:00Z'));
+      });
+
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+
+      const entries = [
+        { id: 1, hours: 8, date: Date.UTC(2024, 0, 15) },   // Monday, this week
+        { id: 2, hours: 4.5, date: Date.UTC(2024, 0, 21) }, // Sunday, this week
+        { id: 3, hours: 6, date: Date.UTC(2024, 0, 14) },   // previous Sunday
+        { id: 4, hours: 7, date: Date.UTC(2024, 0, 22) }    // next Monday
+      ];
+
+      const mockReport = (client) => {
+        mockDb.get.mockImplementation((query, params, callback) => callback(null, client));
+        mockDb.all.mockImplementation((query, params, callback) => callback(null, entries));
+      };
+
+      test('should sum only entries in the current week and report remaining hours against the cap', async () => {
+        mockReport({ id: 1, name: 'Client', weekly_hours_cap: 40 });
+
+        const response = await request(app).get('/api/reports/client/1');
+
+        expect(response.status).toBe(200);
+        expect(response.body.currentWeek).toEqual({
+          weekStart: '2024-01-15',
+          weekEnd: '2024-01-21',
+          weeklyHoursCap: 40,
+          hoursThisWeek: 12.5,
+          remainingHours: 27.5
+        });
+        expect(response.body.totalHours).toBe(25.5);
+      });
+
+      test('should fetch weekly_hours_cap with the client in the same request', async () => {
+        mockReport({ id: 1, name: 'Client', weekly_hours_cap: 40 });
+
+        await request(app).get('/api/reports/client/1');
+
+        expect(mockDb.get).toHaveBeenCalledWith(
+          expect.stringContaining('weekly_hours_cap'),
+          [1, 'test@example.com'],
+          expect.any(Function)
+        );
+        expect(mockDb.all).toHaveBeenCalledTimes(1);
+      });
+
+      test('should clamp remaining hours at zero when over the cap', async () => {
+        mockReport({ id: 1, name: 'Client', weekly_hours_cap: 10 });
+
+        const response = await request(app).get('/api/reports/client/1');
+
+        expect(response.body.currentWeek.hoursThisWeek).toBe(12.5);
+        expect(response.body.currentWeek.remainingHours).toBe(0);
+      });
+
+      test('should report null remaining hours when the client has no cap', async () => {
+        mockReport({ id: 1, name: 'Client', weekly_hours_cap: null });
+
+        const response = await request(app).get('/api/reports/client/1');
+
+        expect(response.body.currentWeek.weeklyHoursCap).toBeNull();
+        expect(response.body.currentWeek.remainingHours).toBeNull();
+        expect(response.body.currentWeek.hoursThisWeek).toBe(12.5);
+      });
+
+      test('should report zero hours when there are no entries this week', async () => {
+        mockDb.get.mockImplementation((query, params, callback) => callback(null, { id: 1, name: 'Client', weekly_hours_cap: 40 }));
+        mockDb.all.mockImplementation((query, params, callback) => callback(null, [entries[2]]));
+
+        const response = await request(app).get('/api/reports/client/1');
+
+        expect(response.body.currentWeek.hoursThisWeek).toBe(0);
+        expect(response.body.currentWeek.remainingHours).toBe(40);
+      });
+    });
+
     test('should return 404 if client not found', async () => {
       mockDb.get.mockImplementation((query, params, callback) => {
         callback(null, null);

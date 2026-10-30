@@ -83,6 +83,33 @@ describe('Validation Schemas', () => {
       const { value } = clientSchema.validate(client);
       expect(value.name).toBe('Test Client');
     });
+
+    test('should default weeklyHoursCap to 40 when omitted', () => {
+      const { error, value } = clientSchema.validate({ name: 'Test' });
+      expect(error).toBeUndefined();
+      expect(value.weeklyHoursCap).toBe(40);
+    });
+
+    test('should accept an explicit weeklyHoursCap', () => {
+      const { error, value } = clientSchema.validate({ name: 'Test', weeklyHoursCap: 20.5 });
+      expect(error).toBeUndefined();
+      expect(value.weeklyHoursCap).toBe(20.5);
+    });
+
+    test('should accept null weeklyHoursCap (no cap)', () => {
+      const { error, value } = clientSchema.validate({ name: 'Test', weeklyHoursCap: null });
+      expect(error).toBeUndefined();
+      expect(value.weeklyHoursCap).toBeNull();
+    });
+
+    test('should reject zero or negative weeklyHoursCap', () => {
+      expect(clientSchema.validate({ name: 'Test', weeklyHoursCap: 0 }).error).toBeDefined();
+      expect(clientSchema.validate({ name: 'Test', weeklyHoursCap: -5 }).error).toBeDefined();
+    });
+
+    test('should reject weeklyHoursCap above 168', () => {
+      expect(clientSchema.validate({ name: 'Test', weeklyHoursCap: 169 }).error).toBeDefined();
+    });
   });
 
   describe('workEntrySchema', () => {
@@ -287,6 +314,28 @@ describe('Validation Schemas', () => {
 
       const { error } = updateClientSchema.validate(update);
       expect(error).toBeUndefined();
+    });
+
+    test('should validate weeklyHoursCap update', () => {
+      const { error, value } = updateClientSchema.validate({ weeklyHoursCap: 25 });
+      expect(error).toBeUndefined();
+      expect(value.weeklyHoursCap).toBe(25);
+    });
+
+    test('should allow clearing weeklyHoursCap with null', () => {
+      const { error, value } = updateClientSchema.validate({ weeklyHoursCap: null });
+      expect(error).toBeUndefined();
+      expect(value.weeklyHoursCap).toBeNull();
+    });
+
+    test('should not default weeklyHoursCap on update', () => {
+      const { value } = updateClientSchema.validate({ name: 'X' });
+      expect(value.weeklyHoursCap).toBeUndefined();
+    });
+
+    test('should reject invalid weeklyHoursCap on update', () => {
+      expect(updateClientSchema.validate({ weeklyHoursCap: 0 }).error).toBeDefined();
+      expect(updateClientSchema.validate({ weeklyHoursCap: 200 }).error).toBeDefined();
     });
   });
 

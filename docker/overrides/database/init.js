@@ -56,12 +56,22 @@ async function initializeDatabase() {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
           description TEXT,
+          weekly_hours_cap REAL DEFAULT 40,
           user_email TEXT NOT NULL,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (user_email) REFERENCES users (email) ON DELETE CASCADE
         )
       `);
+
+      // Migrate existing file-based databases created before the weekly cap column existed.
+      // Pre-existing clients get no cap (NULL) so historic weeks are not retroactively capped;
+      // the 40h default applies only to newly created clients via the Joi schema.
+      database.run('ALTER TABLE clients ADD COLUMN weekly_hours_cap REAL DEFAULT NULL', (err) => {
+        if (err && !/duplicate column/i.test(err.message)) {
+          console.error('Error adding weekly_hours_cap column:', err);
+        }
+      });
 
       // Create work_entries table
       database.run(`

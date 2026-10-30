@@ -28,12 +28,14 @@ import {
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../api/client';
-import { type Client } from '../types/api';
+import { type Client, type CreateClientRequest, type UpdateClientRequest } from '../types/api';
+
+const emptyForm = { name: '', description: '', department: '', email: '', weeklyHoursCap: '' };
 
 const ClientsPage: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
-  const [formData, setFormData] = useState({ name: '', description: '', department: '', email: '' });
+  const [formData, setFormData] = useState(emptyForm);
   const [error, setError] = useState('');
 
   const queryClient = useQueryClient();
@@ -44,8 +46,7 @@ const ClientsPage: React.FC = () => {
   });
 
   const createMutation = useMutation({
-    mutationFn: (clientData: { name: string; description?: string; department?: string; email?: string }) =>
-      apiClient.createClient(clientData),
+    mutationFn: (clientData: CreateClientRequest) => apiClient.createClient(clientData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       handleClose();
@@ -57,8 +58,7 @@ const ClientsPage: React.FC = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { name?: string; description?: string; department?: string; email?: string } }) =>
-      apiClient.updateClient(id, data),
+    mutationFn: ({ id, data }: { id: number; data: UpdateClientRequest }) => apiClient.updateClient(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       handleClose();
@@ -100,11 +100,12 @@ const ClientsPage: React.FC = () => {
         name: client.name, 
         description: client.description || '',
         department: client.department || '',
-        email: client.email || ''
+        email: client.email || '',
+        weeklyHoursCap: client.weekly_hours_cap === null ? '' : String(client.weekly_hours_cap),
       });
     } else {
       setEditingClient(null);
-      setFormData({ name: '', description: '', department: '', email: '' });
+      setFormData(emptyForm);
     }
     setError('');
     setOpen(true);
@@ -113,7 +114,7 @@ const ClientsPage: React.FC = () => {
   const handleClose = () => {
     setOpen(false);
     setEditingClient(null);
-    setFormData({ name: '', description: '', department: '', email: '' });
+    setFormData(emptyForm);
     setError('');
   };
 
@@ -127,6 +128,13 @@ const ClientsPage: React.FC = () => {
     }
 
     if (editingClient) {
+      const capInput = formData.weeklyHoursCap.trim();
+      const weeklyHoursCap = capInput === '' ? null : Number(capInput);
+      if (weeklyHoursCap !== null && (!Number.isFinite(weeklyHoursCap) || weeklyHoursCap <= 0 || weeklyHoursCap > 168)) {
+        setError('Weekly hours cap must be greater than 0 and at most 168, or left blank for no cap');
+        return;
+      }
+
       updateMutation.mutate({
         id: editingClient.id,
         data: {
@@ -134,6 +142,7 @@ const ClientsPage: React.FC = () => {
           description: formData.description || undefined,
           department: formData.department || undefined,
           email: formData.email || undefined,
+          weeklyHoursCap,
         },
       });
     } else {
@@ -323,6 +332,19 @@ const ClientsPage: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               disabled={createMutation.isPending || updateMutation.isPending}
             />
+            {editingClient && (
+              <TextField
+                margin="dense"
+                label="Weekly hours cap"
+                fullWidth
+                type="number"
+                slotProps={{ htmlInput: { min: 0.01, max: 168, step: 0.01 } }}
+                helperText="Maximum hours you can log for this client in a Mon–Sun week. Leave blank for no cap."
+                value={formData.weeklyHoursCap}
+                onChange={(e) => setFormData({ ...formData, weeklyHoursCap: e.target.value })}
+                disabled={updateMutation.isPending}
+              />
+            )}
           </DialogContent>
           <DialogActions>
             <Button onClick={handleClose} disabled={createMutation.isPending || updateMutation.isPending}>
