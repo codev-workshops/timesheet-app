@@ -2,6 +2,7 @@ const express = require('express');
 const { getDatabase } = require('../database/init');
 const { credentialsSchema } = require('../validation/schemas');
 const { authenticateUser } = require('../middleware/auth');
+const { validate } = require('../middleware/validate');
 const { hashPassword, verifyPassword } = require('../security/password');
 const { issueToken } = require('../security/token');
 
@@ -26,13 +27,8 @@ function dbRun(db, sql, params) {
 }
 
 // Register a new account with a password
-router.post('/register', async (req, res, next) => {
-  const { error, value } = credentialsSchema.validate(req.body);
-  if (error) {
-    return next(error);
-  }
-
-  const { email, password } = value;
+router.post('/register', validate('body', credentialsSchema), async (req, res) => {
+  const { email, password } = req.body;
 
   try {
     const db = getDatabase();
@@ -67,13 +63,8 @@ router.post('/register', async (req, res, next) => {
 });
 
 // Log in with email and password
-router.post('/login', async (req, res, next) => {
-  const { error, value } = credentialsSchema.validate(req.body);
-  if (error) {
-    return next(error);
-  }
-
-  const { email, password } = value;
+router.post('/login', validate('body', credentialsSchema), async (req, res) => {
+  const { email, password } = req.body;
 
   try {
     const db = getDatabase();

@@ -1,7 +1,10 @@
 const express = require('express');
 const { getDatabase } = require('../database/init');
 const { authenticateUser } = require('../middleware/auth');
-const { clientSchema, updateClientSchema } = require('../validation/schemas');
+const { validate } = require('../middleware/validate');
+const { clientSchema, updateClientSchema, idParamSchema } = require('../validation/schemas');
+
+const validateClientId = validate('params', idParamSchema, 'Invalid client ID');
 
 const router = express.Router();
 
@@ -27,12 +30,8 @@ router.get('/', (req, res) => {
 });
 
 // Get specific client
-router.get('/:id', (req, res) => {
-  const clientId = parseInt(req.params.id);
-  
-  if (isNaN(clientId)) {
-    return res.status(400).json({ error: 'Invalid client ID' });
-  }
+router.get('/:id', validateClientId, (req, res) => {
+  const clientId = req.params.id;
   
   const db = getDatabase();
   
@@ -55,12 +54,9 @@ router.get('/:id', (req, res) => {
 });
 
 // Create new client
-router.post('/', (req, res, next) => {
+router.post('/', validate('body', clientSchema), (req, res, next) => {
   try {
-    const { error, value } = clientSchema.validate(req.body);
-    if (error) {
-      return next(error);
-    }
+    const value = req.body;
 
     const { name, description, department, email } = value;
     const db = getDatabase();
@@ -98,18 +94,11 @@ router.post('/', (req, res, next) => {
 });
 
 // Update client
-router.put('/:id', (req, res, next) => {
+router.put('/:id', validateClientId, validate('body', updateClientSchema), (req, res, next) => {
   try {
-    const clientId = parseInt(req.params.id);
-    
-    if (isNaN(clientId)) {
-      return res.status(400).json({ error: 'Invalid client ID' });
-    }
+    const clientId = req.params.id;
 
-    const { error, value } = updateClientSchema.validate(req.body);
-    if (error) {
-      return next(error);
-    }
+    const value = req.body;
 
     const db = getDatabase();
 
@@ -208,12 +197,8 @@ router.delete('/', (req, res) => {
 });
 
 // Delete client
-router.delete('/:id', (req, res) => {
-  const clientId = parseInt(req.params.id);
-  
-  if (isNaN(clientId)) {
-    return res.status(400).json({ error: 'Invalid client ID' });
-  }
+router.delete('/:id', validateClientId, (req, res) => {
+  const clientId = req.params.id;
   
   const db = getDatabase();
   
