@@ -15,7 +15,7 @@ import ReportsPage from './pages/ReportsPage';
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#1976d2',
+      main: '#4f46e5',
     },
     secondary: {
       main: '#dc004e',

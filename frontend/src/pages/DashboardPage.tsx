@@ -42,7 +42,7 @@ const DashboardPage: React.FC = () => {
       title: 'Total Clients',
       value: clients.length,
       icon: <BusinessIcon />,
-      color: '#1976d2',
+      color: 'primary.main',
       action: () => navigate('/clients'),
     },
     {
