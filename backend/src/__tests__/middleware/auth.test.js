@@ -60,7 +60,14 @@ describe('Authentication Middleware', () => {
 
       authenticateUser(req, res, next);
 
-      expect(mockDb.get).toHaveBeenCalled();
+      expect(mockDb.get).toHaveBeenCalledWith(
+        'SELECT email FROM users WHERE email = ?',
+        ['test@example.com'],
+        expect.any(Function)
+      );
+      expect(res.status).not.toHaveBeenCalled();
+      expect(req.userEmail).toBe('test@example.com');
+      expect(next).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -179,7 +186,14 @@ describe('Authentication Middleware', () => {
       });
 
       authenticateUser(req, res, next);
-      expect(mockDb.get).toHaveBeenCalled();
+      expect(mockDb.get).toHaveBeenCalledWith(
+        'SELECT email FROM users WHERE email = ?',
+        ['test@mail.example.com'],
+        expect.any(Function)
+      );
+      expect(res.status).not.toHaveBeenCalled();
+      expect(req.userEmail).toBe('test@mail.example.com');
+      expect(next).toHaveBeenCalledTimes(1);
     });
   });
 });

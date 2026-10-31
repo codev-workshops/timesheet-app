@@ -1,8 +1,6 @@
-const sqlite3 = require('sqlite3');
-const { getDatabase, initializeDatabase, closeDatabase } = require('../../database/init');
-
-// Mock sqlite3
-jest.mock('sqlite3', () => {
+// Fresh sqlite3 mock per test so the db singleton and mock implementations
+// (e.g. an erroring close or Database) never leak between tests.
+function mockSqlite3Factory() {
   const mockDatabase = {
     serialize: jest.fn((callback) => callback()),
     run: jest.fn((query, callback) => {
@@ -19,17 +17,22 @@ jest.mock('sqlite3', () => {
       })
     }))
   };
-});
+}
+
+jest.mock('sqlite3', () => mockSqlite3Factory());
 
 describe('Database Initialization', () => {
   let consoleLogSpy, consoleErrorSpy;
+  let getDatabase, initializeDatabase, closeDatabase;
 
   beforeEach(() => {
     consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
     
-    // Reset the database singleton
+    // Reset the database singleton and re-require init so it is actually fresh
     jest.resetModules();
+    jest.doMock('sqlite3', () => mockSqlite3Factory());
+    ({ getDatabase, initializeDatabase, closeDatabase } = require('../../database/init'));
   });
 
   afterEach(() => {

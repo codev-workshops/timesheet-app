@@ -585,4 +585,38 @@ describe('Work Entry Routes', () => {
       expect(response.body.message).toBe('Work entry updated successfully');
     });
   });
+
+  describe('Unexpected errors', () => {
+    test('POST should forward errors thrown by getDatabase to the error handler', async () => {
+      getDatabase.mockImplementationOnce(() => {
+        throw new Error('Database unavailable');
+      });
+
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({
+          clientId: 1,
+          hours: 5,
+          date: '2024-01-15'
+        });
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Internal server error' });
+      expect(mockDb.get).not.toHaveBeenCalled();
+    });
+
+    test('PUT should forward errors thrown by getDatabase to the error handler', async () => {
+      getDatabase.mockImplementationOnce(() => {
+        throw new Error('Database unavailable');
+      });
+
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ hours: 8 });
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Internal server error' });
+      expect(mockDb.get).not.toHaveBeenCalled();
+    });
+  });
 });
