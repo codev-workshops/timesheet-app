@@ -123,7 +123,7 @@ describe('Auth Routes', () => {
     });
 
     test('should handle unexpected errors in try-catch block', async () => {
-      getDatabase.mockImplementation(() => {
+      getDatabase.mockImplementationOnce(() => {
         throw new Error('Unexpected error');
       });
 
