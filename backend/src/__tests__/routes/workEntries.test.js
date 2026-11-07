@@ -89,6 +89,118 @@ describe('Work Entry Routes', () => {
     });
   });
 
+  describe('User Isolation', () => {
+    const userEmail = 'test@example.com';
+
+    test('GET /api/work-entries scopes list to authenticated user', async () => {
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, []);
+      });
+
+      const response = await request(app).get('/api/work-entries');
+
+      expect(response.status).toBe(200);
+      expect(mockDb.all).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE we.user_email = ?'),
+        [userEmail],
+        expect.any(Function)
+      );
+    });
+
+    test('GET /api/work-entries/:id scopes lookup to authenticated user', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, client_id: 1, hours: 5 });
+      });
+
+      const response = await request(app).get('/api/work-entries/1');
+
+      expect(response.status).toBe(200);
+      expect(mockDb.get).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE we.id = ? AND we.user_email = ?'),
+        [1, userEmail],
+        expect.any(Function)
+      );
+    });
+
+    test('POST /api/work-entries verifies client ownership and stores entry under authenticated user', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1 });
+      });
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        callback.call({ lastID: 1 }, null);
+      });
+
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 2, hours: 4, date: '2024-01-15' });
+
+      expect(response.status).toBe(201);
+      expect(mockDb.get).toHaveBeenCalledWith(
+        'SELECT id FROM clients WHERE id = ? AND user_email = ?',
+        [2, userEmail],
+        expect.any(Function)
+      );
+      expect(mockDb.run).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO work_entries (client_id, user_email, hours, description, date)'),
+        [2, userEmail, 4, null, expect.anything()],
+        expect.any(Function)
+      );
+    });
+
+    test('PUT /api/work-entries/:id scopes entry check, client check and update to authenticated user', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1 });
+      });
+      mockDb.run.mockImplementation((query, params, callback) => {
+        callback(null);
+      });
+
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ clientId: 2, hours: 6 });
+
+      expect(response.status).toBe(200);
+      expect(mockDb.get).toHaveBeenCalledWith(
+        'SELECT id FROM work_entries WHERE id = ? AND user_email = ?',
+        [1, userEmail],
+        expect.any(Function)
+      );
+      expect(mockDb.get).toHaveBeenCalledWith(
+        'SELECT id FROM clients WHERE id = ? AND user_email = ?',
+        [2, userEmail],
+        expect.any(Function)
+      );
+      expect(mockDb.run).toHaveBeenCalledWith(
+        expect.stringMatching(/^UPDATE work_entries SET .* WHERE id = \? AND user_email = \?$/),
+        [2, 6, 1, userEmail],
+        expect.any(Function)
+      );
+    });
+
+    test('DELETE /api/work-entries/:id scopes ownership check and delete to authenticated user', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1 });
+      });
+      mockDb.run.mockImplementation((query, params, callback) => {
+        callback(null);
+      });
+
+      const response = await request(app).delete('/api/work-entries/1');
+
+      expect(response.status).toBe(200);
+      expect(mockDb.get).toHaveBeenCalledWith(
+        'SELECT id FROM work_entries WHERE id = ? AND user_email = ?',
+        [1, userEmail],
+        expect.any(Function)
+      );
+      expect(mockDb.run).toHaveBeenCalledWith(
+        'DELETE FROM work_entries WHERE id = ? AND user_email = ?',
+        [1, userEmail],
+        expect.any(Function)
+      );
+    });
+  });
+
   describe('GET /api/work-entries/:id', () => {
     test('should return specific work entry', async () => {
       const mockEntry = { id: 1, client_id: 1, hours: 5, description: 'Work', client_name: 'Client A' };

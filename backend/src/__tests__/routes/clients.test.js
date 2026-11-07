@@ -83,6 +83,113 @@ describe('Client Routes', () => {
     });
   });
 
+  describe('User Isolation', () => {
+    const userEmail = 'test@example.com';
+
+    test('GET /api/clients/:id scopes lookup to authenticated user', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, name: 'Client A' });
+      });
+
+      const response = await request(app).get('/api/clients/1');
+
+      expect(response.status).toBe(200);
+      expect(mockDb.get).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE id = ? AND user_email = ?'),
+        [1, userEmail],
+        expect.any(Function)
+      );
+    });
+
+    test('POST /api/clients stores client under authenticated user', async () => {
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        callback.call({ lastID: 1 }, null);
+      });
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, name: 'New Client' });
+      });
+
+      const response = await request(app)
+        .post('/api/clients')
+        .send({ name: 'New Client' });
+
+      expect(response.status).toBe(201);
+      expect(mockDb.run).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO clients (name, description, department, email, user_email)'),
+        ['New Client', null, null, null, userEmail],
+        expect.any(Function)
+      );
+    });
+
+    test('PUT /api/clients/:id scopes ownership check and update to authenticated user', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, name: 'Renamed' });
+      });
+      mockDb.run.mockImplementation((query, params, callback) => {
+        callback(null);
+      });
+
+      const response = await request(app)
+        .put('/api/clients/1')
+        .send({ name: 'Renamed' });
+
+      expect(response.status).toBe(200);
+      expect(mockDb.get).toHaveBeenCalledWith(
+        'SELECT id FROM clients WHERE id = ? AND user_email = ?',
+        [1, userEmail],
+        expect.any(Function)
+      );
+      expect(mockDb.run).toHaveBeenCalledWith(
+        expect.stringMatching(/^UPDATE clients SET .* WHERE id = \? AND user_email = \?$/),
+        ['Renamed', 1, userEmail],
+        expect.any(Function)
+      );
+    });
+
+    test('DELETE /api/clients/:id scopes ownership check and delete to authenticated user', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1 });
+      });
+      mockDb.run.mockImplementation((query, params, callback) => {
+        callback(null);
+      });
+
+      const response = await request(app).delete('/api/clients/1');
+
+      expect(response.status).toBe(200);
+      expect(mockDb.get).toHaveBeenCalledWith(
+        'SELECT id FROM clients WHERE id = ? AND user_email = ?',
+        [1, userEmail],
+        expect.any(Function)
+      );
+      expect(mockDb.run).toHaveBeenCalledWith(
+        'DELETE FROM clients WHERE id = ? AND user_email = ?',
+        [1, userEmail],
+        expect.any(Function)
+      );
+    });
+
+    test('DELETE /api/clients only deletes clients of authenticated user', async () => {
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        callback.call({ changes: 2 }, null);
+      });
+
+      const response = await request(app).delete('/api/clients');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        message: 'All clients deleted successfully',
+        deletedCount: 2
+      });
+      expect(mockDb.run).toHaveBeenCalledTimes(1);
+      expect(mockDb.run).toHaveBeenCalledWith(
+        'DELETE FROM clients WHERE user_email = ?',
+        [userEmail],
+        expect.any(Function)
+      );
+    });
+  });
+
   describe('GET /api/clients/:id', () => {
     test('should return specific client', async () => {
       const mockClient = { id: 1, name: 'Client A', description: 'Desc A' };
