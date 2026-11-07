@@ -57,12 +57,12 @@ describe('Work Entry Routes', () => {
 
     test('should filter by client ID when provided', async () => {
       mockDb.all.mockImplementation((query, params, callback) => {
-        expect(params).toEqual(['test@example.com', 1]);
         callback(null, []);
       });
 
-      await request(app).get('/api/work-entries?clientId=1');
+      const response = await request(app).get('/api/work-entries?clientId=1');
 
+      expect(response.status).toBe(200);
       expect(mockDb.all).toHaveBeenCalledWith(
         expect.stringContaining('AND we.client_id = ?'),
         ['test@example.com', 1],

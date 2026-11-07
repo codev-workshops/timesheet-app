@@ -151,12 +151,12 @@ describe('Report Routes', () => {
       });
 
       mockDb.all.mockImplementation((query, params, callback) => {
-        expect(params).toEqual([1, 'test@example.com']);
         callback(null, []);
       });
 
-      await request(app).get('/api/reports/client/1');
+      const response = await request(app).get('/api/reports/client/1');
 
+      expect(response.status).toBe(200);
       expect(mockDb.all).toHaveBeenCalledWith(
         expect.stringContaining('WHERE client_id = ? AND user_email = ?'),
         [1, 'test@example.com'],
@@ -245,20 +245,24 @@ describe('Report Routes', () => {
   describe('Data Isolation', () => {
     test('should only return data for authenticated user', async () => {
       mockDb.get.mockImplementation((query, params, callback) => {
-        expect(params).toContain('test@example.com');
         callback(null, { id: 1, name: 'Test Client' });
       });
 
       mockDb.all.mockImplementation((query, params, callback) => {
-        expect(params).toContain('test@example.com');
         callback(null, []);
       });
 
-      await request(app).get('/api/reports/client/1');
+      const response = await request(app).get('/api/reports/client/1');
 
+      expect(response.status).toBe(200);
       expect(mockDb.get).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.arrayContaining(['test@example.com']),
+        expect.stringContaining('WHERE id = ? AND user_email = ?'),
+        [1, 'test@example.com'],
+        expect.any(Function)
+      );
+      expect(mockDb.all).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE client_id = ? AND user_email = ?'),
+        [1, 'test@example.com'],
         expect.any(Function)
       );
     });
