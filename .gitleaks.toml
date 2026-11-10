@@ -1,0 +1,54 @@
+# Gitleaks configuration for timesheet-app.
+# Extends the built-in default rule set; see https://github.com/gitleaks/gitleaks#configuration
+# Historical findings that have been rotated are baselined by fingerprint in .gitleaksignore.
+
+title = "timesheet-app gitleaks config"
+
+[extend]
+useDefault = true
+
+# Database URLs with inline credentials (not covered by the default rules).
+[[rules]]
+id = "connection-string-credentials"
+description = "Database/broker connection string with embedded username and password"
+regex = '''(?i)\b(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\+srv)?|redis|rediss|amqps?|mssql|sqlserver)://[^:/\s'"@]+:([^\s'"]+)@[^\s'"/:]+'''
+secretGroup = 1
+keywords = ["postgres", "mysql", "mariadb", "mongodb", "redis", "amqp", "mssql", "sqlserver"]
+
+[[rules.allowlists]]
+description = "Placeholder or templated passwords"
+regexTarget = "match"
+regexes = [
+  '''://[^:]+:<[^>]+>@''',
+  '''://[^:]+:\$\{[^}]+\}@''',
+  '''://[^:]+:(?:password|pass|changeme|secret)@''',
+]
+
+# Hardcoded signing/session secrets assigned as string literals (e.g. `secret: '...'`).
+[[rules]]
+id = "hardcoded-secret-literal"
+description = "Hardcoded secret string assigned to a secret/signing-key field"
+regex = '''(?i)\b(?:jwt[_.-]?)?(?:secret|signing[_-]?key)\s*[:=]\s*['"`]([^'"`\r\n]{16,})['"`]'''
+secretGroup = 1
+keywords = ["secret", "signing"]
+
+[[rules.allowlists]]
+description = "Obvious placeholders"
+regexTarget = "secret"
+regexes = ['''^(?:your|change|replace|example|dummy)[-_]''']
+
+[[allowlists]]
+description = "Placeholder values in env templates"
+condition = "AND"
+paths = ['''(?:^|/)\.env\.example$''']
+regexTarget = "line"
+regexes = [
+  '''=\s*$''',
+  '''=your-[a-z0-9-]*change-this[a-z0-9-]*$''',
+]
+
+[[allowlists]]
+description = "Dummy JWT secrets in backend test fixtures"
+condition = "AND"
+paths = ['''^backend/src/__tests__/.*\.test\.js$''']
+regexes = ['''test-secret-[a-z0-9-]+''']

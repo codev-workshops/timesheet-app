@@ -113,7 +113,10 @@ PORT=3001
 NODE_ENV=development
 FRONTEND_URL=http://localhost:5173
 JWT_SECRET=your-secure-secret-key-change-this
+DATABASE_URL=
+SENDGRID_API_KEY=
 ```
+`backend/.env` is gitignored and loaded by `dotenv` at server start. In production (`NODE_ENV=production`), `src/config/production.js` throws if `JWT_SECRET`, `DATABASE_URL`, or `SENDGRID_API_KEY` is unset.
 
 5. Start the development server:
 ```bash
@@ -193,6 +196,16 @@ All authenticated endpoints require `Authorization: Bearer <token>` header.
 - Helmet security headers
 - Input validation with Joi schemas
 - SQL injection protection with parameterized queries
+- Secret scanning with [gitleaks](https://github.com/gitleaks/gitleaks): a Husky pre-commit hook scans staged changes and the `secret-scan` PR check scans every PR (config in `.gitleaks.toml`, rotated historical findings baselined in `.gitleaksignore`)
+
+### Secret scanning setup
+
+Run `npm install` at the repo root once. It installs Husky (enables `.husky/pre-commit`) and a pinned, checksum-verified gitleaks binary into `.tools/bin/` via `scripts/install-gitleaks.sh`.
+
+```bash
+npm run secrets:scan     # full-history scan
+npm run secrets:staged   # what the pre-commit hook runs
+```
 
 ## Development
 

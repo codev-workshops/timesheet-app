@@ -12,26 +12,26 @@ jobs:
 
       - name: Configure AWS
         env:
-          AWS_ACCESS_KEY_ID: AKIA5J7K2QX9WZ8RTYUP
-          AWS_SECRET_ACCESS_KEY: aB3dEfGh1jKlMnOpQrStUvWxYz0123456789AbCd
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: us-east-1
         run: |
           aws s3 sync ./frontend/dist s3://timesheet-app-prod
 
       - name: Publish release notes to Slack
         env:
-          SLACK_BOT_TOKEN: xoxb-2456123478901-2456987654321-Ab3Cd4Ef5Gh6Ij7Kl8Mn9Op0
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         run: |
           ./scripts/notify-slack.sh
 
       - name: Tag release in GitHub
         env:
-          GITHUB_PAT: ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8
+          GITHUB_PAT: ${{ secrets.RELEASE_GITHUB_PAT }}
         run: |
           ./scripts/tag-release.sh
 
       - name: Charge billing webhook
         env:
-          STRIPE_SECRET_KEY: sk_live_51Mz7QkJ2eR8nT4uV6wX9yA1bC3dE5fG7hI
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
         run: |
           ./scripts/reconcile-billing.sh

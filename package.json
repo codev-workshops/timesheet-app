@@ -1,0 +1,15 @@
+{
+  "name": "timesheet-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Repo tooling for timesheet-app (git hooks, secret scanning). App packages live in backend/ and frontend/.",
+  "scripts": {
+    "prepare": "husky && bash scripts/install-gitleaks.sh",
+    "secrets:scan": "bash scripts/gitleaks.sh detect --source . --config .gitleaks.toml --redact --verbose",
+    "secrets:staged": "bash scripts/gitleaks.sh protect --staged --config .gitleaks.toml --redact --verbose"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "husky": "^9.1.7"
+  }
+}
