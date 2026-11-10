@@ -11,6 +11,75 @@ permissions:
   pull-requests: write
 
 jobs:
+  secret-scan:
+    name: Secret Scan (gitleaks)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        id: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_CONFIG: .gitleaks.toml
+          GITLEAKS_ENABLE_COMMENTS: false
+
+      - name: Collect findings
+        id: findings
+        if: steps.gitleaks.outcome == 'failure'
+        run: |
+          if [ ! -s results.sarif ]; then
+            echo "count=0" >> "$GITHUB_OUTPUT"
+            echo "::error::gitleaks did not produce a report; see the 'Run gitleaks' step log."
+            exit 0
+          fi
+
+          COUNT=$(jq '[.runs[0].results[]] | length' results.sarif)
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
+          jq -r '.runs[0].results[] |
+            "| `\(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine)` | `\(.ruleId)` | `\(.partialFingerprints.commitSha[0:7] // "n/a")` |"
+          ' results.sarif > /tmp/gitleaks-findings.md
+
+          {
+            echo "## Secret Scan Failed – gitleaks"
+            echo ""
+            echo "**gitleaks** found **${COUNT} potential secret(s)** in the commits on this PR. Secret values are redacted."
+            echo ""
+            echo "| File:Line | Rule | Commit |"
+            echo "|---|---|---|"
+            cat /tmp/gitleaks-findings.md
+            echo ""
+            echo "### Recommended Fix"
+            echo ""
+            echo "1. **Rotate** every exposed credential — it is already in git history on this branch."
+            echo "2. Move the value to \`backend/.env\` (gitignored; see \`backend/.env.example\`) or a GitHub Actions secret, and read it from \`process.env\` / the \`secrets\` context."
+            echo "3. Rewrite the branch history to drop the secret (e.g. interactive rebase) and force-push the PR branch."
+            echo "4. Verified false positive? Add its fingerprint to \`.gitleaksignore\` or an allowlist in \`.gitleaks.toml\`."
+          } > /tmp/gitleaks-comment.md
+
+      - name: Comment findings on PR
+        if: steps.gitleaks.outcome == 'failure' && steps.findings.outputs.count != '0'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --body-file /tmp/gitleaks-comment.md
+
+      - name: Fail if secrets found
+        if: steps.gitleaks.outcome == 'failure'
+        run: |
+          echo "Failing job: gitleaks reported ${{ steps.findings.outputs.count }} finding(s) or failed to run."
+          exit 1
+
   security-audit:
     name: Security Audit (CVE Check)
     if: "!contains(github.event.pull_request.user.login, 'devin')"

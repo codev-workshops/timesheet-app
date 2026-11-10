@@ -1,0 +1,8 @@
+# Block commits that add secrets. Scans staged changes only.
+if ! bash scripts/gitleaks.sh protect --staged --config .gitleaks.toml --redact --verbose; then
+  echo "" >&2
+  echo "gitleaks: potential secret(s) in staged changes; commit blocked." >&2
+  echo "Move the value to backend/.env (gitignored) or a secret manager, then re-stage." >&2
+  echo "Verified false positive? Add its fingerprint to .gitleaksignore." >&2
+  exit 1
+fi

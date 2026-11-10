@@ -1,0 +1,10 @@
+# Baseline of historical findings in commit 82cdf7c8 (initial sync).
+# These credentials were removed from the tree and MUST be rotated; they remain in git history.
+# Add new entries only for verified false positives or already-rotated historical leaks.
+82cdf7c82d539be2857ca978acf96a3c8f717108:.github/workflows/deploy.yml:generic-api-key:16
+82cdf7c82d539be2857ca978acf96a3c8f717108:.github/workflows/deploy.yml:github-pat:29
+82cdf7c82d539be2857ca978acf96a3c8f717108:.github/workflows/deploy.yml:slack-bot-token:23
+82cdf7c82d539be2857ca978acf96a3c8f717108:.github/workflows/deploy.yml:stripe-access-token:35
+82cdf7c82d539be2857ca978acf96a3c8f717108:backend/src/config/production.js:connection-string-credentials:11
+82cdf7c82d539be2857ca978acf96a3c8f717108:backend/src/config/production.js:generic-api-key:14
+82cdf7c82d539be2857ca978acf96a3c8f717108:backend/src/config/production.js:hardcoded-secret-literal:7
