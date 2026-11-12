@@ -98,7 +98,7 @@ describe('Database Initialization', () => {
       const runCalls = db.run.mock.calls;
       const queries = runCalls.map(call => call[0]);
       
-      expect(queries.some(q => q.includes('CREATE INDEX IF NOT EXISTS idx_clients_user_email'))).toBe(true);
+      expect(queries.some(q => q.includes('idx_clients_user_email'))).toBe(false);
       expect(queries.some(q => q.includes('CREATE INDEX IF NOT EXISTS idx_work_entries_client_id'))).toBe(true);
       expect(queries.some(q => q.includes('CREATE INDEX IF NOT EXISTS idx_work_entries_user_email'))).toBe(true);
       expect(queries.some(q => q.includes('CREATE INDEX IF NOT EXISTS idx_work_entries_date'))).toBe(true);
@@ -158,7 +158,7 @@ describe('Database Initialization', () => {
       expect(userTableQuery[0]).toContain('created_at DATETIME DEFAULT CURRENT_TIMESTAMP');
     });
 
-    test('clients table should have foreign key to users', async () => {
+    test('clients table should be shared (no user_email column)', async () => {
       const db = getDatabase();
       await initializeDatabase();
 
@@ -167,8 +167,7 @@ describe('Database Initialization', () => {
       );
 
       expect(clientTableQuery).toBeDefined();
-      expect(clientTableQuery[0]).toContain('user_email TEXT NOT NULL');
-      expect(clientTableQuery[0]).toContain('FOREIGN KEY (user_email) REFERENCES users (email) ON DELETE CASCADE');
+      expect(clientTableQuery[0]).not.toContain('user_email');
     });
 
     test('work_entries table should have foreign keys', async () => {

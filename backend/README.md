@@ -18,7 +18,7 @@ A Node.js/Express backend API for employee time tracking application with SQLite
 - `GET /api/auth/me` - Get current user info
 
 ### Clients
-- `GET /api/clients` - Get all clients for authenticated user
+- `GET /api/clients` - Get all clients (shared across users)
 - `POST /api/clients` - Create new client
 - `GET /api/clients/:id` - Get specific client
 - `PUT /api/clients/:id` - Update client
@@ -77,7 +77,6 @@ x-user-email: user@company.com
 - `id` (INTEGER, PRIMARY KEY)
 - `name` (TEXT, NOT NULL)
 - `description` (TEXT)
-- `user_email` (TEXT, FOREIGN KEY)
 - `created_at` (DATETIME)
 - `updated_at` (DATETIME)
 

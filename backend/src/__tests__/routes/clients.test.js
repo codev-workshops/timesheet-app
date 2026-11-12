@@ -39,7 +39,7 @@ describe('Client Routes', () => {
   });
 
   describe('GET /api/clients', () => {
-    test('should return all clients for authenticated user', async () => {
+    test('should return all shared clients', async () => {
       const mockClients = [
         { id: 1, name: 'Client A', description: 'Desc A', created_at: '2024-01-01', updated_at: '2024-01-01' },
         { id: 2, name: 'Client B', description: 'Desc B', created_at: '2024-01-02', updated_at: '2024-01-02' }
@@ -55,7 +55,7 @@ describe('Client Routes', () => {
       expect(response.body).toEqual({ clients: mockClients });
       expect(mockDb.all).toHaveBeenCalledWith(
         expect.stringContaining('SELECT id, name, description'),
-        ['test@example.com'],
+        [],
         expect.any(Function)
       );
     });
