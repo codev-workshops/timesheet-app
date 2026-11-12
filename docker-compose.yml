@@ -1,0 +1,18 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: timesheet-app:local
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_PATH: /app/data/timesheet.db
+    volumes:
+      - timesheet-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  timesheet-data:

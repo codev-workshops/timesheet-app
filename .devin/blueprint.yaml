@@ -8,6 +8,7 @@ initialize: |
 maintenance: |
   (cd backend && npm install)
   (cd frontend && npm install)
+  docker compose build
 knowledge:
   - name: lint
     contents: |
@@ -22,3 +23,7 @@ knowledge:
     contents: |
       # Backend: cd backend && npm run dev  (runs on port 3001)
       # Frontend: cd frontend && npm run dev  (runs on port 5173)
+  - name: docker
+    contents: |
+      # Full prod-like stack (frontend served by backend, file-backed SQLite): docker compose up -d  -> http://localhost:3001
+      # Uses port 3001, so stop the backend dev server first. Stop: docker compose down (add -v to wipe data).
