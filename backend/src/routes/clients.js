@@ -8,13 +8,13 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticateUser);
 
-// Get all clients for authenticated user
+// Get all clients (shared across users)
 router.get('/', (req, res) => {
   const db = getDatabase();
   
   db.all(
-    'SELECT id, name, description, department, email, created_at, updated_at FROM clients WHERE user_email = ? ORDER BY name',
-    [req.userEmail],
+    'SELECT id, name, description, department, email, created_at, updated_at FROM clients ORDER BY name',
+    [],
     (err, rows) => {
       if (err) {
         console.error('Database error:', err);
@@ -37,8 +37,8 @@ router.get('/:id', (req, res) => {
   const db = getDatabase();
   
   db.get(
-    'SELECT id, name, description, department, email, created_at, updated_at FROM clients WHERE id = ? AND user_email = ?',
-    [clientId, req.userEmail],
+    'SELECT id, name, description, department, email, created_at, updated_at FROM clients WHERE id = ?',
+    [clientId],
     (err, row) => {
       if (err) {
         console.error('Database error:', err);
@@ -66,8 +66,8 @@ router.post('/', (req, res, next) => {
     const db = getDatabase();
 
     db.run(
-      'INSERT INTO clients (name, description, department, email, user_email) VALUES (?, ?, ?, ?, ?)',
-      [name, description || null, department || null, email || null, req.userEmail],
+      'INSERT INTO clients (name, description, department, email) VALUES (?, ?, ?, ?)',
+      [name, description || null, department || null, email || null],
       function(err) {
         if (err) {
           console.error('Database error:', err);
@@ -113,10 +113,10 @@ router.put('/:id', (req, res, next) => {
 
     const db = getDatabase();
 
-    // Check if client exists and belongs to user
+    // Check if client exists
     db.get(
-      'SELECT id FROM clients WHERE id = ? AND user_email = ?',
-      [clientId, req.userEmail],
+      'SELECT id FROM clients WHERE id = ?',
+      [clientId],
       (err, row) => {
         if (err) {
           console.error('Database error:', err);
@@ -152,9 +152,9 @@ router.put('/:id', (req, res, next) => {
         }
 
         updates.push('updated_at = CURRENT_TIMESTAMP');
-        values.push(clientId, req.userEmail);
+        values.push(clientId);
 
-        const query = `UPDATE clients SET ${updates.join(', ')} WHERE id = ? AND user_email = ?`;
+        const query = `UPDATE clients SET ${updates.join(', ')} WHERE id = ?`;
 
         db.run(query, values, function(err) {
           if (err) {
@@ -186,13 +186,13 @@ router.put('/:id', (req, res, next) => {
   }
 });
 
-// Delete all clients for authenticated user
+// Delete all clients
 router.delete('/', (req, res) => {
   const db = getDatabase();
   
   db.run(
-    'DELETE FROM clients WHERE user_email = ?',
-    [req.userEmail],
+    'DELETE FROM clients',
+    [],
     function(err) {
       if (err) {
         console.error('Database error:', err);
@@ -217,10 +217,10 @@ router.delete('/:id', (req, res) => {
   
   const db = getDatabase();
   
-  // Check if client exists and belongs to user
+  // Check if client exists
   db.get(
-    'SELECT id FROM clients WHERE id = ? AND user_email = ?',
-    [clientId, req.userEmail],
+    'SELECT id FROM clients WHERE id = ?',
+    [clientId],
     (err, row) => {
       if (err) {
         console.error('Database error:', err);
@@ -233,8 +233,8 @@ router.delete('/:id', (req, res) => {
       
       // Delete client (work entries will be deleted due to CASCADE)
       db.run(
-        'DELETE FROM clients WHERE id = ? AND user_email = ?',
-        [clientId, req.userEmail],
+        'DELETE FROM clients WHERE id = ?',
+        [clientId],
         function(err) {
           if (err) {
             console.error('Database error:', err);
