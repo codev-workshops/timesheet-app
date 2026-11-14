@@ -454,4 +454,104 @@ describe('Client Routes', () => {
       expect(response.status).toBe(200);
     });
   });
+
+  describe('PUT /api/clients/:id - department and email', () => {
+    const givenExistingClient = (updatedClient) => {
+      mockDb.get
+        .mockImplementationOnce((query, params, callback) => callback(null, { id: 1 }))
+        .mockImplementationOnce((query, params, callback) => callback(null, updatedClient));
+      mockDb.run.mockImplementation((query, params, callback) => callback(null));
+    };
+
+    test('should update department and email', async () => {
+      const updatedClient = { id: 1, name: 'Client', department: 'Engineering', email: 'billing@acme.com' };
+      givenExistingClient(updatedClient);
+
+      const response = await request(app)
+        .put('/api/clients/1')
+        .send({ department: 'Engineering', email: 'billing@acme.com' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.client).toEqual(updatedClient);
+      expect(mockDb.run).toHaveBeenCalledWith(
+        'UPDATE clients SET department = ?, email = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_email = ?',
+        ['Engineering', 'billing@acme.com', 1, 'test@example.com'],
+        expect.any(Function)
+      );
+    });
+
+    test('should store null when department and email are cleared', async () => {
+      givenExistingClient({ id: 1, name: 'Client', department: null, email: null });
+
+      const response = await request(app)
+        .put('/api/clients/1')
+        .send({ department: '', email: '' });
+
+      expect(response.status).toBe(200);
+      expect(mockDb.run).toHaveBeenCalledWith(
+        expect.stringContaining('department = ?, email = ?'),
+        [null, null, 1, 'test@example.com'],
+        expect.any(Function)
+      );
+    });
+  });
+
+  describe('DELETE /api/clients', () => {
+    test('should delete all clients for the authenticated user and report the count', async () => {
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        callback.call({ changes: 3 }, null);
+      });
+
+      const response = await request(app).delete('/api/clients');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ message: 'All clients deleted successfully', deletedCount: 3 });
+      expect(mockDb.run).toHaveBeenCalledWith(
+        'DELETE FROM clients WHERE user_email = ?',
+        ['test@example.com'],
+        expect.any(Function)
+      );
+    });
+
+    test('should handle database error when deleting all clients', async () => {
+      mockDb.run.mockImplementation((query, params, callback) => {
+        callback(new Error('Delete failed'));
+      });
+
+      const response = await request(app).delete('/api/clients');
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Failed to delete clients' });
+    });
+  });
+
+  describe('Unexpected errors', () => {
+    test('POST should forward synchronous errors to the error handler', async () => {
+      getDatabase.mockImplementationOnce(() => {
+        throw new Error('Database unavailable');
+      });
+
+      const response = await request(app)
+        .post('/api/clients')
+        .send({ name: 'Test Client' });
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Internal server error' });
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('PUT should forward synchronous errors to the error handler', async () => {
+      getDatabase.mockImplementationOnce(() => {
+        throw new Error('Database unavailable');
+      });
+
+      const response = await request(app)
+        .put('/api/clients/1')
+        .send({ name: 'Updated Name' });
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Internal server error' });
+      expect(mockDb.get).not.toHaveBeenCalled();
+    });
+  });
 });
