@@ -100,3 +100,5 @@ x-user-email: user@company.com
 ## Health Check
 
 The API includes a health check endpoint at `/health` that returns server status and timestamp.
+
+Malformed JSON request bodies return a generic `400` response without exposing parser details.
