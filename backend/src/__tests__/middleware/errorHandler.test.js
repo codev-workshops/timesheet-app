@@ -54,6 +54,23 @@ describe('Error Handler Middleware', () => {
     });
   });
 
+  describe('Malformed JSON Errors', () => {
+    test('should return a generic 400 for malformed JSON bodies', () => {
+      const parseError = {
+        type: 'entity.parse.failed',
+        status: 400,
+        message: 'Unexpected token } in JSON at position 12'
+      };
+
+      errorHandler(parseError, req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        error: 'Malformed JSON in request body'
+      });
+    });
+  });
+
   describe('SQLite Errors', () => {
     test('should handle SQLITE_CONSTRAINT error', () => {
       const sqliteError = {

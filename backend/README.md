@@ -8,7 +8,7 @@ A Node.js/Express backend API for employee time tracking application with SQLite
 - **Client Management**: CRUD operations for clients
 - **Work Entry Management**: Track hourly work for different clients
 - **Reporting**: Generate and export reports in CSV/PDF formats
-- **Data Validation**: Input validation using Joi
+- **Data Validation**: Input validation using Joi; malformed JSON bodies return `400` with a generic `{ error }` message
 - **Security**: Rate limiting, CORS, and security headers
 
 ## API Endpoints
@@ -100,3 +100,5 @@ x-user-email: user@company.com
 ## Health Check
 
 The API includes a health check endpoint at `/health` that returns server status and timestamp.
+
+Malformed JSON request bodies return a generic `400` response without exposing parser details.
