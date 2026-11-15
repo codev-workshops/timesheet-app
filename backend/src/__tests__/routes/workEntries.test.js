@@ -6,7 +6,7 @@ const { getDatabase } = require('../../database/init');
 jest.mock('../../database/init');
 jest.mock('../../middleware/auth', () => ({
   authenticateUser: (req, res, next) => {
-    req.userEmail = 'test@example.com';
+    req.userEmail = req.headers['x-test-user'] || 'test@example.com';
     next();
   }
 }));
@@ -583,6 +583,200 @@ describe('Work Entry Routes', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.message).toBe('Work entry updated successfully');
+    });
+  });
+  describe('GET /api/work-entries - date range filters', () => {
+    const toDay = (v) => new Date(v).toISOString().slice(0, 10);
+
+    beforeEach(() => {
+      mockDb.all.mockImplementation((query, params, callback) => callback(null, []));
+    });
+
+    test('adds startDate lower bound when only startDate is provided', async () => {
+      const response = await request(app).get('/api/work-entries?startDate=2024-01-10');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ workEntries: [] });
+      const [query, params] = mockDb.all.mock.calls[0];
+      expect(query).toContain('AND we.date >= ?');
+      expect(query).not.toContain('AND we.date <= ?');
+      expect(params).toHaveLength(2);
+      expect(params[0]).toBe('test@example.com');
+      expect(toDay(params[1])).toBe('2024-01-10');
+    });
+
+    test('combines client, startDate and endDate filters in order', async () => {
+      const response = await request(app)
+        .get('/api/work-entries?clientId=3&startDate=2024-01-01&endDate=2024-01-31');
+
+      expect(response.status).toBe(200);
+      const [query, params] = mockDb.all.mock.calls[0];
+      const clientIdx = query.indexOf('AND we.client_id = ?');
+      const startIdx = query.indexOf('AND we.date >= ?');
+      const endIdx = query.indexOf('AND we.date <= ?');
+      expect(clientIdx).toBeGreaterThan(-1);
+      expect(startIdx).toBeGreaterThan(clientIdx);
+      expect(endIdx).toBeGreaterThan(startIdx);
+      expect(query.indexOf('ORDER BY')).toBeGreaterThan(endIdx);
+      expect(params).toHaveLength(4);
+      expect(params.slice(0, 2)).toEqual(['test@example.com', 3]);
+      expect(toDay(params[2])).toBe('2024-01-01');
+      expect(toDay(params[3])).toBe('2024-01-31');
+    });
+
+    test('accepts equal startDate and endDate', async () => {
+      const response = await request(app)
+        .get('/api/work-entries?startDate=2024-01-15&endDate=2024-01-15');
+
+      expect(response.status).toBe(200);
+      expect(mockDb.all).toHaveBeenCalledTimes(1);
+    });
+
+    test('does not add date clauses when no range is provided', async () => {
+      await request(app).get('/api/work-entries');
+
+      const [query, params] = mockDb.all.mock.calls[0];
+      expect(query).not.toContain('we.date >= ?');
+      expect(query).not.toContain('we.date <= ?');
+      expect(params).toEqual(['test@example.com']);
+    });
+
+    test('returns 400 for invalid startDate', async () => {
+      const response = await request(app).get('/api/work-entries?startDate=not-a-date');
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Validation error' });
+      expect(mockDb.all).not.toHaveBeenCalled();
+    });
+
+    test('returns 400 for invalid endDate', async () => {
+      const response = await request(app).get('/api/work-entries?endDate=2024-13-45');
+
+      expect(response.status).toBe(400);
+      expect(mockDb.all).not.toHaveBeenCalled();
+    });
+
+    test('returns 400 when endDate is before startDate', async () => {
+      const response = await request(app)
+        .get('/api/work-entries?startDate=2024-02-01&endDate=2024-01-01');
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Validation error' });
+      expect(mockDb.all).not.toHaveBeenCalled();
+    });
+
+    test('validates date range before client ID', async () => {
+      const response = await request(app)
+        .get('/api/work-entries?clientId=abc&startDate=bad');
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Validation error' });
+    });
+
+    test('scopes date-filtered queries to the authenticated user', async () => {
+      await request(app)
+        .get('/api/work-entries?startDate=2024-01-01&endDate=2024-01-31')
+        .set('x-test-user', 'alice@example.com');
+      await request(app)
+        .get('/api/work-entries?startDate=2024-01-01&endDate=2024-01-31')
+        .set('x-test-user', 'bob@example.com');
+
+      expect(mockDb.all).toHaveBeenCalledTimes(2);
+      expect(mockDb.all.mock.calls[0][0]).toContain('WHERE we.user_email = ?');
+      expect(mockDb.all.mock.calls[0][1][0]).toBe('alice@example.com');
+      expect(mockDb.all.mock.calls[1][1][0]).toBe('bob@example.com');
+    });
+
+    test('returns 500 on database error with a date range', async () => {
+      mockDb.all.mockImplementation((query, params, callback) => callback(new Error('boom')));
+
+      const response = await request(app).get('/api/work-entries?startDate=2024-01-01');
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Internal server error' });
+    });
+  });
+
+  describe('User isolation', () => {
+    test('GET /:id returns 404 for another user\'s entry and scopes by user_email', async () => {
+      const entries = { 1: { id: 1, user_email: 'alice@example.com', client_name: 'A' } };
+      mockDb.get.mockImplementation((query, params, callback) => {
+        const [id, email] = params;
+        const row = entries[id];
+        callback(null, row && row.user_email === email ? row : undefined);
+      });
+
+      const own = await request(app).get('/api/work-entries/1').set('x-test-user', 'alice@example.com');
+      const other = await request(app).get('/api/work-entries/1').set('x-test-user', 'bob@example.com');
+
+      expect(own.status).toBe(200);
+      expect(other.status).toBe(404);
+      expect(other.body).toEqual({ error: 'Work entry not found' });
+      expect(mockDb.get.mock.calls[1][0]).toContain('we.user_email = ?');
+      expect(mockDb.get.mock.calls[1][1]).toEqual([1, 'bob@example.com']);
+    });
+
+    test('PUT /:id returns 404 for another user\'s entry without updating', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, undefined));
+
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .set('x-test-user', 'bob@example.com')
+        .send({ hours: 2 });
+
+      expect(response.status).toBe(404);
+      expect(mockDb.get.mock.calls[0][1]).toEqual([1, 'bob@example.com']);
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('DELETE /:id returns 404 for another user\'s entry without deleting', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, undefined));
+
+      const response = await request(app)
+        .delete('/api/work-entries/1')
+        .set('x-test-user', 'bob@example.com');
+
+      expect(response.status).toBe(404);
+      expect(mockDb.get.mock.calls[0][1]).toEqual([1, 'bob@example.com']);
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('POST rejects a client owned by another user', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, undefined));
+
+      const response = await request(app)
+        .post('/api/work-entries')
+        .set('x-test-user', 'bob@example.com')
+        .send({ clientId: 1, hours: 1, date: '2024-01-15' });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Client not found or does not belong to user' });
+      expect(mockDb.get.mock.calls[0][1]).toEqual([1, 'bob@example.com']);
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Unexpected errors', () => {
+    test('POST forwards thrown errors to the error handler', async () => {
+      getDatabase.mockImplementation(() => { throw new Error('db unavailable'); });
+
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 1, date: '2024-01-15' });
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Internal server error' });
+    });
+
+    test('PUT forwards thrown errors to the error handler', async () => {
+      getDatabase.mockImplementation(() => { throw new Error('db unavailable'); });
+
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ hours: 1 });
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Internal server error' });
     });
   });
 });

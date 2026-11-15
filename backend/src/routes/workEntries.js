@@ -1,16 +1,22 @@
 const express = require('express');
 const { getDatabase } = require('../database/init');
 const { authenticateUser } = require('../middleware/auth');
-const { workEntrySchema, updateWorkEntrySchema } = require('../validation/schemas');
+const { workEntrySchema, updateWorkEntrySchema, dateRangeQuerySchema } = require('../validation/schemas');
 
 const router = express.Router();
 
 // All routes require authentication
 router.use(authenticateUser);
 
-// Get all work entries for authenticated user (with optional client filter)
-router.get('/', (req, res) => {
-  const { clientId } = req.query;
+// Get all work entries for authenticated user (with optional client and date range filters)
+router.get('/', (req, res, next) => {
+  const { clientId, startDate, endDate } = req.query;
+
+  const { error: rangeError, value: range } = dateRangeQuerySchema.validate({ startDate, endDate });
+  if (rangeError) {
+    return next(rangeError);
+  }
+
   const db = getDatabase();
   
   let query = `
@@ -30,6 +36,16 @@ router.get('/', (req, res) => {
     }
     query += ' AND we.client_id = ?';
     params.push(clientIdNum);
+  }
+
+  if (range.startDate) {
+    query += ' AND we.date >= ?';
+    params.push(range.startDate);
+  }
+
+  if (range.endDate) {
+    query += ' AND we.date <= ?';
+    params.push(range.endDate);
   }
   
   query += ' ORDER BY we.date DESC, we.created_at DESC';
