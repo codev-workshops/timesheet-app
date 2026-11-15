@@ -30,7 +30,11 @@ const updateClientSchema = Joi.object({
 
 const dateRangeQuerySchema = Joi.object({
   startDate: Joi.date().iso().optional(),
-  endDate: Joi.date().iso().min(Joi.ref('startDate')).optional()
+  endDate: Joi.when('startDate', {
+    is: Joi.exist(),
+    then: Joi.date().iso().min(Joi.ref('startDate')),
+    otherwise: Joi.date().iso()
+  }).optional()
 });
 
 const emailSchema = Joi.object({

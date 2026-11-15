@@ -310,6 +310,13 @@ describe('Validation Schemas', () => {
       expect(value.startDate.toISOString()).toBe('2024-01-15T00:00:00.000Z');
     });
 
+    test('should accept endDate only and convert it to a Date', () => {
+      const { error, value } = dateRangeQuerySchema.validate({ endDate: '2024-01-31' });
+      expect(error).toBeUndefined();
+      expect(value.endDate).toBeInstanceOf(Date);
+      expect(value.endDate.toISOString()).toBe('2024-01-31T00:00:00.000Z');
+    });
+
     test('should accept a valid range', () => {
       const { error, value } = dateRangeQuerySchema.validate({
         startDate: '2024-01-01',
