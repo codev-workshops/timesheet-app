@@ -9,6 +9,13 @@ function errorHandler(err, req, res, next) {
     });
   }
 
+  // Malformed JSON bodies rejected by express.json()
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({
+      error: 'Malformed JSON in request body'
+    });
+  }
+
   // SQLite errors
   if (err.code && err.code.startsWith('SQLITE_')) {
     return res.status(500).json({

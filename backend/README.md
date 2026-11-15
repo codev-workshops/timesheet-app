@@ -8,7 +8,7 @@ A Node.js/Express backend API for employee time tracking application with SQLite
 - **Client Management**: CRUD operations for clients
 - **Work Entry Management**: Track hourly work for different clients
 - **Reporting**: Generate and export reports in CSV/PDF formats
-- **Data Validation**: Input validation using Joi
+- **Data Validation**: Input validation using Joi; malformed JSON bodies return `400` with a generic `{ error }` message
 - **Security**: Rate limiting, CORS, and security headers
 
 ## API Endpoints
