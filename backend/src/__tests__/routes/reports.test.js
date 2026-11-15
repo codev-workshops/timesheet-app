@@ -163,6 +163,25 @@ describe('Report Routes', () => {
         expect.any(Function)
       );
     });
+
+    test('should look up shared client without user scoping', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { id: 1, name: 'Shared Client' });
+      });
+
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, []);
+      });
+
+      const response = await request(app).get('/api/reports/client/1');
+
+      expect(response.status).toBe(200);
+      expect(mockDb.get).toHaveBeenCalledWith(
+        'SELECT id, name FROM clients WHERE id = ?',
+        [1],
+        expect.any(Function)
+      );
+    });
   });
 
   describe('GET /api/reports/export/csv/:clientId', () => {
@@ -243,21 +262,19 @@ describe('Report Routes', () => {
   });
 
   describe('Data Isolation', () => {
-    test('should only return data for authenticated user', async () => {
+    test('should only return work entries for authenticated user', async () => {
       mockDb.get.mockImplementation((query, params, callback) => {
-        expect(params).toContain('test@example.com');
         callback(null, { id: 1, name: 'Test Client' });
       });
 
       mockDb.all.mockImplementation((query, params, callback) => {
-        expect(params).toContain('test@example.com');
         callback(null, []);
       });
 
       await request(app).get('/api/reports/client/1');
 
-      expect(mockDb.get).toHaveBeenCalledWith(
-        expect.any(String),
+      expect(mockDb.all).toHaveBeenCalledWith(
+        expect.stringContaining('user_email = ?'),
         expect.arrayContaining(['test@example.com']),
         expect.any(Function)
       );
@@ -347,7 +364,12 @@ describe('Report Routes', () => {
 
       expect(mockDb.get).toHaveBeenCalledWith(
         expect.stringContaining('SELECT id, name FROM clients'),
-        expect.arrayContaining([1, 'test@example.com']),
+        [1],
+        expect.any(Function)
+      );
+      expect(mockDb.all).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE client_id = ? AND user_email = ?'),
+        [1, 'test@example.com'],
         expect.any(Function)
       );
     });
@@ -433,7 +455,12 @@ describe('Report Routes', () => {
 
       expect(mockDb.get).toHaveBeenCalledWith(
         expect.stringContaining('SELECT id, name FROM clients'),
-        expect.arrayContaining([1, 'test@example.com']),
+        [1],
+        expect.any(Function)
+      );
+      expect(mockDb.all).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE client_id = ? AND user_email = ?'),
+        [1, 'test@example.com'],
         expect.any(Function)
       );
     });

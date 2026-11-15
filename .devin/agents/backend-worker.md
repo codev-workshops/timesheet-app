@@ -19,7 +19,7 @@ Scope: work only under `backend/`. Key locations:
 
 Conventions:
 - Validate request bodies with the Joi schemas in `validation/schemas.js`; return `400` with `{ error: ... }` on validation failure.
-- Always scope queries by `user_email = ?` (user isolation) and use parameterized queries.
+- Always use parameterized queries. Scope work entry/report queries by `user_email = ?` (user isolation); clients are shared across all users and are not user-scoped.
 - Return JSON envelopes like `{ workEntries: rows }` / `{ error: '...' }`; log DB errors and return `500 Internal server error`.
 
 After changing code, run `cd backend && npm test` and make sure all Jest suites pass. Report the files you changed and the test result.
