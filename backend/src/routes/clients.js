@@ -8,13 +8,13 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticateUser);
 
-// Get all clients for authenticated user
+// Get all clients (clients are shared across all users)
 router.get('/', (req, res) => {
   const db = getDatabase();
   
   db.all(
-    'SELECT id, name, description, department, email, created_at, updated_at FROM clients WHERE user_email = ? ORDER BY name',
-    [req.userEmail],
+    'SELECT id, name, description, department, email, created_at, updated_at FROM clients ORDER BY name',
+    [],
     (err, rows) => {
       if (err) {
         console.error('Database error:', err);
@@ -37,8 +37,8 @@ router.get('/:id', (req, res) => {
   const db = getDatabase();
   
   db.get(
-    'SELECT id, name, description, department, email, created_at, updated_at FROM clients WHERE id = ? AND user_email = ?',
-    [clientId, req.userEmail],
+    'SELECT id, name, description, department, email, created_at, updated_at FROM clients WHERE id = ?',
+    [clientId],
     (err, row) => {
       if (err) {
         console.error('Database error:', err);
@@ -66,7 +66,7 @@ router.post('/', (req, res, next) => {
     const db = getDatabase();
 
     db.run(
-      'INSERT INTO clients (name, description, department, email, user_email) VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO clients (name, description, department, email, created_by) VALUES (?, ?, ?, ?, ?)',
       [name, description || null, department || null, email || null, req.userEmail],
       function(err) {
         if (err) {
@@ -113,10 +113,10 @@ router.put('/:id', (req, res, next) => {
 
     const db = getDatabase();
 
-    // Check if client exists and belongs to user
+    // Check if client exists
     db.get(
-      'SELECT id FROM clients WHERE id = ? AND user_email = ?',
-      [clientId, req.userEmail],
+      'SELECT id FROM clients WHERE id = ?',
+      [clientId],
       (err, row) => {
         if (err) {
           console.error('Database error:', err);
@@ -152,9 +152,9 @@ router.put('/:id', (req, res, next) => {
         }
 
         updates.push('updated_at = CURRENT_TIMESTAMP');
-        values.push(clientId, req.userEmail);
+        values.push(clientId);
 
-        const query = `UPDATE clients SET ${updates.join(', ')} WHERE id = ? AND user_email = ?`;
+        const query = `UPDATE clients SET ${updates.join(', ')} WHERE id = ?`;
 
         db.run(query, values, function(err) {
           if (err) {
@@ -186,28 +186,42 @@ router.put('/:id', (req, res, next) => {
   }
 });
 
-// Delete all clients for authenticated user
+// Clients that no other user has logged time against
+const NOT_USED_BY_OTHERS = 'id NOT IN (SELECT client_id FROM work_entries WHERE user_email != ?)';
+
+// Delete all clients created by the authenticated user that no other user has work entries for
 router.delete('/', (req, res) => {
   const db = getDatabase();
-  
+
   db.run(
-    'DELETE FROM clients WHERE user_email = ?',
-    [req.userEmail],
-    function(err) {
+    `DELETE FROM work_entries WHERE user_email = ? AND client_id IN (SELECT id FROM clients WHERE created_by = ? AND ${NOT_USED_BY_OTHERS})`,
+    [req.userEmail, req.userEmail, req.userEmail],
+    (err) => {
       if (err) {
         console.error('Database error:', err);
         return res.status(500).json({ error: 'Failed to delete clients' });
       }
-      
-      res.json({ 
-        message: 'All clients deleted successfully',
-        deletedCount: this.changes
-      });
+
+      db.run(
+        `DELETE FROM clients WHERE created_by = ? AND ${NOT_USED_BY_OTHERS}`,
+        [req.userEmail, req.userEmail],
+        function(err) {
+          if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ error: 'Failed to delete clients' });
+          }
+
+          res.json({
+            message: 'All clients deleted successfully',
+            deletedCount: this.changes
+          });
+        }
+      );
     }
   );
 });
 
-// Delete client
+// Delete client (only if no other user has work entries for it)
 router.delete('/:id', (req, res) => {
   const clientId = parseInt(req.params.id);
   
@@ -217,10 +231,10 @@ router.delete('/:id', (req, res) => {
   
   const db = getDatabase();
   
-  // Check if client exists and belongs to user
   db.get(
-    'SELECT id FROM clients WHERE id = ? AND user_email = ?',
-    [clientId, req.userEmail],
+    `SELECT c.id, (SELECT COUNT(*) FROM work_entries we WHERE we.client_id = c.id AND we.user_email != ?) AS other_user_entries
+     FROM clients c WHERE c.id = ?`,
+    [req.userEmail, clientId],
     (err, row) => {
       if (err) {
         console.error('Database error:', err);
@@ -230,18 +244,32 @@ router.delete('/:id', (req, res) => {
       if (!row) {
         return res.status(404).json({ error: 'Client not found' });
       }
+
+      if (row.other_user_entries > 0) {
+        return res.status(409).json({ error: 'Client has work entries from other users and cannot be deleted' });
+      }
       
-      // Delete client (work entries will be deleted due to CASCADE)
       db.run(
-        'DELETE FROM clients WHERE id = ? AND user_email = ?',
+        'DELETE FROM work_entries WHERE client_id = ? AND user_email = ?',
         [clientId, req.userEmail],
-        function(err) {
+        (err) => {
           if (err) {
             console.error('Database error:', err);
             return res.status(500).json({ error: 'Failed to delete client' });
           }
-          
-          res.json({ message: 'Client deleted successfully' });
+
+          db.run(
+            'DELETE FROM clients WHERE id = ?',
+            [clientId],
+            (err) => {
+              if (err) {
+                console.error('Database error:', err);
+                return res.status(500).json({ error: 'Failed to delete client' });
+              }
+              
+              res.json({ message: 'Client deleted successfully' });
+            }
+          );
         }
       );
     }

@@ -74,14 +74,18 @@ x-user-email: user@company.com
 - `created_at` (DATETIME)
 
 ### Clients
+Shared across all users.
 - `id` (INTEGER, PRIMARY KEY)
 - `name` (TEXT, NOT NULL)
 - `description` (TEXT)
-- `user_email` (TEXT, FOREIGN KEY)
+- `department` (TEXT)
+- `email` (TEXT)
+- `created_by` (TEXT, FOREIGN KEY, nullable) - user who created the client (audit only)
 - `created_at` (DATETIME)
 - `updated_at` (DATETIME)
 
 ### Work Entries
+Owned by individual users (scoped by `user_email`).
 - `id` (INTEGER, PRIMARY KEY)
 - `client_id` (INTEGER, FOREIGN KEY)
 - `user_email` (TEXT, FOREIGN KEY)

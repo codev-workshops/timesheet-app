@@ -8,7 +8,7 @@ subagent: true
 Audit the backend for security issues without modifying or executing anything:
 
 1. SQL injection — every query in `backend/src/routes/` must use `?` placeholders; flag any string interpolation into SQL.
-2. User isolation — every SELECT/UPDATE/DELETE must scope by `user_email`; flag queries that skip it.
+2. User isolation — every SELECT/UPDATE/DELETE on `work_entries` must scope by `user_email`; flag queries that skip it. The `clients` table is intentionally shared across users.
 3. Authentication — every route file except `auth.js` must apply the `authenticateUser` middleware.
 4. Validation — request bodies must be validated with the Joi schemas in `backend/src/validation/schemas.js`.
 5. Secrets — flag any hard-coded tokens, keys, or credentials.
