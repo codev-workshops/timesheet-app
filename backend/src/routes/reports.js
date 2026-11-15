@@ -1,6 +1,7 @@
 const express = require('express');
 const { getDatabase } = require('../database/init');
 const { authenticateUser } = require('../middleware/auth');
+const { dateRangeQuerySchema } = require('../validation/schemas');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const PDFDocument = require('pdfkit');
 const path = require('path');
@@ -11,12 +12,20 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticateUser);
 
-// Get hourly report for specific client
-router.get('/client/:clientId', (req, res) => {
+// Get hourly report for specific client (with optional date range)
+router.get('/client/:clientId', (req, res, next) => {
   const clientId = parseInt(req.params.clientId);
   
   if (isNaN(clientId)) {
     return res.status(400).json({ error: 'Invalid client ID' });
+  }
+
+  const { error: rangeError, value: range } = dateRangeQuerySchema.validate({
+    startDate: req.query.startDate,
+    endDate: req.query.endDate
+  });
+  if (rangeError) {
+    return next(rangeError);
   }
   
   const db = getDatabase();
@@ -35,13 +44,27 @@ router.get('/client/:clientId', (req, res) => {
         return res.status(404).json({ error: 'Client not found' });
       }
       
+      let entriesQuery = `SELECT id, hours, description, date, created_at, updated_at
+         FROM work_entries 
+         WHERE client_id = ? AND user_email = ?`;
+      const entriesParams = [clientId, req.userEmail];
+
+      if (range.startDate) {
+        entriesQuery += ' AND date >= ?';
+        entriesParams.push(range.startDate);
+      }
+
+      if (range.endDate) {
+        entriesQuery += ' AND date <= ?';
+        entriesParams.push(range.endDate);
+      }
+
+      entriesQuery += ' ORDER BY date DESC';
+
       // Get work entries for this client
       db.all(
-        `SELECT id, hours, description, date, created_at, updated_at
-         FROM work_entries 
-         WHERE client_id = ? AND user_email = ? 
-         ORDER BY date DESC`,
-        [clientId, req.userEmail],
+        entriesQuery,
+        entriesParams,
         (err, workEntries) => {
           if (err) {
             console.error('Database error:', err);

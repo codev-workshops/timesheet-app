@@ -9,6 +9,13 @@ function errorHandler(err, req, res, next) {
     });
   }
 
+  // Request bodies larger than the configured body-parser limit
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({
+      error: 'Request body too large'
+    });
+  }
+
   // SQLite errors
   if (err.code && err.code.startsWith('SQLITE_')) {
     return res.status(500).json({

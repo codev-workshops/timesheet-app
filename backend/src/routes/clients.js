@@ -1,20 +1,35 @@
 const express = require('express');
 const { getDatabase } = require('../database/init');
 const { authenticateUser } = require('../middleware/auth');
-const { clientSchema, updateClientSchema } = require('../validation/schemas');
+const { clientSchema, updateClientSchema, clientSearchQuerySchema } = require('../validation/schemas');
 
 const router = express.Router();
 
 // All routes require authentication
 router.use(authenticateUser);
 
-// Get all clients for authenticated user
-router.get('/', (req, res) => {
+// Get all clients for authenticated user (with optional name search)
+router.get('/', (req, res, next) => {
+  const { error, value } = clientSearchQuerySchema.validate({ search: req.query.search });
+  if (error) {
+    return next(error);
+  }
+
   const db = getDatabase();
-  
+
+  let query = 'SELECT id, name, description, department, email, created_at, updated_at FROM clients WHERE user_email = ?';
+  const params = [req.userEmail];
+
+  if (value.search) {
+    query += " AND name LIKE ? ESCAPE '\\'";
+    params.push(`%${value.search.replace(/[\\%_]/g, '\\$&')}%`);
+  }
+
+  query += ' ORDER BY name';
+
   db.all(
-    'SELECT id, name, description, department, email, created_at, updated_at FROM clients WHERE user_email = ? ORDER BY name',
-    [req.userEmail],
+    query,
+    params,
     (err, rows) => {
       if (err) {
         console.error('Database error:', err);
