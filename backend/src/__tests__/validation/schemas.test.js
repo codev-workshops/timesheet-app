@@ -3,6 +3,7 @@ const {
   workEntrySchema,
   updateWorkEntrySchema,
   updateClientSchema,
+  dateRangeQuerySchema,
   emailSchema
 } = require('../../validation/schemas');
 
@@ -287,6 +288,85 @@ describe('Validation Schemas', () => {
 
       const { error } = updateClientSchema.validate(update);
       expect(error).toBeUndefined();
+    });
+  });
+
+  describe('dateRangeQuerySchema', () => {
+    test('should accept an empty query', () => {
+      const { error, value } = dateRangeQuerySchema.validate({});
+      expect(error).toBeUndefined();
+      expect(value).toEqual({});
+    });
+
+    test('should accept undefined startDate and endDate', () => {
+      const { error } = dateRangeQuerySchema.validate({ startDate: undefined, endDate: undefined });
+      expect(error).toBeUndefined();
+    });
+
+    test('should accept startDate only and convert it to a Date', () => {
+      const { error, value } = dateRangeQuerySchema.validate({ startDate: '2024-01-15' });
+      expect(error).toBeUndefined();
+      expect(value.startDate).toBeInstanceOf(Date);
+      expect(value.startDate.toISOString()).toBe('2024-01-15T00:00:00.000Z');
+    });
+
+    test('should accept a valid range', () => {
+      const { error, value } = dateRangeQuerySchema.validate({
+        startDate: '2024-01-01',
+        endDate: '2024-01-31'
+      });
+      expect(error).toBeUndefined();
+      expect(value.startDate).toBeInstanceOf(Date);
+      expect(value.endDate).toBeInstanceOf(Date);
+    });
+
+    test('should accept endDate equal to startDate', () => {
+      const { error } = dateRangeQuerySchema.validate({
+        startDate: '2024-01-15',
+        endDate: '2024-01-15'
+      });
+      expect(error).toBeUndefined();
+    });
+
+    test('should accept full ISO datetime strings', () => {
+      const { error } = dateRangeQuerySchema.validate({
+        startDate: '2024-01-01T00:00:00.000Z',
+        endDate: '2024-01-01T23:59:59.999Z'
+      });
+      expect(error).toBeUndefined();
+    });
+
+    test('should reject endDate before startDate', () => {
+      const { error } = dateRangeQuerySchema.validate({
+        startDate: '2024-01-31',
+        endDate: '2024-01-01'
+      });
+      expect(error).toBeDefined();
+      expect(error.details[0].type).toBe('date.min');
+      expect(error.details[0].path).toEqual(['endDate']);
+    });
+
+    test('should reject a non-ISO startDate', () => {
+      const { error } = dateRangeQuerySchema.validate({ startDate: 'not-a-date' });
+      expect(error).toBeDefined();
+      expect(error.details[0].type).toBe('date.format');
+      expect(error.details[0].path).toEqual(['startDate']);
+    });
+
+    test('should reject a non-ISO endDate', () => {
+      const { error } = dateRangeQuerySchema.validate({
+        startDate: '2024-01-01',
+        endDate: '01/31/2024'
+      });
+      expect(error).toBeDefined();
+      expect(error.details[0].type).toBe('date.format');
+      expect(error.details[0].path).toEqual(['endDate']);
+    });
+
+    test('should reject unknown query keys', () => {
+      const { error } = dateRangeQuerySchema.validate({ startDate: '2024-01-01', foo: 'bar' });
+      expect(error).toBeDefined();
+      expect(error.details[0].type).toBe('object.unknown');
     });
   });
 
