@@ -5,6 +5,10 @@ const { authenticateUser } = require('../middleware/auth');
 
 const router = express.Router();
 
+function toUserResponse(email, createdAt) {
+  return { email, createdAt };
+}
+
 // Login endpoint - creates user if doesn't exist
 router.post('/login', async (req, res, next) => {
   try {
@@ -27,10 +31,7 @@ router.post('/login', async (req, res, next) => {
         // User exists
         return res.json({
           message: 'Login successful',
-          user: {
-            email: row.email,
-            createdAt: row.created_at
-          }
+          user: toUserResponse(row.email, row.created_at)
         });
       } else {
         // Create new user
@@ -42,10 +43,7 @@ router.post('/login', async (req, res, next) => {
 
           res.status(201).json({
             message: 'User created and logged in successfully',
-            user: {
-              email: email,
-              createdAt: new Date().toISOString()
-            }
+            user: toUserResponse(email, new Date().toISOString())
           });
         });
       }
@@ -70,10 +68,7 @@ router.get('/me', authenticateUser, (req, res) => {
     }
 
     res.json({
-      user: {
-        email: row.email,
-        createdAt: row.created_at
-      }
+      user: toUserResponse(row.email, row.created_at)
     });
   });
 });

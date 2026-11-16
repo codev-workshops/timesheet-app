@@ -5,6 +5,13 @@ const { workEntrySchema, updateWorkEntrySchema } = require('../validation/schema
 
 const router = express.Router();
 
+const WORK_ENTRY_SELECT = `
+  SELECT we.id, we.client_id, we.hours, we.description, we.date,
+         we.created_at, we.updated_at, c.name as client_name
+  FROM work_entries we
+  JOIN clients c ON we.client_id = c.id
+`;
+
 // All routes require authentication
 router.use(authenticateUser);
 
@@ -13,13 +20,7 @@ router.get('/', (req, res) => {
   const { clientId } = req.query;
   const db = getDatabase();
   
-  let query = `
-    SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-           we.created_at, we.updated_at, c.name as client_name
-    FROM work_entries we
-    JOIN clients c ON we.client_id = c.id
-    WHERE we.user_email = ?
-  `;
+  let query = `${WORK_ENTRY_SELECT} WHERE we.user_email = ?`;
   
   const params = [req.userEmail];
   
@@ -55,11 +56,7 @@ router.get('/:id', (req, res) => {
   const db = getDatabase();
   
   db.get(
-    `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-            we.created_at, we.updated_at, c.name as client_name
-     FROM work_entries we
-     JOIN clients c ON we.client_id = c.id
-     WHERE we.id = ? AND we.user_email = ?`,
+    `${WORK_ENTRY_SELECT} WHERE we.id = ? AND we.user_email = ?`,
     [workEntryId, req.userEmail],
     (err, row) => {
       if (err) {
@@ -113,11 +110,7 @@ router.post('/', (req, res, next) => {
 
             // Return the created work entry with client name
             db.get(
-              `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-                      we.created_at, we.updated_at, c.name as client_name
-               FROM work_entries we
-               JOIN clients c ON we.client_id = c.id
-               WHERE we.id = ?`,
+              `${WORK_ENTRY_SELECT} WHERE we.id = ?`,
               [this.lastID],
               (err, row) => {
                 if (err) {
@@ -230,11 +223,7 @@ router.put('/:id', (req, res, next) => {
 
             // Return updated work entry with client name
             db.get(
-              `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-                      we.created_at, we.updated_at, c.name as client_name
-               FROM work_entries we
-               JOIN clients c ON we.client_id = c.id
-               WHERE we.id = ?`,
+              `${WORK_ENTRY_SELECT} WHERE we.id = ?`,
               [workEntryId],
               (err, row) => {
                 if (err) {

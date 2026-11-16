@@ -1,3 +1,7 @@
+function isSqliteError(err) {
+  return typeof err.code === 'string' && err.code.startsWith('SQLITE_');
+}
+
 function errorHandler(err, req, res, next) {
   console.error('Error:', err);
 
@@ -10,7 +14,7 @@ function errorHandler(err, req, res, next) {
   }
 
   // SQLite errors
-  if (err.code && err.code.startsWith('SQLITE_')) {
+  if (isSqliteError(err)) {
     return res.status(500).json({
       error: 'Database error',
       message: 'An error occurred while processing your request'
