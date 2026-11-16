@@ -1,5 +1,7 @@
 const { getDatabase } = require('../database/init');
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 // Simple email-based authentication middleware
 function authenticateUser(req, res, next) {
   const userEmail = req.headers['x-user-email'];
@@ -8,9 +10,7 @@ function authenticateUser(req, res, next) {
     return res.status(401).json({ error: 'User email required in x-user-email header' });
   }
 
-  // Validate email format
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(userEmail)) {
+  if (!EMAIL_REGEX.test(userEmail)) {
     return res.status(400).json({ error: 'Invalid email format' });
   }
 
