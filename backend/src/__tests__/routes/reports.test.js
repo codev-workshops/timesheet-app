@@ -58,6 +58,81 @@ describe('Report Routes', () => {
     jest.clearAllMocks();
   });
 
+  describe('GET /api/reports/weekly-hours', () => {
+    test('should return total hours per client for the current week', async () => {
+      const mockRows = [
+        { client_id: 2, client_name: 'Beta', total_hours: 7.5, entry_count: 2 },
+        { client_id: 1, client_name: 'Acme', total_hours: 3.25, entry_count: 1 }
+      ];
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, mockRows);
+      });
+
+      const { start, end } = reportRoutes.getCurrentWeekRange();
+      const response = await request(app).get('/api/reports/weekly-hours');
+
+      expect(response.status).toBe(200);
+      expect(response.body.clients).toEqual(mockRows);
+      expect(response.body.totalHours).toBe(10.75);
+      expect(response.body.weekStart).toBe(new Date(start).toISOString().slice(0, 10));
+      expect(response.body.weekEnd).toBe(new Date(end - 24 * 60 * 60 * 1000).toISOString().slice(0, 10));
+      expect(mockDb.all).toHaveBeenCalledWith(
+        expect.stringContaining('we.user_email = ? AND we.date >= ? AND we.date < ?'),
+        ['test@example.com', start, end],
+        expect.any(Function)
+      );
+      expect(mockDb.all.mock.calls[0][0]).toContain('c.user_email = we.user_email');
+      expect(mockDb.all.mock.calls[0][0]).toContain('GROUP BY c.id');
+    });
+
+    test('should return empty list and zero total when no hours this week', async () => {
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(null, []);
+      });
+
+      const response = await request(app).get('/api/reports/weekly-hours');
+
+      expect(response.status).toBe(200);
+      expect(response.body.clients).toEqual([]);
+      expect(response.body.totalHours).toBe(0);
+    });
+
+    test('should handle database error', async () => {
+      mockDb.all.mockImplementation((query, params, callback) => {
+        callback(new Error('Database error'), null);
+      });
+
+      const response = await request(app).get('/api/reports/weekly-hours');
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Internal server error' });
+    });
+  });
+
+  describe('getCurrentWeekRange', () => {
+    const DAY_MS = 24 * 60 * 60 * 1000;
+
+    test('should start on Monday 00:00 UTC and span 7 days', () => {
+      const { start, end } = reportRoutes.getCurrentWeekRange(new Date('2026-11-18T15:30:00Z'));
+
+      expect(start).toBe(Date.UTC(2026, 10, 16));
+      expect(end).toBe(Date.UTC(2026, 10, 23));
+      expect(end - start).toBe(7 * DAY_MS);
+    });
+
+    test('should treat Monday as the first day of the week', () => {
+      const { start } = reportRoutes.getCurrentWeekRange(new Date('2026-11-16T00:00:00Z'));
+
+      expect(start).toBe(Date.UTC(2026, 10, 16));
+    });
+
+    test('should treat Sunday as the last day of the week', () => {
+      const { start } = reportRoutes.getCurrentWeekRange(new Date('2026-11-22T23:59:59Z'));
+
+      expect(start).toBe(Date.UTC(2026, 10, 16));
+    });
+  });
+
   describe('GET /api/reports/client/:clientId', () => {
     test('should return client report with work entries', async () => {
       const mockClient = { id: 1, name: 'Test Client' };

@@ -8,8 +8,50 @@ const fs = require('fs');
 
 const router = express.Router();
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Work entry dates are stored as epoch ms at UTC midnight, so weeks are Monday-Sunday in UTC.
+function getCurrentWeekRange(now = new Date()) {
+  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const daysSinceMonday = (new Date(todayUtc).getUTCDay() + 6) % 7;
+  const start = todayUtc - daysSinceMonday * DAY_MS;
+  return { start, end: start + 7 * DAY_MS };
+}
+
 // All routes require authentication
 router.use(authenticateUser);
+
+// Get total hours per client for the current week
+router.get('/weekly-hours', (req, res) => {
+  const { start, end } = getCurrentWeekRange();
+  const db = getDatabase();
+
+  db.all(
+    `SELECT c.id AS client_id, c.name AS client_name,
+            ROUND(SUM(we.hours), 2) AS total_hours, COUNT(we.id) AS entry_count
+     FROM work_entries we
+     JOIN clients c ON c.id = we.client_id AND c.user_email = we.user_email
+     WHERE we.user_email = ? AND we.date >= ? AND we.date < ?
+     GROUP BY c.id, c.name
+     ORDER BY total_hours DESC, c.name ASC`,
+    [req.userEmail, start, end],
+    (err, clients) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+
+      const totalHours = clients.reduce((sum, row) => sum + parseFloat(row.total_hours), 0);
+
+      res.json({
+        weekStart: new Date(start).toISOString().slice(0, 10),
+        weekEnd: new Date(end - DAY_MS).toISOString().slice(0, 10),
+        clients: clients,
+        totalHours: Math.round(totalHours * 100) / 100
+      });
+    }
+  );
+});
 
 // Get hourly report for specific client
 router.get('/client/:clientId', (req, res) => {
@@ -245,3 +287,4 @@ router.get('/export/pdf/:clientId', (req, res) => {
 });
 
 module.exports = router;
+module.exports.getCurrentWeekRange = getCurrentWeekRange;
