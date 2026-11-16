@@ -8,6 +8,15 @@ const fs = require('fs');
 
 const router = express.Router();
 
+function sumHours(entries) {
+  return entries.reduce((sum, entry) => sum + parseFloat(entry.hours), 0);
+}
+
+function buildReportFilename(clientName, extension) {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  return `${clientName.replace(/[^a-zA-Z0-9]/g, '_')}_report_${timestamp}.${extension}`;
+}
+
 // All routes require authentication
 router.use(authenticateUser);
 
@@ -49,7 +58,7 @@ router.get('/client/:clientId', (req, res) => {
           }
           
           // Calculate total hours
-          const totalHours = workEntries.reduce((sum, entry) => sum + parseFloat(entry.hours), 0);
+          const totalHours = sumHours(workEntries);
           
           res.json({
             client: client,
@@ -101,8 +110,7 @@ router.get('/export/csv/:clientId', (req, res) => {
           }
           
           // Create temporary CSV file
-          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-          const filename = `${client.name.replace(/[^a-zA-Z0-9]/g, '_')}_report_${timestamp}.csv`;
+          const filename = buildReportFilename(client.name, 'csv');
           const tempPath = path.join(__dirname, '../../temp', filename);
           
           // Ensure temp directory exists
@@ -185,8 +193,7 @@ router.get('/export/pdf/:clientId', (req, res) => {
           
           // Create PDF
           const doc = new PDFDocument();
-          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-          const filename = `${client.name.replace(/[^a-zA-Z0-9]/g, '_')}_report_${timestamp}.pdf`;
+          const filename = buildReportFilename(client.name, 'pdf');
           
           // Set response headers
           res.setHeader('Content-Type', 'application/pdf');
@@ -199,7 +206,7 @@ router.get('/export/pdf/:clientId', (req, res) => {
           doc.fontSize(20).text(`Time Report for ${client.name}`, { align: 'center' });
           doc.moveDown();
           
-          const totalHours = workEntries.reduce((sum, entry) => sum + parseFloat(entry.hours), 0);
+          const totalHours = sumHours(workEntries);
           doc.fontSize(14).text(`Total Hours: ${totalHours.toFixed(2)}`);
           doc.text(`Total Entries: ${workEntries.length}`);
           doc.text(`Generated: ${new Date().toLocaleString()}`);

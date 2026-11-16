@@ -5,6 +5,8 @@ const { clientSchema, updateClientSchema } = require('../validation/schemas');
 
 const router = express.Router();
 
+const CLIENT_COLUMNS = 'id, name, description, department, email, created_at, updated_at';
+
 // All routes require authentication
 router.use(authenticateUser);
 
@@ -13,7 +15,7 @@ router.get('/', (req, res) => {
   const db = getDatabase();
   
   db.all(
-    'SELECT id, name, description, department, email, created_at, updated_at FROM clients WHERE user_email = ? ORDER BY name',
+    `SELECT ${CLIENT_COLUMNS} FROM clients WHERE user_email = ? ORDER BY name`,
     [req.userEmail],
     (err, rows) => {
       if (err) {
@@ -37,7 +39,7 @@ router.get('/:id', (req, res) => {
   const db = getDatabase();
   
   db.get(
-    'SELECT id, name, description, department, email, created_at, updated_at FROM clients WHERE id = ? AND user_email = ?',
+    `SELECT ${CLIENT_COLUMNS} FROM clients WHERE id = ? AND user_email = ?`,
     [clientId, req.userEmail],
     (err, row) => {
       if (err) {
@@ -76,7 +78,7 @@ router.post('/', (req, res, next) => {
 
         // Return the created client
         db.get(
-          'SELECT id, name, description, department, email, created_at, updated_at FROM clients WHERE id = ?',
+          `SELECT ${CLIENT_COLUMNS} FROM clients WHERE id = ?`,
           [this.lastID],
           (err, row) => {
             if (err) {
@@ -164,7 +166,7 @@ router.put('/:id', (req, res, next) => {
 
           // Return updated client
           db.get(
-            'SELECT id, name, description, department, email, created_at, updated_at FROM clients WHERE id = ?',
+            `SELECT ${CLIENT_COLUMNS} FROM clients WHERE id = ?`,
             [clientId],
             (err, row) => {
               if (err) {
