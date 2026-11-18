@@ -5,11 +5,67 @@ const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const PDFDocument = require('pdfkit');
 const path = require('path');
 const fs = require('fs');
+const { reportSummarySchema } = require('../validation/schemas');
 
 const router = express.Router();
 
 // All routes require authentication
 router.use(authenticateUser);
+
+router.get('/summary', (req, res) => {
+  const { error, value } = reportSummarySchema.validate(req.query);
+  if (error) return res.status(400).json({ error: error.details[0].message });
+  const { startDate, endDate, groupBy } = value;
+  const period = groupBy === 'week'
+    ? "date(entry_date, '-' || ((CAST(strftime('%w', entry_date) AS INTEGER) + 6) % 7) || ' days')"
+    : "strftime('%Y-%m', entry_date)";
+  getDatabase().all(
+    `WITH entries AS (
+       SELECT we.client_id, c.name, we.hours,
+         CASE WHEN typeof(we.date) IN ('integer', 'real')
+           THEN date(we.date / 1000.0, 'unixepoch') ELSE date(we.date) END AS entry_date
+       FROM work_entries we JOIN clients c ON c.id = we.client_id AND c.user_email = we.user_email
+       WHERE we.user_email = ?
+     )
+     SELECT ${period} AS period, client_id AS clientId, name AS clientName,
+       SUM(hours) AS hours, COUNT(*) AS entryCount
+     FROM entries WHERE entry_date >= ? AND entry_date <= ?
+     GROUP BY period, client_id, name ORDER BY period, client_id`,
+    [req.userEmail, startDate, endDate],
+    (err, rows) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+      const round = (hours) => Math.round((hours + Number.EPSILON) * 100) / 100;
+      const clients = new Map();
+      const periods = new Map();
+      let totalHours = 0;
+      let entryCount = 0;
+      for (const row of rows) {
+        totalHours += row.hours;
+        entryCount += row.entryCount;
+        const client = clients.get(row.clientId) || {
+          clientId: row.clientId, clientName: row.clientName, totalHours: 0, entryCount: 0
+        };
+        client.totalHours += row.hours;
+        client.entryCount += row.entryCount;
+        clients.set(row.clientId, client);
+        const bucket = periods.get(row.period) || { period: row.period, totalHours: 0, entryCount: 0, clients: [] };
+        bucket.totalHours += row.hours;
+        bucket.entryCount += row.entryCount;
+        bucket.clients.push({ clientId: row.clientId, clientName: row.clientName, hours: round(row.hours) });
+        periods.set(row.period, bucket);
+      }
+      res.json({
+        startDate, endDate, groupBy, totalHours: round(totalHours), entryCount,
+        clients: [...clients.values()].map((client) => ({ ...client, totalHours: round(client.totalHours) }))
+          .sort((a, b) => b.totalHours - a.totalHours || a.clientId - b.clientId),
+        periods: [...periods.values()].map((bucket) => ({ ...bucket, totalHours: round(bucket.totalHours) }))
+      });
+    }
+  );
+});
 
 // Get hourly report for specific client
 router.get('/client/:clientId', (req, res) => {

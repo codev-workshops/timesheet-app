@@ -30,6 +30,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../api/client';
 import { type ClientReport } from '../types/api';
+import ReportSummarySection from '../components/ReportSummarySection';
 
 const ReportsPage: React.FC = () => {
   const [selectedClientId, setSelectedClientId] = useState<number>(0);
@@ -104,6 +105,8 @@ const ReportsPage: React.FC = () => {
       <Typography variant="h4" gutterBottom>
         Reports
       </Typography>
+
+      <ReportSummarySection />
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
