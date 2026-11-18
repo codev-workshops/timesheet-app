@@ -35,6 +35,24 @@ export interface ClientReport {
   entryCount: number;
 }
 
+export interface ReportSummaryParams {
+  startDate: string;
+  endDate: string;
+  groupBy: 'week' | 'month';
+}
+
+export interface ReportSummary extends ReportSummaryParams {
+  totalHours: number;
+  entryCount: number;
+  clients: { clientId: number; clientName: string; totalHours: number; entryCount: number }[];
+  periods: {
+    period: string;
+    totalHours: number;
+    entryCount: number;
+    clients: { clientId: number; clientName: string; hours: number }[];
+  }[];
+}
+
 export interface CreateClientRequest {
   name: string;
   description?: string;

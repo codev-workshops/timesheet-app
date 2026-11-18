@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 
 jest.mock('../../database/init');
-jest.mock('fs');
+jest.mock('fs', () => ({ ...jest.requireActual('fs') }));
 jest.mock('csv-writer', () => ({
   createObjectCsvWriter: jest.fn(() => ({
     writeRecords: jest.fn().mockResolvedValue(undefined)
@@ -37,6 +37,107 @@ jest.mock('../../middleware/auth', () => ({
 const app = express();
 app.use(express.json());
 app.use('/api/reports', reportRoutes);
+
+describe('Date range summary with SQLite', () => {
+  let db;
+  const sqlite3 = jest.requireActual('sqlite3');
+  const summary = (query) => request(app).get('/api/reports/summary').query(query);
+  const range = { startDate: '2024-12-29', endDate: '2025-01-06' };
+
+  beforeEach(async () => {
+    db = new sqlite3.Database(':memory:');
+    getDatabase.mockReturnValue(db);
+    const run = (sql, params = []) => new Promise((resolve, reject) => {
+      db.run(sql, params, (err) => err ? reject(err) : resolve());
+    });
+    await run('CREATE TABLE clients (id INTEGER, name TEXT, user_email TEXT)');
+    await run('CREATE TABLE work_entries (client_id INTEGER, user_email TEXT, hours REAL, date DATE)');
+    await run('INSERT INTO clients VALUES (?, ?, ?), (?, ?, ?), (?, ?, ?)',
+      [1, 'Alpha', 'test@example.com', 2, 'Beta', 'test@example.com', 3, 'Other', 'other@example.com']);
+    const { workEntrySchema } = require('../../validation/schemas');
+    for (const [client, email, hours, date] of [
+      [1, 'test@example.com', 1.1, '2024-12-29'],
+      [2, 'test@example.com', 2.2, '2024-12-30'],
+      [1, 'test@example.com', 3.3, '2025-01-05'],
+      [2, 'test@example.com', 4.4, '2025-01-06'],
+      [1, 'test@example.com', 20, '2024-12-28'],
+      [1, 'test@example.com', 20, '2025-01-07'],
+      [3, 'other@example.com', 24, '2025-01-01']
+    ]) {
+      const value = workEntrySchema.validate({ clientId: client, hours, date }).value;
+      await run('INSERT INTO work_entries VALUES (?, ?, ?, ?)', [client, email, hours, value.date.getTime()]);
+    }
+    await run('INSERT INTO work_entries VALUES (?, ?, ?, ?)', [1, 'test@example.com', 0.1, '2025-01-06T23:59:59.999Z']);
+    await run('INSERT INTO work_entries VALUES (?, ?, ?, ?)', [1, 'test@example.com', 0.2, '2025-01-06']);
+  });
+
+  afterEach(async () => {
+    await new Promise((resolve) => db.close(resolve));
+    jest.clearAllMocks();
+  });
+
+  test('groups ISO weeks across years, includes boundaries and isolates users', async () => {
+    const response = await summary({ ...range, groupBy: 'week' });
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      ...range, groupBy: 'week', totalHours: 11.3, entryCount: 6,
+      clients: [
+        { clientId: 2, clientName: 'Beta', totalHours: 6.6, entryCount: 2 },
+        { clientId: 1, clientName: 'Alpha', totalHours: 4.7, entryCount: 4 }
+      ],
+      periods: [
+        { period: '2024-12-23', totalHours: 1.1, entryCount: 1, clients: [{ clientId: 1, clientName: 'Alpha', hours: 1.1 }] },
+        { period: '2024-12-30', totalHours: 5.5, entryCount: 2, clients: [
+          { clientId: 1, clientName: 'Alpha', hours: 3.3 }, { clientId: 2, clientName: 'Beta', hours: 2.2 }
+        ] },
+        { period: '2025-01-06', totalHours: 4.7, entryCount: 3, clients: [
+          { clientId: 1, clientName: 'Alpha', hours: 0.3 }, { clientId: 2, clientName: 'Beta', hours: 4.4 }
+        ] }
+      ]
+    });
+  });
+
+  test('defaults to month grouping', async () => {
+    const response = await summary(range);
+    expect(response.status).toBe(200);
+    expect(response.body.groupBy).toBe('month');
+    expect(response.body.periods.map(({ period, totalHours, entryCount }) => ({ period, totalHours, entryCount }))).toEqual([
+      { period: '2024-12', totalHours: 3.3, entryCount: 2 },
+      { period: '2025-01', totalHours: 8, entryCount: 4 }
+    ]);
+  });
+
+  test('returns empty totals', async () => {
+    const query = { startDate: '2020-01-01', endDate: '2020-01-01', groupBy: 'month' };
+    const response = await summary(query);
+    expect(response.body).toEqual({ ...query, totalHours: 0, entryCount: 0, clients: [], periods: [] });
+  });
+
+  test.each([
+    {}, { startDate: range.startDate }, { endDate: range.endDate },
+    { ...range, startDate: 'bad' }, { ...range, startDate: '2025-02-30' },
+    { ...range, startDate: '2024-12-29T00:00:00Z' },
+    { ...range, endDate: '2024-01-01' }, { ...range, groupBy: 'day' }
+  ])('rejects invalid query %j', async (query) => {
+    const response = await summary(query);
+    expect(response.status).toBe(400);
+    expect(response.body.error).toEqual(expect.any(String));
+  });
+
+  test('returns database errors', async () => {
+    getDatabase.mockReturnValue({ all: (sql, params, callback) => callback(new Error('failure')) });
+    const response = await summary(range);
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({ error: 'Internal server error' });
+  });
+
+  test('requires authentication', async () => {
+    const authenticatedApp = express();
+    authenticatedApp.use('/api/reports', jest.requireActual('../../middleware/auth').authenticateUser, reportRoutes);
+    const response = await request(authenticatedApp).get('/api/reports/summary').query(range);
+    expect(response.status).toBe(401);
+  });
+});
 
 describe('Report Routes', () => {
   let mockDb;

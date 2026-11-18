@@ -32,7 +32,20 @@ const emailSchema = Joi.object({
   email: Joi.string().email().required()
 });
 
+const reportSummarySchema = Joi.object({
+  startDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).isoDate().strict().required(),
+  endDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).isoDate().strict().required(),
+  groupBy: Joi.string().valid('week', 'month').default('month')
+}).custom((value, helpers) => {
+  if ([value.startDate, value.endDate].some((date) => new Date(date).toISOString().slice(0, 10) !== date)) {
+    return helpers.message({ custom: 'Dates must be valid calendar dates' });
+  }
+  if (value.endDate < value.startDate) return helpers.message({ custom: 'endDate must be greater than or equal to startDate' });
+  return value;
+});
+
 module.exports = {
+  reportSummarySchema,
   clientSchema,
   workEntrySchema,
   updateWorkEntrySchema,

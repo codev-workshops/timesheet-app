@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios';
+import type { ReportSummary, ReportSummaryParams } from '../types/api';
 
 // Use empty string to make requests relative to the current origin
 // Vite proxy will forward /api requests to the backend
@@ -114,6 +115,11 @@ class ApiClient {
   }
 
   // Report endpoints
+  async getReportSummary(params: ReportSummaryParams): Promise<ReportSummary> {
+    const response = await this.client.get<ReportSummary>('/api/reports/summary', { params });
+    return response.data;
+  }
+
   async getClientReport(clientId: number) {
     const response = await this.client.get(`/api/reports/client/${clientId}`);
     return response.data;
