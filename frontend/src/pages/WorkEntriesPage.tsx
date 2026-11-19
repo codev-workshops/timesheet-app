@@ -34,7 +34,12 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import apiClient from '../api/client';
-import { type WorkEntry } from '../types/api';
+import {
+  type CreateWorkEntryRequest,
+  type UpdateWorkEntryRequest,
+  type WorkEntry,
+  PROJECT_MAX_LENGTH,
+} from '../types/api';
 
 const WorkEntriesPage: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -43,6 +48,7 @@ const WorkEntriesPage: React.FC = () => {
     clientId: 0,
     hours: '',
     description: '',
+    project: '',
     date: new Date(),
   });
   const [error, setError] = useState('');
@@ -60,7 +66,7 @@ const WorkEntriesPage: React.FC = () => {
   });
 
   const createMutation = useMutation({
-    mutationFn: (entryData: { clientId: number; hours: number; description?: string; date: string }) =>
+    mutationFn: (entryData: CreateWorkEntryRequest) =>
       apiClient.createWorkEntry(entryData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workEntries'] });
@@ -73,7 +79,7 @@ const WorkEntriesPage: React.FC = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { clientId?: number; hours?: number; description?: string; date?: string } }) =>
+    mutationFn: ({ id, data }: { id: number; data: UpdateWorkEntryRequest }) =>
       apiClient.updateWorkEntry(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workEntries'] });
@@ -106,6 +112,7 @@ const WorkEntriesPage: React.FC = () => {
         clientId: entry.client_id,
         hours: entry.hours.toString(),
         description: entry.description || '',
+        project: entry.project ?? '',
         date: new Date(entry.date),
       });
     } else {
@@ -114,6 +121,7 @@ const WorkEntriesPage: React.FC = () => {
         clientId: 0,
         hours: '',
         description: '',
+        project: '',
         date: new Date(),
       });
     }
@@ -128,6 +136,7 @@ const WorkEntriesPage: React.FC = () => {
       clientId: 0,
       hours: '',
       description: '',
+      project: '',
       date: new Date(),
     });
     setError('');
@@ -153,11 +162,19 @@ const WorkEntriesPage: React.FC = () => {
       return;
     }
 
+    const project = formData.project.trim();
+    if (project.length > PROJECT_MAX_LENGTH) {
+      setError(`Project must be ${PROJECT_MAX_LENGTH} characters or less`);
+      return;
+    }
+
+    // A blank project is sent as an explicit null so editing clears a saved tag.
     const entryData = {
       clientId: formData.clientId,
       hours,
       description: formData.description || undefined,
       date: formData.date.toISOString().split('T')[0],
+      project: project || null,
     };
 
     if (editingEntry) {
@@ -218,6 +235,7 @@ const WorkEntriesPage: React.FC = () => {
                     <TableCell>Client</TableCell>
                     <TableCell>Date</TableCell>
                     <TableCell>Hours</TableCell>
+                    <TableCell>Project</TableCell>
                     <TableCell>Description</TableCell>
                     <TableCell align="right">Actions</TableCell>
                   </TableRow>
@@ -242,6 +260,15 @@ const WorkEntriesPage: React.FC = () => {
                             color="primary" 
                             variant="outlined" 
                           />
+                        </TableCell>
+                        <TableCell>
+                          {entry.project ? (
+                            <Chip label={entry.project} size="small" color="secondary" />
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">
+                              —
+                            </Typography>
+                          )}
                         </TableCell>
                         <TableCell>
                           {entry.description ? (
@@ -272,7 +299,7 @@ const WorkEntriesPage: React.FC = () => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={5} align="center">
+                      <TableCell colSpan={6} align="center">
                         <Typography color="text.secondary" sx={{ py: 3 }}>
                           No work entries found. Add your first work entry to get started.
                         </Typography>
@@ -330,6 +357,21 @@ const WorkEntriesPage: React.FC = () => {
                     disabled: createMutation.isPending || updateMutation.isPending,
                   },
                 }}
+              />
+
+              <TextField
+                margin="dense"
+                label="Project"
+                fullWidth
+                value={formData.project}
+                onChange={(e) => setFormData({ ...formData, project: e.target.value })}
+                error={formData.project.trim().length > PROJECT_MAX_LENGTH}
+                helperText={
+                  formData.project.trim().length > PROJECT_MAX_LENGTH
+                    ? `Project must be ${PROJECT_MAX_LENGTH} characters or less`
+                    : 'Optional. Leave blank for no project.'
+                }
+                disabled={createMutation.isPending || updateMutation.isPending}
               />
 
               <TextField

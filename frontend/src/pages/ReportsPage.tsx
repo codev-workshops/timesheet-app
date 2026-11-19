@@ -22,6 +22,8 @@ import {
   Chip,
   IconButton,
   Tooltip,
+  Autocomplete,
+  TextField,
 } from '@mui/material';
 import {
   PictureAsPdf as PdfIcon,
@@ -29,10 +31,11 @@ import {
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../api/client';
-import { type ClientReport } from '../types/api';
+import { type ClientReport, type WorkEntry, PROJECT_MAX_LENGTH } from '../types/api';
 
 const ReportsPage: React.FC = () => {
   const [selectedClientId, setSelectedClientId] = useState<number>(0);
+  const [projectFilter, setProjectFilter] = useState('');
   const [error, setError] = useState('');
 
   const { data: clientsData, isLoading: clientsLoading } = useQuery({
@@ -40,25 +43,49 @@ const ReportsPage: React.FC = () => {
     queryFn: () => apiClient.getClients(),
   });
 
-  const { data: reportData, isLoading: reportLoading } = useQuery({
-    queryKey: ['clientReport', selectedClientId],
-    queryFn: () => apiClient.getClientReport(selectedClientId),
+  // One trimmed value drives the report and both downloads; blank means unfiltered.
+  const activeProject = projectFilter.trim();
+  const projectFilterInvalid = activeProject.length > PROJECT_MAX_LENGTH;
+
+  const { data: clientEntriesData } = useQuery({
+    queryKey: ['workEntries', selectedClientId],
+    queryFn: () => apiClient.getWorkEntries(selectedClientId),
     enabled: selectedClientId > 0,
+  });
+
+  const {
+    data: reportData,
+    isLoading: reportLoading,
+    isError: reportIsError,
+  } = useQuery({
+    queryKey: ['clientReport', selectedClientId, activeProject],
+    queryFn: () => apiClient.getClientReport(selectedClientId, activeProject),
+    enabled: selectedClientId > 0 && !projectFilterInvalid,
   });
 
   const clients = clientsData?.clients || [];
   const report = reportData as ClientReport | undefined;
+  const clientEntries: WorkEntry[] = clientEntriesData?.workEntries || [];
+  const projectOptions = Array.from(
+    new Set(clientEntries.map((entry) => entry.project).filter((p): p is string => !!p))
+  ).sort((a, b) => a.localeCompare(b));
+  const exportDisabled = !selectedClientId || reportLoading || projectFilterInvalid;
+
+  const exportFileName = (extension: string) => {
+    const client = clients.find((c: { id: number; name: string }) => c.id === selectedClientId);
+    const projectPart = activeProject ? `_${activeProject.replace(/[^a-zA-Z0-9]/g, '_')}` : '';
+    return `${client?.name?.replace(/[^a-zA-Z0-9]/g, '_')}${projectPart}_report_${new Date().toISOString().split('T')[0]}.${extension}`;
+  };
 
   const handleExportCsv = async () => {
-    if (!selectedClientId) return;
+    if (!selectedClientId || projectFilterInvalid) return;
     
     try {
-      const blob = await apiClient.exportClientReportCsv(selectedClientId);
+      const blob = await apiClient.exportClientReportCsv(selectedClientId, activeProject);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const client = clients.find((c: { id: number; name: string }) => c.id === selectedClientId);
-      a.download = `${client?.name?.replace(/[^a-zA-Z0-9]/g, '_')}_report_${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = exportFileName('csv');
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -70,15 +97,14 @@ const ReportsPage: React.FC = () => {
   };
 
   const handleExportPdf = async () => {
-    if (!selectedClientId) return;
+    if (!selectedClientId || projectFilterInvalid) return;
 
     try {
-      const blob = await apiClient.exportClientReportPdf(selectedClientId);
+      const blob = await apiClient.exportClientReportPdf(selectedClientId, activeProject);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const client = clients.find((c: { id: number; name: string }) => c.id === selectedClientId);
-      a.download = `${client?.name?.replace(/[^a-zA-Z0-9]/g, '_')}_report_${new Date().toISOString().split('T')[0]}.pdf`;
+      a.download = exportFileName('pdf');
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -124,12 +150,15 @@ const ReportsPage: React.FC = () => {
         <>
           <Paper sx={{ p: 3, mb: 3 }}>
             <Grid container spacing={3} alignItems="center">
-              <Grid size={{ xs: 12, md: 6 }}>
+              <Grid size={{ xs: 12, md: 5 }}>
                 <FormControl fullWidth>
                   <InputLabel>Select Client</InputLabel>
                   <Select
                     value={selectedClientId}
-                    onChange={(e) => setSelectedClientId(Number(e.target.value))}
+                    onChange={(e) => {
+                      setSelectedClientId(Number(e.target.value));
+                      setProjectFilter('');
+                    }}
                     label="Select Client"
                   >
                     <MenuItem value={0}>Choose a client...</MenuItem>
@@ -141,12 +170,34 @@ const ReportsPage: React.FC = () => {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid size={{ xs: 12, md: 6 }}>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Autocomplete
+                  freeSolo
+                  options={projectOptions}
+                  inputValue={projectFilter}
+                  onInputChange={(_event, value) => setProjectFilter(value)}
+                  disabled={!selectedClientId}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Filter by Project"
+                      placeholder="All projects"
+                      error={projectFilterInvalid}
+                      helperText={
+                        projectFilterInvalid
+                          ? `Project must be ${PROJECT_MAX_LENGTH} characters or less`
+                          : 'Exact match. Leave blank for all entries.'
+                      }
+                    />
+                  )}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 3 }}>
                 <Box display="flex" gap={2}>
                   <Tooltip title="Export as CSV">
                     <IconButton
                       onClick={handleExportCsv}
-                      disabled={!selectedClientId || reportLoading}
+                      disabled={exportDisabled}
                       color="primary"
                       size="large"
                     >
@@ -156,7 +207,7 @@ const ReportsPage: React.FC = () => {
                   <Tooltip title="Export as PDF">
                     <IconButton
                       onClick={handleExportPdf}
-                      disabled={!selectedClientId || reportLoading}
+                      disabled={exportDisabled}
                       color="error"
                       size="large"
                     >
@@ -172,6 +223,12 @@ const ReportsPage: React.FC = () => {
             <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
               <CircularProgress />
             </Box>
+          )}
+
+          {selectedClient && reportIsError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              Failed to load report
+            </Alert>
           )}
 
           {selectedClient && report && (
@@ -222,6 +279,7 @@ const ReportsPage: React.FC = () => {
                       <TableRow>
                         <TableCell>Date</TableCell>
                         <TableCell>Hours</TableCell>
+                        <TableCell>Project</TableCell>
                         <TableCell>Description</TableCell>
                         <TableCell>Created</TableCell>
                       </TableRow>
@@ -243,6 +301,15 @@ const ReportsPage: React.FC = () => {
                               />
                             </TableCell>
                             <TableCell>
+                              {entry.project ? (
+                                <Chip label={entry.project} size="small" color="secondary" />
+                              ) : (
+                                <Typography variant="body2" color="text.secondary">
+                                  —
+                                </Typography>
+                              )}
+                            </TableCell>
+                            <TableCell>
                               {entry.description ? (
                                 <Typography variant="body2" color="text.secondary">
                                   {entry.description}
@@ -260,9 +327,11 @@ const ReportsPage: React.FC = () => {
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={4} align="center">
+                          <TableCell colSpan={5} align="center">
                             <Typography color="text.secondary" sx={{ py: 3 }}>
-                              No work entries found for this client.
+                              {activeProject
+                                ? `No work entries found for project "${activeProject}".`
+                                : 'No work entries found for this client.'}
                             </Typography>
                           </TableCell>
                         </TableRow>
