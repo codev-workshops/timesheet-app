@@ -59,6 +59,7 @@ async function initializeDatabase() {
           hours DECIMAL(5,2) NOT NULL,
           description TEXT,
           date DATE NOT NULL,
+          project TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE,
@@ -66,14 +67,40 @@ async function initializeDatabase() {
         )
       `);
 
-      // Create indexes for better performance
-      database.run(`CREATE INDEX IF NOT EXISTS idx_clients_user_email ON clients (user_email)`);
-      database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_client_id ON work_entries (client_id)`);
-      database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_user_email ON work_entries (user_email)`);
-      database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_date ON work_entries (date)`);
+      // Migrate existing work_entries tables: add project column if missing
+      database.all('PRAGMA table_info(work_entries)', (err, columns) => {
+        if (err) {
+          return reject(err);
+        }
 
-      console.log('Database tables created successfully');
-      resolve();
+        const hasProject = (columns || []).some((column) => column.name === 'project');
+        if (hasProject) {
+          return createIndexes();
+        }
+
+        database.run('ALTER TABLE work_entries ADD COLUMN project TEXT', (alterErr) => {
+          if (alterErr) {
+            return reject(alterErr);
+          }
+          createIndexes();
+        });
+      });
+
+      function createIndexes() {
+        database.serialize(() => {
+          // Create indexes for better performance
+          database.run(`CREATE INDEX IF NOT EXISTS idx_clients_user_email ON clients (user_email)`);
+          database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_client_id ON work_entries (client_id)`);
+          database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_user_email ON work_entries (user_email)`);
+          database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_date ON work_entries (date)`, (indexErr) => {
+            if (indexErr) {
+              return reject(indexErr);
+            }
+            console.log('Database tables created successfully');
+            resolve();
+          });
+        });
+      }
     });
   });
 }

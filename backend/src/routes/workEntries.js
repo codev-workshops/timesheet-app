@@ -1,9 +1,17 @@
 const express = require('express');
 const { getDatabase } = require('../database/init');
 const { authenticateUser } = require('../middleware/auth');
-const { workEntrySchema, updateWorkEntrySchema } = require('../validation/schemas');
+const { workEntrySchema, updateWorkEntrySchema, parseProjectFilter } = require('../validation/schemas');
 
 const router = express.Router();
+
+// CAST keeps `date` a string even if SQLite's DATE affinity stored a numeric-looking value
+const WORK_ENTRY_COLUMNS = `we.id, we.client_id, we.hours, we.description, CAST(we.date AS TEXT) AS date,
+           we.project, we.created_at, we.updated_at, c.name as client_name`;
+
+function normalizeProject(project) {
+  return project === '' ? null : project;
+}
 
 // All routes require authentication
 router.use(authenticateUser);
@@ -14,8 +22,7 @@ router.get('/', (req, res) => {
   const db = getDatabase();
   
   let query = `
-    SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-           we.created_at, we.updated_at, c.name as client_name
+    SELECT ${WORK_ENTRY_COLUMNS}
     FROM work_entries we
     JOIN clients c ON we.client_id = c.id
     WHERE we.user_email = ?
@@ -30,6 +37,15 @@ router.get('/', (req, res) => {
     }
     query += ' AND we.client_id = ?';
     params.push(clientIdNum);
+  }
+
+  const projectFilter = parseProjectFilter(req.query.project);
+  if (projectFilter.error) {
+    return res.status(400).json({ error: projectFilter.error });
+  }
+  if (projectFilter.value !== null) {
+    query += ' AND we.project = ?';
+    params.push(projectFilter.value);
   }
   
   query += ' ORDER BY we.date DESC, we.created_at DESC';
@@ -55,8 +71,7 @@ router.get('/:id', (req, res) => {
   const db = getDatabase();
   
   db.get(
-    `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-            we.created_at, we.updated_at, c.name as client_name
+    `SELECT ${WORK_ENTRY_COLUMNS}
      FROM work_entries we
      JOIN clients c ON we.client_id = c.id
      WHERE we.id = ? AND we.user_email = ?`,
@@ -84,7 +99,7 @@ router.post('/', (req, res, next) => {
       return next(error);
     }
 
-    const { clientId, hours, description, date } = value;
+    const { clientId, hours, description, date, project } = value;
     const db = getDatabase();
 
     // Verify client exists and belongs to user
@@ -103,8 +118,8 @@ router.post('/', (req, res, next) => {
 
         // Create work entry
         db.run(
-          'INSERT INTO work_entries (client_id, user_email, hours, description, date) VALUES (?, ?, ?, ?, ?)',
-          [clientId, req.userEmail, hours, description || null, date],
+          'INSERT INTO work_entries (client_id, user_email, hours, description, date, project) VALUES (?, ?, ?, ?, ?, ?)',
+          [clientId, req.userEmail, hours, description || null, date, project ? project : null],
           function(err) {
             if (err) {
               console.error('Database error:', err);
@@ -113,12 +128,11 @@ router.post('/', (req, res, next) => {
 
             // Return the created work entry with client name
             db.get(
-              `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-                      we.created_at, we.updated_at, c.name as client_name
+              `SELECT ${WORK_ENTRY_COLUMNS}
                FROM work_entries we
                JOIN clients c ON we.client_id = c.id
-               WHERE we.id = ?`,
-              [this.lastID],
+               WHERE we.id = ? AND we.user_email = ?`,
+              [this.lastID, req.userEmail],
               (err, row) => {
                 if (err) {
                   console.error('Database error:', err);
@@ -217,6 +231,11 @@ router.put('/:id', (req, res, next) => {
             values.push(value.date);
           }
 
+          if (value.project !== undefined) {
+            updates.push('project = ?');
+            values.push(normalizeProject(value.project));
+          }
+
           updates.push('updated_at = CURRENT_TIMESTAMP');
           values.push(workEntryId, req.userEmail);
 
@@ -230,12 +249,11 @@ router.put('/:id', (req, res, next) => {
 
             // Return updated work entry with client name
             db.get(
-              `SELECT we.id, we.client_id, we.hours, we.description, we.date, 
-                      we.created_at, we.updated_at, c.name as client_name
+              `SELECT ${WORK_ENTRY_COLUMNS}
                FROM work_entries we
                JOIN clients c ON we.client_id = c.id
-               WHERE we.id = ?`,
-              [workEntryId],
+               WHERE we.id = ? AND we.user_email = ?`,
+              [workEntryId, req.userEmail],
               (err, row) => {
                 if (err) {
                   console.error('Database error:', err);

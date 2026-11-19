@@ -8,6 +8,7 @@ jest.mock('sqlite3', () => {
     run: jest.fn((query, callback) => {
       if (typeof callback === 'function') callback(null);
     }),
+    all: jest.fn((query, callback) => callback(null, [])),
     close: jest.fn((callback) => callback(null))
   };
 
@@ -112,6 +113,71 @@ describe('Database Initialization', () => {
 
     test('should resolve promise on success', async () => {
       await expect(initializeDatabase()).resolves.toBeUndefined();
+    });
+
+    test('should include project column in work_entries CREATE TABLE', async () => {
+      const db = getDatabase();
+      await initializeDatabase();
+
+      const workEntriesQuery = db.run.mock.calls.find(call =>
+        call[0].includes('CREATE TABLE IF NOT EXISTS work_entries')
+      );
+      expect(workEntriesQuery[0]).toContain('project TEXT');
+    });
+
+    test('should add project column when missing', async () => {
+      const db = getDatabase();
+      db.all.mockImplementationOnce((query, callback) => callback(null, [{ name: 'id' }, { name: 'date' }]));
+      await initializeDatabase();
+
+      expect(db.all).toHaveBeenCalledWith('PRAGMA table_info(work_entries)', expect.any(Function));
+      const queries = db.run.mock.calls.map(call => call[0]);
+      expect(queries).toContain('ALTER TABLE work_entries ADD COLUMN project TEXT');
+    });
+
+    test('should not alter table when project column exists', async () => {
+      const db = getDatabase();
+      db.all.mockImplementationOnce((query, callback) => callback(null, [{ name: 'id' }, { name: 'project' }]));
+      await initializeDatabase();
+
+      const queries = db.run.mock.calls.map(call => call[0]);
+      expect(queries.some(q => q.includes('ALTER TABLE'))).toBe(false);
+    });
+
+    test('should reject when table_info fails', async () => {
+      const db = getDatabase();
+      db.all.mockImplementationOnce((query, callback) => callback(new Error('pragma failed')));
+
+      await expect(initializeDatabase()).rejects.toThrow('pragma failed');
+    });
+
+    test('should reject when ALTER TABLE fails', async () => {
+      const db = getDatabase();
+      db.all.mockImplementationOnce((query, callback) => callback(null, []));
+      db.run.mockImplementation((query, callback) => {
+        if (typeof callback === 'function') {
+          callback(query.startsWith('ALTER TABLE') ? new Error('alter failed') : null);
+        }
+      });
+
+      await expect(initializeDatabase()).rejects.toThrow('alter failed');
+      db.run.mockImplementation((query, callback) => {
+        if (typeof callback === 'function') callback(null);
+      });
+    });
+
+    test('should reject when index creation fails', async () => {
+      const db = getDatabase();
+      db.run.mockImplementation((query, callback) => {
+        if (typeof callback === 'function') {
+          callback(query.includes('idx_work_entries_date') ? new Error('index failed') : null);
+        }
+      });
+
+      await expect(initializeDatabase()).rejects.toThrow('index failed');
+      db.run.mockImplementation((query, callback) => {
+        if (typeof callback === 'function') callback(null);
+      });
     });
   });
 
