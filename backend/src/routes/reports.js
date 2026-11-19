@@ -26,10 +26,17 @@ function parseProjectFilter(req, res) {
   return value.project;
 }
 
-function selectClientEntries(columns, clientId, userEmail, project) {
-  let query = `SELECT ${columns}
-         FROM work_entries 
-         WHERE client_id = ? AND user_email = ?`;
+const reportEntriesQuery = `
+  SELECT id, hours, description, date, project, created_at, updated_at
+  FROM work_entries
+  WHERE client_id = ? AND user_email = ?`;
+const exportEntriesQuery = `
+  SELECT hours, description, date, created_at
+  FROM work_entries
+  WHERE client_id = ? AND user_email = ?`;
+
+function selectClientEntries(baseQuery, clientId, userEmail, project) {
+  let query = baseQuery;
   const params = [clientId, userEmail];
 
   if (project !== undefined) {
@@ -70,7 +77,7 @@ router.get('/client/:clientId', (req, res) => {
       
       // Get work entries for this client
       const entriesQuery = selectClientEntries(
-        'id, hours, description, date, project, created_at, updated_at',
+        reportEntriesQuery,
         clientId, req.userEmail, project
       );
       db.all(
@@ -126,7 +133,7 @@ router.get('/export/csv/:clientId', (req, res) => {
       
       // Get work entries
       const entriesQuery = selectClientEntries(
-        'hours, description, date, created_at',
+        exportEntriesQuery,
         clientId, req.userEmail, project
       );
       db.all(
@@ -213,7 +220,7 @@ router.get('/export/pdf/:clientId', (req, res) => {
       
       // Get work entries
       const entriesQuery = selectClientEntries(
-        'hours, description, date, created_at',
+        exportEntriesQuery,
         clientId, req.userEmail, project
       );
       db.all(

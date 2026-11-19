@@ -79,7 +79,7 @@ const ReportsPage: React.FC = () => {
   const projectOptions = Array.from(
     new Set(clientEntries.map((entry) => entry.project).filter((p): p is string => !!p))
   ).sort((a, b) => a.localeCompare(b));
-  const exportDisabled = !selectedClientId || reportLoading;
+  const exportDisabled = !selectedClientId || reportLoading || reportIsError;
 
   const exportFileName = (extension: string) => {
     const client = clients.find((c: { id: number; name: string }) => c.id === selectedClientId);
@@ -88,7 +88,7 @@ const ReportsPage: React.FC = () => {
   };
 
   const handleExportCsv = async () => {
-    if (!selectedClientId) return;
+    if (exportDisabled) return;
     
     try {
       const blob = await apiClient.exportClientReportCsv(selectedClientId, activeProject);
@@ -107,7 +107,7 @@ const ReportsPage: React.FC = () => {
   };
 
   const handleExportPdf = async () => {
-    if (!selectedClientId) return;
+    if (exportDisabled) return;
 
     try {
       const blob = await apiClient.exportClientReportPdf(selectedClientId, activeProject);
