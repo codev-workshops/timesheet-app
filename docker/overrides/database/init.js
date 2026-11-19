@@ -36,57 +36,61 @@ function getDatabase() {
 
 async function initializeDatabase() {
   const database = getDatabase();
-  
+
   return new Promise((resolve, reject) => {
-    database.serialize(() => {
-      // Enable foreign keys
-      database.run('PRAGMA foreign_keys = ON');
-      
-      // Create users table
-      database.run(`
-        CREATE TABLE IF NOT EXISTS users (
-          email TEXT PRIMARY KEY,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-
-      // Create clients table
-      database.run(`
-        CREATE TABLE IF NOT EXISTS clients (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL,
-          description TEXT,
-          user_email TEXT NOT NULL,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (user_email) REFERENCES users (email) ON DELETE CASCADE
-        )
-      `);
-
-      // Create work_entries table
-      database.run(`
-        CREATE TABLE IF NOT EXISTS work_entries (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          client_id INTEGER NOT NULL,
-          user_email TEXT NOT NULL,
-          hours DECIMAL(5,2) NOT NULL,
-          description TEXT,
-          date DATE NOT NULL,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE,
-          FOREIGN KEY (user_email) REFERENCES users (email) ON DELETE CASCADE
-        )
-      `);
-
-      // Create indexes for better performance
-      database.run(`CREATE INDEX IF NOT EXISTS idx_clients_user_email ON clients (user_email)`);
-      database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_client_id ON work_entries (client_id)`);
-      database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_user_email ON work_entries (user_email)`);
-      database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_date ON work_entries (date)`);
-
+    const ready = () => {
       console.log('Database tables created successfully');
       resolve();
+    };
+
+    database.exec(`
+      PRAGMA foreign_keys = ON;
+
+      CREATE TABLE IF NOT EXISTS users (
+        email TEXT PRIMARY KEY,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS clients (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        user_email TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_email) REFERENCES users (email) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS work_entries (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        client_id INTEGER NOT NULL,
+        user_email TEXT NOT NULL,
+        hours DECIMAL(5,2) NOT NULL,
+        description TEXT,
+        date DATE NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        project TEXT,
+        FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE,
+        FOREIGN KEY (user_email) REFERENCES users (email) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_clients_user_email ON clients (user_email);
+      CREATE INDEX IF NOT EXISTS idx_work_entries_client_id ON work_entries (client_id);
+      CREATE INDEX IF NOT EXISTS idx_work_entries_user_email ON work_entries (user_email);
+      CREATE INDEX IF NOT EXISTS idx_work_entries_date ON work_entries (date);
+    `, (err) => {
+      if (err) return reject(err);
+
+      database.all('PRAGMA table_info(work_entries)', (err, columns) => {
+        if (err) return reject(err);
+        if (columns.some((column) => column.name === 'project')) return ready();
+
+        database.run('ALTER TABLE work_entries ADD COLUMN project TEXT', (err) => {
+          if (err) return reject(err);
+          ready();
+        });
+      });
     });
   });
 }
