@@ -1,4 +1,10 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios';
+import type {
+  ClientReportQuery,
+  CreateWorkEntryRequest,
+  UpdateWorkEntryRequest,
+  WorkEntriesQuery,
+} from '../types/api';
 
 // Use empty string to make requests relative to the current origin
 // Vite proxy will forward /api requests to the backend
@@ -87,8 +93,11 @@ class ApiClient {
   }
 
   // Work entry endpoints
-  async getWorkEntries(clientId?: number) {
-    const params = clientId ? { clientId } : {};
+  async getWorkEntries(query: WorkEntriesQuery = {}) {
+    const params: WorkEntriesQuery = {};
+    if (query.clientId) params.clientId = query.clientId;
+    const project = query.project?.trim();
+    if (project) params.project = project;
     const response = await this.client.get('/api/work-entries', { params });
     return response.data;
   }
@@ -98,12 +107,12 @@ class ApiClient {
     return response.data;
   }
 
-  async createWorkEntry(entryData: { clientId: number; hours: number; description?: string; date: string }) {
+  async createWorkEntry(entryData: CreateWorkEntryRequest) {
     const response = await this.client.post('/api/work-entries', entryData);
     return response.data;
   }
 
-  async updateWorkEntry(id: number, entryData: { clientId?: number; hours?: number; description?: string; date?: string }) {
+  async updateWorkEntry(id: number, entryData: UpdateWorkEntryRequest) {
     const response = await this.client.put(`/api/work-entries/${id}`, entryData);
     return response.data;
   }
@@ -114,8 +123,11 @@ class ApiClient {
   }
 
   // Report endpoints
-  async getClientReport(clientId: number) {
-    const response = await this.client.get(`/api/reports/client/${clientId}`);
+  async getClientReport(clientId: number, query: ClientReportQuery = {}) {
+    const params: ClientReportQuery = {};
+    const project = query.project?.trim();
+    if (project) params.project = project;
+    const response = await this.client.get(`/api/reports/client/${clientId}`, { params });
     return response.data;
   }
 

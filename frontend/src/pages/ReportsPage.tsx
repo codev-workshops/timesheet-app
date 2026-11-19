@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Typography,
@@ -22,6 +22,7 @@ import {
   Chip,
   IconButton,
   Tooltip,
+  TextField,
 } from '@mui/material';
 import {
   PictureAsPdf as PdfIcon,
@@ -33,7 +34,14 @@ import { type ClientReport } from '../types/api';
 
 const ReportsPage: React.FC = () => {
   const [selectedClientId, setSelectedClientId] = useState<number>(0);
+  const [projectInput, setProjectInput] = useState('');
+  const [project, setProject] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setProject(projectInput.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [projectInput]);
 
   const { data: clientsData, isLoading: clientsLoading } = useQuery({
     queryKey: ['clients'],
@@ -41,8 +49,8 @@ const ReportsPage: React.FC = () => {
   });
 
   const { data: reportData, isLoading: reportLoading } = useQuery({
-    queryKey: ['clientReport', selectedClientId],
-    queryFn: () => apiClient.getClientReport(selectedClientId),
+    queryKey: ['clientReport', selectedClientId, project],
+    queryFn: () => apiClient.getClientReport(selectedClientId, { project }),
     enabled: selectedClientId > 0,
   });
 
@@ -124,7 +132,7 @@ const ReportsPage: React.FC = () => {
         <>
           <Paper sx={{ p: 3, mb: 3 }}>
             <Grid container spacing={3} alignItems="center">
-              <Grid size={{ xs: 12, md: 6 }}>
+              <Grid size={{ xs: 12, md: 5 }}>
                 <FormControl fullWidth>
                   <InputLabel>Select Client</InputLabel>
                   <Select
@@ -141,7 +149,18 @@ const ReportsPage: React.FC = () => {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid size={{ xs: 12, md: 6 }}>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  label="Project"
+                  placeholder="All projects"
+                  fullWidth
+                  inputProps={{ maxLength: 200 }}
+                  value={projectInput}
+                  onChange={(e) => setProjectInput(e.target.value)}
+                  helperText="Exact match; exports include all projects"
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 3 }}>
                 <Box display="flex" gap={2}>
                   <Tooltip title="Export as CSV">
                     <IconButton
@@ -221,6 +240,7 @@ const ReportsPage: React.FC = () => {
                     <TableHead>
                       <TableRow>
                         <TableCell>Date</TableCell>
+                        <TableCell>Project</TableCell>
                         <TableCell>Hours</TableCell>
                         <TableCell>Description</TableCell>
                         <TableCell>Created</TableCell>
@@ -233,6 +253,11 @@ const ReportsPage: React.FC = () => {
                             <TableCell>
                               <Typography variant="body2">
                                 {new Date(entry.date).toLocaleDateString()}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2" color={entry.project ? 'text.primary' : 'text.secondary'}>
+                                {entry.project || '—'}
                               </Typography>
                             </TableCell>
                             <TableCell>
@@ -260,9 +285,11 @@ const ReportsPage: React.FC = () => {
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={4} align="center">
+                          <TableCell colSpan={5} align="center">
                             <Typography color="text.secondary" sx={{ py: 3 }}>
-                              No work entries found for this client.
+                              {project
+                                ? `No work entries found for project "${project}".`
+                                : 'No work entries found for this client.'}
                             </Typography>
                           </TableCell>
                         </TableRow>
