@@ -3,6 +3,7 @@ const {
   workEntrySchema,
   updateWorkEntrySchema,
   updateClientSchema,
+  reportProjectQuerySchema,
   emailSchema
 } = require('../../validation/schemas');
 
@@ -323,6 +324,58 @@ describe('Validation Schemas', () => {
 
       const { error } = emailSchema.validate(data);
       expect(error).toBeUndefined();
+    });
+  });
+
+  describe('project tag fields', () => {
+    const base = { clientId: 1, hours: 2, date: '2024-01-15' };
+
+    test.each([
+      ['workEntrySchema', workEntrySchema, base],
+      ['updateWorkEntrySchema', updateWorkEntrySchema, {}]
+    ])('%s trims project and enforces the 50 limit after trimming', (_name, schema, extra) => {
+      expect(schema.validate({ ...extra, project: '  Client Launch  ' }).value.project).toBe('Client Launch');
+      expect(schema.validate({ ...extra, project: `  ${'a'.repeat(50)}  ` }).error).toBeUndefined();
+      expect(schema.validate({ ...extra, project: 'a'.repeat(51) }).error).toBeDefined();
+    });
+
+    test.each([
+      ['workEntrySchema', workEntrySchema, base],
+      ['updateWorkEntrySchema', updateWorkEntrySchema, {}]
+    ])('%s allows null, empty and whitespace-only project', (_name, schema, extra) => {
+      expect(schema.validate({ ...extra, project: null }).error).toBeUndefined();
+      expect(schema.validate({ ...extra, project: '' }).error).toBeUndefined();
+      const { error, value } = schema.validate({ ...extra, project: '   ' });
+      expect(error).toBeUndefined();
+      expect(value.project).toBe('');
+    });
+
+    test.each([42, true, ['a'], { a: 'b' }])('rejects non-string project %p', (project) => {
+      expect(workEntrySchema.validate({ ...base, project }).error).toBeDefined();
+      expect(updateWorkEntrySchema.validate({ project }).error).toBeDefined();
+    });
+
+    test('project is optional on create and sufficient alone on update', () => {
+      expect(workEntrySchema.validate(base).error).toBeUndefined();
+      expect(updateWorkEntrySchema.validate({ project: 'Solo' }).error).toBeUndefined();
+      expect(updateWorkEntrySchema.validate({}).error).toBeDefined();
+    });
+  });
+
+  describe('reportProjectQuerySchema', () => {
+    test('project is optional', () => {
+      expect(reportProjectQuerySchema.validate({}).error).toBeUndefined();
+      expect(reportProjectQuerySchema.validate({ project: undefined }).error).toBeUndefined();
+    });
+
+    test('trims a valid project', () => {
+      const { error, value } = reportProjectQuerySchema.validate({ project: ' Client Launch ' });
+      expect(error).toBeUndefined();
+      expect(value.project).toBe('Client Launch');
+    });
+
+    test.each(['', '   ', 'a'.repeat(51), ['a', 'b'], { name: 'a' }])('rejects %p', (project) => {
+      expect(reportProjectQuerySchema.validate({ project }).error).toBeDefined();
     });
   });
 });

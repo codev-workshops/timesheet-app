@@ -8,6 +8,7 @@ jest.mock('sqlite3', () => {
     run: jest.fn((query, callback) => {
       if (typeof callback === 'function') callback(null);
     }),
+    all: jest.fn((query, callback) => callback(null, [{ name: 'id' }, { name: 'project' }])),
     close: jest.fn((callback) => callback(null))
   };
 
@@ -182,6 +183,77 @@ describe('Database Initialization', () => {
       expect(workEntriesQuery).toBeDefined();
       expect(workEntriesQuery[0]).toContain('FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE');
       expect(workEntriesQuery[0]).toContain('FOREIGN KEY (user_email) REFERENCES users (email) ON DELETE CASCADE');
+    });
+  });
+
+  describe('work_entries.project migration', () => {
+    const defaultRun = (query, callback) => {
+      if (typeof callback === 'function') callback(null);
+    };
+    const withColumns = (names) => (query, callback) => callback(null, names.map((name) => ({ name })));
+    let db;
+
+    beforeEach(() => {
+      db = getDatabase();
+    });
+
+    afterEach(() => {
+      db.run.mockImplementation(defaultRun);
+      db.all.mockImplementation(withColumns(['id', 'project']));
+    });
+
+    const alterCalls = () => db.run.mock.calls.filter((call) => call[0].startsWith('ALTER TABLE'));
+
+    test('fresh work_entries schema declares project as TEXT', async () => {
+      await initializeDatabase();
+      const createQuery = db.run.mock.calls.find((call) =>
+        call[0].includes('CREATE TABLE IF NOT EXISTS work_entries')
+      );
+      expect(createQuery[0]).toContain('project TEXT,');
+    });
+
+    test('does not alter the table when project already exists', async () => {
+      await initializeDatabase();
+      expect(db.all).toHaveBeenCalledWith('PRAGMA table_info(work_entries)', expect.any(Function));
+      expect(alterCalls()).toHaveLength(0);
+    });
+
+    test('adds project when the column is missing', async () => {
+      db.all.mockImplementation(withColumns(['id', 'description']));
+      await initializeDatabase();
+      expect(alterCalls().map((call) => call[0])).toEqual(['ALTER TABLE work_entries ADD COLUMN project TEXT']);
+    });
+
+    test('succeeds when another initializer added the column first', async () => {
+      db.all
+        .mockImplementationOnce(withColumns(['id']))
+        .mockImplementationOnce(withColumns(['id', 'project']));
+      db.run.mockImplementation((query, callback) => {
+        callback(query.startsWith('ALTER TABLE') ? new Error('duplicate column name: project') : null);
+      });
+      await expect(initializeDatabase()).resolves.toBeUndefined();
+    });
+
+    test('fails initialization on an unexpected ALTER error', async () => {
+      db.all.mockImplementation(withColumns(['id']));
+      db.run.mockImplementation((query, callback) => {
+        callback(query.startsWith('ALTER TABLE') ? new Error('disk I/O error') : null);
+      });
+      await expect(initializeDatabase()).rejects.toThrow('disk I/O error');
+      expect(consoleLogSpy).not.toHaveBeenCalledWith('Database tables created successfully');
+    });
+
+    test('fails initialization when table_info cannot be read', async () => {
+      db.all.mockImplementation((query, callback) => callback(new Error('table_info failed')));
+      await expect(initializeDatabase()).rejects.toThrow('table_info failed');
+    });
+
+    test('fails initialization when a schema statement fails', async () => {
+      db.run.mockImplementation((query, callback) => {
+        callback(query.includes('CREATE TABLE IF NOT EXISTS clients') ? new Error('create failed') : null);
+      });
+      await expect(initializeDatabase()).rejects.toThrow('create failed');
+      expect(db.all).not.toHaveBeenCalled();
     });
   });
 });

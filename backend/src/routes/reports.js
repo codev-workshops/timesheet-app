@@ -1,6 +1,7 @@
 const express = require('express');
 const { getDatabase } = require('../database/init');
 const { authenticateUser } = require('../middleware/auth');
+const { reportProjectQuerySchema } = require('../validation/schemas');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const PDFDocument = require('pdfkit');
 const path = require('path');
@@ -11,6 +12,35 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticateUser);
 
+// Validates the optional ?project= filter. Returns the trimmed project, or
+// undefined when unfiltered; sends a 400 and returns null when invalid.
+function parseProjectFilter(req, res) {
+  const { error, value } = reportProjectQuerySchema.validate({ project: req.query.project });
+  if (error) {
+    res.status(400).json({
+      error: 'Validation error',
+      details: error.details.map(detail => detail.message)
+    });
+    return null;
+  }
+  return value.project;
+}
+
+function selectClientEntries(columns, clientId, userEmail, project) {
+  let query = `SELECT ${columns}
+         FROM work_entries 
+         WHERE client_id = ? AND user_email = ?`;
+  const params = [clientId, userEmail];
+
+  if (project !== undefined) {
+    query += ' AND project = ?';
+    params.push(project);
+  }
+
+  query += ' ORDER BY date DESC';
+  return { query, params };
+}
+
 // Get hourly report for specific client
 router.get('/client/:clientId', (req, res) => {
   const clientId = parseInt(req.params.clientId);
@@ -18,6 +48,9 @@ router.get('/client/:clientId', (req, res) => {
   if (isNaN(clientId)) {
     return res.status(400).json({ error: 'Invalid client ID' });
   }
+
+  const project = parseProjectFilter(req, res);
+  if (project === null) return;
   
   const db = getDatabase();
   
@@ -36,12 +69,13 @@ router.get('/client/:clientId', (req, res) => {
       }
       
       // Get work entries for this client
+      const entriesQuery = selectClientEntries(
+        'id, hours, description, date, project, created_at, updated_at',
+        clientId, req.userEmail, project
+      );
       db.all(
-        `SELECT id, hours, description, date, created_at, updated_at
-         FROM work_entries 
-         WHERE client_id = ? AND user_email = ? 
-         ORDER BY date DESC`,
-        [clientId, req.userEmail],
+        entriesQuery.query,
+        entriesQuery.params,
         (err, workEntries) => {
           if (err) {
             console.error('Database error:', err);
@@ -70,6 +104,9 @@ router.get('/export/csv/:clientId', (req, res) => {
   if (isNaN(clientId)) {
     return res.status(400).json({ error: 'Invalid client ID' });
   }
+
+  const project = parseProjectFilter(req, res);
+  if (project === null) return;
   
   const db = getDatabase();
   
@@ -88,12 +125,13 @@ router.get('/export/csv/:clientId', (req, res) => {
       }
       
       // Get work entries
+      const entriesQuery = selectClientEntries(
+        'hours, description, date, created_at',
+        clientId, req.userEmail, project
+      );
       db.all(
-        `SELECT hours, description, date, created_at
-         FROM work_entries 
-         WHERE client_id = ? AND user_email = ? 
-         ORDER BY date DESC`,
-        [clientId, req.userEmail],
+        entriesQuery.query,
+        entriesQuery.params,
         (err, workEntries) => {
           if (err) {
             console.error('Database error:', err);
@@ -153,6 +191,9 @@ router.get('/export/pdf/:clientId', (req, res) => {
   if (isNaN(clientId)) {
     return res.status(400).json({ error: 'Invalid client ID' });
   }
+
+  const project = parseProjectFilter(req, res);
+  if (project === null) return;
   
   const db = getDatabase();
   
@@ -171,12 +212,13 @@ router.get('/export/pdf/:clientId', (req, res) => {
       }
       
       // Get work entries
+      const entriesQuery = selectClientEntries(
+        'hours, description, date, created_at',
+        clientId, req.userEmail, project
+      );
       db.all(
-        `SELECT hours, description, date, created_at
-         FROM work_entries 
-         WHERE client_id = ? AND user_email = ? 
-         ORDER BY date DESC`,
-        [clientId, req.userEmail],
+        entriesQuery.query,
+        entriesQuery.params,
         (err, workEntries) => {
           if (err) {
             console.error('Database error:', err);
