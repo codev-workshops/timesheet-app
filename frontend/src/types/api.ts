@@ -19,6 +19,7 @@ export interface WorkEntry {
   hours: number;
   description: string | null;
   date: string;
+  project: string | null;
   created_at: string;
   updated_at: string;
   client_name?: string;
@@ -28,9 +29,14 @@ export interface WorkEntryWithClient extends WorkEntry {
   client_name: string;
 }
 
+export type ClientReportEntry = Pick<
+  WorkEntry,
+  'id' | 'hours' | 'description' | 'date' | 'project' | 'created_at' | 'updated_at'
+>;
+
 export interface ClientReport {
-  client: Client;
-  workEntries: WorkEntry[];
+  client: Pick<Client, 'id' | 'name'>;
+  workEntries: ClientReportEntry[];
   totalHours: number;
   entryCount: number;
 }
@@ -54,6 +60,7 @@ export interface CreateWorkEntryRequest {
   hours: number;
   description?: string;
   date: string;
+  project?: string;
 }
 
 export interface UpdateWorkEntryRequest {
@@ -61,6 +68,16 @@ export interface UpdateWorkEntryRequest {
   hours?: number;
   description?: string;
   date?: string;
+  project?: string;
+}
+
+export interface WorkEntriesQuery {
+  clientId?: number;
+  project?: string;
+}
+
+export interface ClientReportQuery {
+  project?: string;
 }
 
 export interface LoginRequest {
@@ -70,6 +87,11 @@ export interface LoginRequest {
 export interface LoginResponse {
   message: string;
   user: User;
+}
+
+export interface ApiError {
+  error: string;
+  details?: string[];
 }
 
 export interface ApiResponse<T> {

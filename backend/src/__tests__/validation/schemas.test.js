@@ -3,6 +3,7 @@ const {
   workEntrySchema,
   updateWorkEntrySchema,
   updateClientSchema,
+  parseProjectFilter,
   emailSchema
 } = require('../../validation/schemas');
 
@@ -323,6 +324,47 @@ describe('Validation Schemas', () => {
 
       const { error } = emailSchema.validate(data);
       expect(error).toBeUndefined();
+    });
+  });
+
+  describe('project field', () => {
+    const base = { clientId: 1, hours: 2, date: '2024-01-15' };
+
+    test.each([workEntrySchema, updateWorkEntrySchema])('trims project and allows empty string', (schema) => {
+      expect(schema.validate({ ...base, project: '  Apollo  ' }).value.project).toBe('Apollo');
+      expect(schema.validate({ ...base, project: '   ' }).value.project).toBe('');
+    });
+
+    test.each([null, 5, true, ['a'], { a: 1 }, 'x'.repeat(201)])('rejects invalid project %p', (project) => {
+      expect(workEntrySchema.validate({ ...base, project }).error).toBeDefined();
+      expect(updateWorkEntrySchema.validate({ project }).error).toBeDefined();
+    });
+
+    test('project-only update body is valid', () => {
+      expect(updateWorkEntrySchema.validate({ project: '' }).error).toBeUndefined();
+    });
+  });
+
+  describe('date is kept verbatim', () => {
+    test.each(['2024-01-15', '2024-01-15T10:30:00.000Z'])('returns %p as the raw string', (date) => {
+      const { error, value } = workEntrySchema.validate({ clientId: 1, hours: 2, date });
+      expect(error).toBeUndefined();
+      expect(value.date).toBe(date);
+      expect(updateWorkEntrySchema.validate({ date }).value.date).toBe(date);
+    });
+  });
+
+  describe('parseProjectFilter', () => {
+    test.each([undefined, '', '   '])('treats %p as no filter', (raw) => {
+      expect(parseProjectFilter(raw)).toEqual({ value: null });
+    });
+
+    test('returns trimmed value', () => {
+      expect(parseProjectFilter('  Apollo ')).toEqual({ value: 'Apollo' });
+    });
+
+    test.each([['a', 'b'], { a: 'b' }, 'x'.repeat(201)])('rejects %p', (raw) => {
+      expect(parseProjectFilter(raw)).toEqual({ error: 'Invalid project filter' });
     });
   });
 });

@@ -1,6 +1,7 @@
 const express = require('express');
 const { getDatabase } = require('../database/init');
 const { authenticateUser } = require('../middleware/auth');
+const { parseProjectFilter } = require('../validation/schemas');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const PDFDocument = require('pdfkit');
 const path = require('path');
@@ -17,6 +18,11 @@ router.get('/client/:clientId', (req, res) => {
   
   if (isNaN(clientId)) {
     return res.status(400).json({ error: 'Invalid client ID' });
+  }
+
+  const projectFilter = parseProjectFilter(req.query.project);
+  if (projectFilter.error) {
+    return res.status(400).json({ error: projectFilter.error });
   }
   
   const db = getDatabase();
@@ -35,13 +41,20 @@ router.get('/client/:clientId', (req, res) => {
         return res.status(404).json({ error: 'Client not found' });
       }
       
-      // Get work entries for this client
+      // Get work entries for this client (optionally filtered by project)
+      const params = [clientId, req.userEmail];
+      let projectCondition = '';
+      if (projectFilter.value !== null) {
+        projectCondition = ' AND project = ?';
+        params.push(projectFilter.value);
+      }
+
       db.all(
-        `SELECT id, hours, description, date, created_at, updated_at
+        `SELECT id, hours, description, CAST(date AS TEXT) AS date, project, created_at, updated_at
          FROM work_entries 
-         WHERE client_id = ? AND user_email = ? 
+         WHERE client_id = ? AND user_email = ?${projectCondition}
          ORDER BY date DESC`,
-        [clientId, req.userEmail],
+        params,
         (err, workEntries) => {
           if (err) {
             console.error('Database error:', err);
