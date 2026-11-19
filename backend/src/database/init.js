@@ -22,10 +22,39 @@ function getDatabase() {
   return db;
 }
 
+// Adds work_entries.project to tables created before the project tag existed.
+function ensureWorkEntriesProjectColumn(database, callback) {
+  const hasProjectColumn = (done) => {
+    database.all('PRAGMA table_info(work_entries)', (err, columns) => {
+      if (err) return done(err);
+      done(null, columns.some((col) => col.name === 'project'));
+    });
+  };
+
+  hasProjectColumn((err, exists) => {
+    if (err) return callback(err);
+    if (exists) return callback(null);
+
+    database.run('ALTER TABLE work_entries ADD COLUMN project TEXT', (alterErr) => {
+      if (!alterErr) return callback(null);
+      // A concurrent initializer may have added the column first.
+      hasProjectColumn((recheckErr, existsNow) => {
+        if (!recheckErr && existsNow) return callback(null);
+        callback(alterErr);
+      });
+    });
+  });
+}
+
 async function initializeDatabase() {
   const database = getDatabase();
   
   return new Promise((resolve, reject) => {
+    let schemaError = null;
+    const track = (err) => {
+      if (err && !schemaError) schemaError = err;
+    };
+
     database.serialize(() => {
       // Create users table
       database.run(`
@@ -33,7 +62,7 @@ async function initializeDatabase() {
           email TEXT PRIMARY KEY,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
-      `);
+      `, track);
 
       // Create clients table
       database.run(`
@@ -48,7 +77,7 @@ async function initializeDatabase() {
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (user_email) REFERENCES users (email) ON DELETE CASCADE
         )
-      `);
+      `, track);
 
       // Create work_entries table
       database.run(`
@@ -59,21 +88,35 @@ async function initializeDatabase() {
           hours DECIMAL(5,2) NOT NULL,
           description TEXT,
           date DATE NOT NULL,
+          project TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE,
           FOREIGN KEY (user_email) REFERENCES users (email) ON DELETE CASCADE
         )
-      `);
+      `, track);
 
       // Create indexes for better performance
-      database.run(`CREATE INDEX IF NOT EXISTS idx_clients_user_email ON clients (user_email)`);
-      database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_client_id ON work_entries (client_id)`);
-      database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_user_email ON work_entries (user_email)`);
-      database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_date ON work_entries (date)`);
+      database.run(`CREATE INDEX IF NOT EXISTS idx_clients_user_email ON clients (user_email)`, track);
+      database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_client_id ON work_entries (client_id)`, track);
+      database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_user_email ON work_entries (user_email)`, track);
+      database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_date ON work_entries (date)`, (err) => {
+        track(err);
+        if (schemaError) {
+          console.error('Error initializing database:', schemaError);
+          return reject(schemaError);
+        }
 
-      console.log('Database tables created successfully');
-      resolve();
+        ensureWorkEntriesProjectColumn(database, (migrationErr) => {
+          if (migrationErr) {
+            console.error('Error migrating work_entries.project:', migrationErr);
+            return reject(migrationErr);
+          }
+
+          console.log('Database tables created successfully');
+          resolve();
+        });
+      });
     });
   });
 }

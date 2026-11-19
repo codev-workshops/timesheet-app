@@ -585,4 +585,69 @@ describe('Work Entry Routes', () => {
       expect(response.body.message).toBe('Work entry updated successfully');
     });
   });
+
+  describe('project tag SQL', () => {
+    test('POST binds project and scopes the read-back by user email', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, query.includes('FROM clients') ? { id: 1 } : { id: 7, project: 'Client Launch' });
+      });
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        callback.call({ lastID: 7 }, null);
+      });
+
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 2, date: '2024-01-15', project: '  Client Launch ' });
+
+      expect(response.status).toBe(201);
+      const [insertQuery, insertParams] = mockDb.run.mock.calls[0];
+      expect(insertQuery).toContain('project) VALUES (?, ?, ?, ?, ?, ?)');
+      expect(insertParams[0]).toBe(1);
+      expect(insertParams[1]).toBe('test@example.com');
+      expect(insertParams[5]).toBe('Client Launch');
+
+      const [readQuery, readParams] = mockDb.get.mock.calls[1];
+      expect(readQuery).toContain('we.project');
+      expect(readQuery).toContain('WHERE we.id = ? AND we.user_email = ?');
+      expect(readParams).toEqual([7, 'test@example.com']);
+    });
+
+    test('POST without project binds null', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, { id: 1 }));
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        callback.call({ lastID: 1 }, null);
+      });
+
+      await request(app).post('/api/work-entries').send({ clientId: 1, hours: 2, date: '2024-01-15' });
+
+      expect(mockDb.run.mock.calls[0][1][5]).toBeNull();
+    });
+
+    test('PUT with only project binds it and scopes the read-back by user email', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, { id: 3 }));
+      mockDb.run.mockImplementation((query, params, callback) => callback(null));
+
+      const response = await request(app).put('/api/work-entries/3').send({ project: '   ' });
+
+      expect(response.status).toBe(200);
+      const [updateQuery, updateParams] = mockDb.run.mock.calls[0];
+      expect(updateQuery).toBe(
+        'UPDATE work_entries SET project = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_email = ?'
+      );
+      expect(updateParams).toEqual([null, 3, 'test@example.com']);
+
+      const [readQuery, readParams] = mockDb.get.mock.calls[1];
+      expect(readQuery).toContain('WHERE we.id = ? AND we.user_email = ?');
+      expect(readParams).toEqual([3, 'test@example.com']);
+    });
+
+    test('PUT without project leaves the column untouched', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, { id: 3 }));
+      mockDb.run.mockImplementation((query, params, callback) => callback(null));
+
+      await request(app).put('/api/work-entries/3').send({ hours: 4 });
+
+      expect(mockDb.run.mock.calls[0][0]).not.toContain('project');
+    });
+  });
 });

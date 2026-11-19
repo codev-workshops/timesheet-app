@@ -438,4 +438,64 @@ describe('Report Routes', () => {
       );
     });
   });
+
+  describe('project filter', () => {
+    beforeEach(() => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, { id: 1, name: 'Test Client' }));
+      mockDb.all.mockImplementation((query, params, callback) => callback(null, []));
+    });
+
+    // Exports stop at a failed entries query so no file or PDF stream is produced.
+    const stopAfterQuery = (route) => {
+      if (route !== 'client') {
+        mockDb.all.mockImplementation((query, params, callback) => callback(new Error('stop'), null));
+      }
+    };
+
+    test.each(['client', 'export/csv', 'export/pdf'])('%s binds the trimmed project filter', async (route) => {
+      stopAfterQuery(route);
+      await request(app).get(`/api/reports/${route}/1?project=%20Client%20Launch%20`);
+
+      const [query, params] = mockDb.all.mock.calls[0];
+      expect(query).toContain('WHERE client_id = ? AND user_email = ? AND project = ?');
+      expect(query).not.toContain('Client Launch');
+      expect(params).toEqual([1, 'test@example.com', 'Client Launch']);
+    });
+
+    test.each(['client', 'export/csv', 'export/pdf'])('%s omits the filter when not provided', async (route) => {
+      stopAfterQuery(route);
+      await request(app).get(`/api/reports/${route}/1`);
+
+      const [query, params] = mockDb.all.mock.calls[0];
+      expect(query).not.toContain('project = ?');
+      expect(params).toEqual([1, 'test@example.com']);
+    });
+
+    test('client report rows include project', async () => {
+      await request(app).get('/api/reports/client/1');
+      expect(mockDb.all.mock.calls[0][0]).toContain('project');
+    });
+
+    test('invalid filter returns 400 before any database access', async () => {
+      const response = await request(app).get('/api/reports/client/1?project=');
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('Validation error');
+      expect(Array.isArray(response.body.details)).toBe(true);
+      expect(mockDb.get).not.toHaveBeenCalled();
+      expect(mockDb.all).not.toHaveBeenCalled();
+    });
+
+    test('empty filtered report returns zero totals', async () => {
+      const response = await request(app).get('/api/reports/client/1?project=None');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        client: { id: 1, name: 'Test Client' },
+        workEntries: [],
+        totalHours: 0,
+        entryCount: 0
+      });
+    });
+  });
 });
