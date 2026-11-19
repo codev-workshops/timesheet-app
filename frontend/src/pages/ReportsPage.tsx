@@ -35,7 +35,8 @@ import { type ClientReport, type WorkEntry, PROJECT_MAX_LENGTH } from '../types/
 
 const ReportsPage: React.FC = () => {
   const [selectedClientId, setSelectedClientId] = useState<number>(0);
-  const [projectFilter, setProjectFilter] = useState('');
+  const [projectInput, setProjectInput] = useState('');
+  const [appliedProject, setAppliedProject] = useState('');
   const [error, setError] = useState('');
 
   const { data: clientsData, isLoading: clientsLoading } = useQuery({
@@ -43,9 +44,18 @@ const ReportsPage: React.FC = () => {
     queryFn: () => apiClient.getClients(),
   });
 
-  // One trimmed value drives the report and both downloads; blank means unfiltered.
-  const activeProject = projectFilter.trim();
-  const projectFilterInvalid = activeProject.length > PROJECT_MAX_LENGTH;
+  // Typed text is only applied on Enter, option select, or Apply, to avoid a request per keystroke.
+  // The applied (trimmed) value drives the report and both downloads; blank means unfiltered.
+  const activeProject = appliedProject;
+  const trimmedInput = projectInput.trim();
+  const projectInputInvalid = trimmedInput.length > PROJECT_MAX_LENGTH;
+  const projectInputPending = trimmedInput !== activeProject;
+
+  const applyProjectFilter = (value: string) => {
+    const trimmed = value.trim();
+    if (trimmed.length > PROJECT_MAX_LENGTH) return;
+    setAppliedProject(trimmed);
+  };
 
   const { data: clientEntriesData } = useQuery({
     queryKey: ['workEntries', selectedClientId],
@@ -60,7 +70,7 @@ const ReportsPage: React.FC = () => {
   } = useQuery({
     queryKey: ['clientReport', selectedClientId, activeProject],
     queryFn: () => apiClient.getClientReport(selectedClientId, activeProject),
-    enabled: selectedClientId > 0 && !projectFilterInvalid,
+    enabled: selectedClientId > 0,
   });
 
   const clients = clientsData?.clients || [];
@@ -69,7 +79,7 @@ const ReportsPage: React.FC = () => {
   const projectOptions = Array.from(
     new Set(clientEntries.map((entry) => entry.project).filter((p): p is string => !!p))
   ).sort((a, b) => a.localeCompare(b));
-  const exportDisabled = !selectedClientId || reportLoading || projectFilterInvalid;
+  const exportDisabled = !selectedClientId || reportLoading;
 
   const exportFileName = (extension: string) => {
     const client = clients.find((c: { id: number; name: string }) => c.id === selectedClientId);
@@ -78,7 +88,7 @@ const ReportsPage: React.FC = () => {
   };
 
   const handleExportCsv = async () => {
-    if (!selectedClientId || projectFilterInvalid) return;
+    if (!selectedClientId) return;
     
     try {
       const blob = await apiClient.exportClientReportCsv(selectedClientId, activeProject);
@@ -97,7 +107,7 @@ const ReportsPage: React.FC = () => {
   };
 
   const handleExportPdf = async () => {
-    if (!selectedClientId || projectFilterInvalid) return;
+    if (!selectedClientId) return;
 
     try {
       const blob = await apiClient.exportClientReportPdf(selectedClientId, activeProject);
@@ -157,7 +167,8 @@ const ReportsPage: React.FC = () => {
                     value={selectedClientId}
                     onChange={(e) => {
                       setSelectedClientId(Number(e.target.value));
-                      setProjectFilter('');
+                      setProjectInput('');
+                      setAppliedProject('');
                     }}
                     label="Select Client"
                   >
@@ -171,26 +182,41 @@ const ReportsPage: React.FC = () => {
                 </FormControl>
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
-                <Autocomplete
-                  freeSolo
-                  options={projectOptions}
-                  inputValue={projectFilter}
-                  onInputChange={(_event, value) => setProjectFilter(value)}
-                  disabled={!selectedClientId}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Filter by Project"
-                      placeholder="All projects"
-                      error={projectFilterInvalid}
-                      helperText={
-                        projectFilterInvalid
-                          ? `Project must be ${PROJECT_MAX_LENGTH} characters or less`
-                          : 'Exact match. Leave blank for all entries.'
-                      }
-                    />
-                  )}
-                />
+                <Box display="flex" gap={1} alignItems="flex-start">
+                  <Autocomplete
+                    freeSolo
+                    fullWidth
+                    options={projectOptions}
+                    value={activeProject || null}
+                    onChange={(_event, value) => applyProjectFilter(value ?? '')}
+                    inputValue={projectInput}
+                    onInputChange={(_event, value) => setProjectInput(value)}
+                    disabled={!selectedClientId}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Filter by Project"
+                        placeholder="All projects"
+                        error={projectInputInvalid}
+                        helperText={
+                          projectInputInvalid
+                            ? `Project must be ${PROJECT_MAX_LENGTH} characters or less`
+                            : projectInputPending
+                              ? 'Press Enter or Apply to filter.'
+                              : 'Exact match. Leave blank for all entries.'
+                        }
+                      />
+                    )}
+                  />
+                  <Button
+                    variant="contained"
+                    onClick={() => applyProjectFilter(projectInput)}
+                    disabled={!selectedClientId || projectInputInvalid || !projectInputPending}
+                    sx={{ mt: 1 }}
+                  >
+                    Apply
+                  </Button>
+                </Box>
               </Grid>
               <Grid size={{ xs: 12, md: 3 }}>
                 <Box display="flex" gap={2}>

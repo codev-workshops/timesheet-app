@@ -70,6 +70,7 @@ const WorkEntriesPage: React.FC = () => {
       apiClient.createWorkEntry(entryData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['clientReport'] });
       handleClose();
     },
     onError: (err: unknown) => {
@@ -83,6 +84,7 @@ const WorkEntriesPage: React.FC = () => {
       apiClient.updateWorkEntry(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['clientReport'] });
       handleClose();
     },
     onError: (err: unknown) => {
@@ -95,6 +97,7 @@ const WorkEntriesPage: React.FC = () => {
     mutationFn: (id: number) => apiClient.deleteWorkEntry(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['clientReport'] });
     },
     onError: (err: unknown) => {
       const error = err as { response?: { data?: { error?: string } } };
