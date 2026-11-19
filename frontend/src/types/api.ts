@@ -22,6 +22,7 @@ export interface WorkEntry {
   created_at: string;
   updated_at: string;
   client_name?: string;
+  project: string | null;
 }
 
 export interface WorkEntryWithClient extends WorkEntry {
@@ -54,6 +55,7 @@ export interface CreateWorkEntryRequest {
   hours: number;
   description?: string;
   date: string;
+  project?: string | null;
 }
 
 export interface UpdateWorkEntryRequest {
@@ -61,7 +63,10 @@ export interface UpdateWorkEntryRequest {
   hours?: number;
   description?: string;
   date?: string;
+  project?: string | null;
 }
+
+export const PROJECT_MAX_LENGTH = 50;
 
 export interface LoginRequest {
   email: string;

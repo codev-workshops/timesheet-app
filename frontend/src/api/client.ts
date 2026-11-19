@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios';
+import type { CreateWorkEntryRequest, UpdateWorkEntryRequest } from '../types/api';
 
 // Use empty string to make requests relative to the current origin
 // Vite proxy will forward /api requests to the backend
@@ -98,12 +99,12 @@ class ApiClient {
     return response.data;
   }
 
-  async createWorkEntry(entryData: { clientId: number; hours: number; description?: string; date: string }) {
+  async createWorkEntry(entryData: CreateWorkEntryRequest) {
     const response = await this.client.post('/api/work-entries', entryData);
     return response.data;
   }
 
-  async updateWorkEntry(id: number, entryData: { clientId?: number; hours?: number; description?: string; date?: string }) {
+  async updateWorkEntry(id: number, entryData: UpdateWorkEntryRequest) {
     const response = await this.client.put(`/api/work-entries/${id}`, entryData);
     return response.data;
   }
@@ -114,20 +115,30 @@ class ApiClient {
   }
 
   // Report endpoints
-  async getClientReport(clientId: number) {
-    const response = await this.client.get(`/api/reports/client/${clientId}`);
+  // A blank project filter omits the query parameter (unfiltered report).
+  private reportParams(project?: string) {
+    const trimmed = project?.trim();
+    return trimmed ? { project: trimmed } : {};
+  }
+
+  async getClientReport(clientId: number, project?: string) {
+    const response = await this.client.get(`/api/reports/client/${clientId}`, {
+      params: this.reportParams(project),
+    });
     return response.data;
   }
 
-  async exportClientReportCsv(clientId: number) {
+  async exportClientReportCsv(clientId: number, project?: string) {
     const response = await this.client.get(`/api/reports/export/csv/${clientId}`, {
+      params: this.reportParams(project),
       responseType: 'blob',
     });
     return response.data;
   }
 
-  async exportClientReportPdf(clientId: number) {
+  async exportClientReportPdf(clientId: number, project?: string) {
     const response = await this.client.get(`/api/reports/export/pdf/${clientId}`, {
+      params: this.reportParams(project),
       responseType: 'blob',
     });
     return response.data;
