@@ -137,9 +137,10 @@ describe('Database Initialization', () => {
       const db = getDatabase();
       // Reset close mock to default behavior (no error)
       db.close.mockImplementation((callback) => callback(null));
-      await closeDatabase();
-      await closeDatabase(); // Second call should not throw
+      await expect(closeDatabase()).resolves.toBeUndefined();
+      await expect(closeDatabase()).resolves.toBeUndefined();
 
+      expect(db.close).toHaveBeenCalledTimes(1);
       expect(consoleErrorSpy).not.toHaveBeenCalled();
     });
   });
