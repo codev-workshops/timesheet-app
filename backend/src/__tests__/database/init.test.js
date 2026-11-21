@@ -116,30 +116,31 @@ describe('Database Initialization', () => {
   });
 
   describe('closeDatabase', () => {
-    test('should close database connection', () => {
+    test('should close database connection', async () => {
       const db = getDatabase();
-      closeDatabase();
+      await closeDatabase();
 
       expect(db.close).toHaveBeenCalled();
       expect(consoleLogSpy).toHaveBeenCalledWith('Database connection closed');
     });
 
-    test('should handle close error gracefully', () => {
+    test('should handle close error gracefully', async () => {
       const db = getDatabase();
       db.close.mockImplementation((callback) => callback(new Error('Close error')));
 
-      closeDatabase();
+      await expect(closeDatabase()).resolves.toBeUndefined();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith('Error closing database:', expect.any(Error));
     });
 
-    test('should handle multiple close calls safely', () => {
+    test('should handle multiple close calls safely', async () => {
       const db = getDatabase();
       // Reset close mock to default behavior (no error)
       db.close.mockImplementation((callback) => callback(null));
-      closeDatabase();
-      closeDatabase(); // Second call should not throw
+      await expect(closeDatabase()).resolves.toBeUndefined();
+      await expect(closeDatabase()).resolves.toBeUndefined();
 
+      expect(db.close).toHaveBeenCalledTimes(1);
       expect(consoleErrorSpy).not.toHaveBeenCalled();
     });
   });
