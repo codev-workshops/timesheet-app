@@ -1,5 +1,8 @@
 # https://docs.devin.ai/onboard-devin/environment-yaml
 # React 19 + Node.js/Express + SQLite timesheet app.
+# Check out develop (not the default branch) when cloning into the snapshot.
+clone:
+  ref: develop
 # One-time setup (e.g., install system tools, global CLIs).
 initialize: |
   # The VM's default node on PATH is v6; Vite 7 / React 19 need Node 20.
