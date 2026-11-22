@@ -2,13 +2,23 @@
 # React 19 + Node.js/Express + SQLite timesheet app.
 # One-time setup (e.g., install system tools, global CLIs).
 initialize: |
-  cp backend/.env.example backend/.env
-  cp frontend/.env.example frontend/.env
+  # The VM's default node on PATH is v6; Vite 7 / React 19 need Node 20.
+  source ~/.nvm/nvm.sh
+  nvm install 20
+  nvm alias default 20
+  cp -n backend/.env.example backend/.env
+  cp -n frontend/.env.example frontend/.env
 # Install project dependencies (runs during builds, surfaced to agent at session start).
 maintenance: |
-  (cd backend && npm install)
-  (cd frontend && npm install)
+  source ~/.nvm/nvm.sh
+  nvm use 20
+  (cd backend && npm ci)
+  (cd frontend && npm ci)
+  (cd frontend && npm run build)
 knowledge:
+  - name: node-version
+    contents: |
+      Use Node 20. The default node on PATH may be v6, so run `source ~/.nvm/nvm.sh && nvm use 20` in each new shell before any npm command.
   - name: lint
     contents: |
       cd frontend && npm run lint
@@ -20,5 +30,7 @@ knowledge:
       cd frontend && npm run build
   - name: startup
     contents: |
-      # Backend: cd backend && npm run dev  (runs on port 3001)
-      # Frontend: cd frontend && npm run dev  (runs on port 5173)
+      # Run each in its own shell after `source ~/.nvm/nvm.sh && nvm use 20`:
+      # Backend: cd backend && npm run dev  (port 3001; health check: curl localhost:3001/health)
+      # Frontend: cd frontend && npm run dev -- --host 0.0.0.0  (port 5173; proxies /api to :3001)
+      # SQLite is in-memory: data resets on backend restart. Log in with any email (no password).
