@@ -18,9 +18,7 @@ describe('Validation Schemas', () => {
       expect(error).toBeUndefined();
     });
 
-    test('should keep hours for common meeting lengths', () => {
-      const meetingMinutes = [15, 20, 30, 40, 45, 60, 90, 120];
-      const minutes = meetingMinutes[Math.floor(Math.random() * meetingMinutes.length)];
+    test.each([15, 20, 30, 40, 45, 60, 90, 120])('should keep hours rounded to 2 decimals for a %i minute meeting', (minutes) => {
       const entry = {
         clientId: 1,
         hours: minutes / 60,
@@ -30,7 +28,7 @@ describe('Validation Schemas', () => {
 
       const { error, value } = workEntrySchema.validate(entry);
       expect(error).toBeUndefined();
-      expect(value.hours).toBe(minutes / 60);
+      expect(value.hours).toBe(Math.round((minutes / 60) * 100) / 100);
     });
 
     test('should allow empty description', () => {
