@@ -6,8 +6,9 @@ initialize: |
   cp frontend/.env.example frontend/.env
 # Install project dependencies (runs during builds, surfaced to agent at session start).
 maintenance: |
-  (cd backend && npm install)
-  (cd frontend && npm install)
+  source ~/.nvm/nvm.sh && nvm install 20 && nvm alias default 20
+  (cd backend && source ~/.nvm/nvm.sh && nvm use 20 && npm install)
+  (cd frontend && source ~/.nvm/nvm.sh && nvm use 20 && npm install)
 knowledge:
   - name: lint
     contents: |
