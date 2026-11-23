@@ -1,0 +1,4 @@
+# Files whose contents must never be sent to the LLM.
+# One path per line, relative to the repo root. Lines starting with # are ignored.
+# Enforced by scripts/protect-files.sh (PreToolUse hook in .devin/hooks.v1.json).
+frontend/.env
