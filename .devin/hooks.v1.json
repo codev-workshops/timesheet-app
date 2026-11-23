@@ -1,14 +1,17 @@
 {
+  "SessionStart": [
+    { "matcher": "", "hooks": [{ "type": "command", "command": "./scripts/hooks/session-start.sh", "timeout": 10 }] }
+  ],
+  "UserPromptSubmit": [
+    { "matcher": "", "hooks": [{ "type": "command", "command": "./scripts/hooks/prompt-submit.sh", "timeout": 5 }] }
+  ],
   "PreToolUse": [
-    {
-      "matcher": "exec",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "./scripts/check-command.sh",
-          "timeout": 10
-        }
-      ]
-    }
+    { "matcher": "", "hooks": [{ "type": "command", "command": "./scripts/hooks/pre-tool.sh", "timeout": 10 }] }
+  ],
+  "PostToolUse": [
+    { "matcher": "", "hooks": [{ "type": "command", "command": "./scripts/hooks/post-tool.sh", "timeout": 60 }] }
+  ],
+  "Stop": [
+    { "matcher": "", "hooks": [{ "type": "command", "command": "./scripts/hooks/stop.sh", "timeout": 300 }] }
   ]
 }
