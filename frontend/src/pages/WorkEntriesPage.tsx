@@ -339,8 +339,7 @@ const WorkEntriesPage: React.FC = () => {
                     fullWidth: true,
                     margin: 'dense',
                     required: true,
-                    error: dateError ? true : undefined,
-                    helperText: dateError,
+                    ...(dateError && { error: true, helperText: dateError }),
                     disabled: createMutation.isPending || updateMutation.isPending,
                   },
                 }}
