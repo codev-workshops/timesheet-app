@@ -30,7 +30,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import apiClient from '../api/client';
-import { type ClientReport } from '../types/api';
+import { type Client, type ClientReport } from '../types/api';
 
 const ReportsPage: React.FC = () => {
   const [selectedClientId, setSelectedClientId] = useState<number>(0);
@@ -49,7 +49,7 @@ const ReportsPage: React.FC = () => {
 
   const clients = clientsData?.clients || [];
   const report = reportData as ClientReport | undefined;
-  const selectedClient = clients.find((c: { id: number; name: string }) => c.id === selectedClientId);
+  const selectedClient = clients.find((c: Client) => c.id === selectedClientId);
   const canExport = Boolean(selectedClient && report && !reportError);
   const reportErrorMessage = isAxiosError<{ error?: string }>(reportError)
     ? reportError.response?.data?.error
