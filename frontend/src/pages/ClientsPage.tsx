@@ -129,12 +129,7 @@ const ClientsPage: React.FC = () => {
     if (editingClient) {
       updateMutation.mutate({
         id: editingClient.id,
-        data: {
-          name: formData.name,
-          description: formData.description || undefined,
-          department: formData.department || undefined,
-          email: formData.email || undefined,
-        },
+        data: formData,
       });
     } else {
       createMutation.mutate({
