@@ -39,13 +39,19 @@ import { type WorkEntry } from '../types/api';
 const WorkEntriesPage: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<WorkEntry | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    clientId: number;
+    hours: string;
+    description: string;
+    date: Date | null;
+  }>({
     clientId: 0,
     hours: '',
     description: '',
     date: new Date(),
   });
   const [error, setError] = useState('');
+  const [dateError, setDateError] = useState('');
 
   const queryClient = useQueryClient();
 
@@ -118,6 +124,7 @@ const WorkEntriesPage: React.FC = () => {
       });
     }
     setError('');
+    setDateError('');
     setOpen(true);
   };
 
@@ -131,6 +138,7 @@ const WorkEntriesPage: React.FC = () => {
       date: new Date(),
     });
     setError('');
+    setDateError('');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -148,8 +156,9 @@ const WorkEntriesPage: React.FC = () => {
       return;
     }
 
-    if (!formData.date) {
-      setError('Please select a date');
+    const { date } = formData;
+    if (!date || Number.isNaN(date.getTime())) {
+      setDateError(date ? 'Enter a valid date' : 'Please select a date');
       return;
     }
 
@@ -157,7 +166,7 @@ const WorkEntriesPage: React.FC = () => {
       clientId: formData.clientId,
       hours,
       description: formData.description || undefined,
-      date: formData.date.toISOString().split('T')[0],
+      date: date.toISOString().split('T')[0],
     };
 
     if (editingEntry) {
@@ -321,12 +330,17 @@ const WorkEntriesPage: React.FC = () => {
               <DatePicker
                 label="Date"
                 value={formData.date}
-                onChange={(date) => date && setFormData({ ...formData, date })}
+                onChange={(date) => {
+                  setFormData({ ...formData, date });
+                  setDateError('');
+                }}
                 slotProps={{
                   textField: {
                     fullWidth: true,
                     margin: 'dense',
                     required: true,
+                    error: dateError ? true : undefined,
+                    helperText: dateError,
                     disabled: createMutation.isPending || updateMutation.isPending,
                   },
                 }}
