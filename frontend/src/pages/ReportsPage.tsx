@@ -28,6 +28,7 @@ import {
   Description as CsvIcon,
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import apiClient from '../api/client';
 import { type ClientReport } from '../types/api';
 
@@ -40,7 +41,7 @@ const ReportsPage: React.FC = () => {
     queryFn: () => apiClient.getClients(),
   });
 
-  const { data: reportData, isLoading: reportLoading } = useQuery({
+  const { data: reportData, isLoading: reportLoading, error: reportError } = useQuery({
     queryKey: ['clientReport', selectedClientId],
     queryFn: () => apiClient.getClientReport(selectedClientId),
     enabled: selectedClientId > 0,
@@ -48,9 +49,14 @@ const ReportsPage: React.FC = () => {
 
   const clients = clientsData?.clients || [];
   const report = reportData as ClientReport | undefined;
+  const selectedClient = clients.find((c: { id: number; name: string }) => c.id === selectedClientId);
+  const canExport = Boolean(selectedClient && report && !reportError);
+  const reportErrorMessage = isAxiosError<{ error?: string }>(reportError)
+    ? reportError.response?.data?.error
+    : undefined;
 
   const handleExportCsv = async () => {
-    if (!selectedClientId) return;
+    if (!canExport) return;
     
     try {
       const blob = await apiClient.exportClientReportCsv(selectedClientId);
@@ -70,7 +76,7 @@ const ReportsPage: React.FC = () => {
   };
 
   const handleExportPdf = async () => {
-    if (!selectedClientId) return;
+    if (!canExport) return;
 
     try {
       const blob = await apiClient.exportClientReportPdf(selectedClientId);
@@ -89,8 +95,6 @@ const ReportsPage: React.FC = () => {
     }
   };
 
-  const selectedClient = clients.find((c: { id: number; name: string }) => c.id === selectedClientId);
-
   if (clientsLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -108,6 +112,12 @@ const ReportsPage: React.FC = () => {
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
           {error}
+        </Alert>
+      )}
+
+      {reportError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {reportErrorMessage || 'Failed to load client report'}
         </Alert>
       )}
 
@@ -146,7 +156,7 @@ const ReportsPage: React.FC = () => {
                   <Tooltip title="Export as CSV">
                     <IconButton
                       onClick={handleExportCsv}
-                      disabled={!selectedClientId || reportLoading}
+                      disabled={!canExport}
                       color="primary"
                       size="large"
                     >
@@ -156,7 +166,7 @@ const ReportsPage: React.FC = () => {
                   <Tooltip title="Export as PDF">
                     <IconButton
                       onClick={handleExportPdf}
-                      disabled={!selectedClientId || reportLoading}
+                      disabled={!canExport}
                       color="error"
                       size="large"
                     >
@@ -174,7 +184,7 @@ const ReportsPage: React.FC = () => {
             </Box>
           )}
 
-          {selectedClient && report && (
+          {selectedClient && report && !reportError && (
             <>
                 <Grid container spacing={3} sx={{ mb: 3 }}>
                   <Grid size={{ xs: 12, sm: 6, md: 4 }}>
