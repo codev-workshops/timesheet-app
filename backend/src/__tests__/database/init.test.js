@@ -35,6 +35,11 @@ describe('Database Initialization', () => {
     ...db.exec.mock.calls.map(call => call[0])
   ];
 
+  const statementFor = (db, prefix) => executedSql(db)
+    .flatMap(sql => sql.split(';'))
+    .map(statement => statement.trim())
+    .find(statement => statement.startsWith(prefix));
+
   beforeEach(() => {
     consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
@@ -135,11 +140,22 @@ describe('Database Initialization', () => {
       await initializeDatabase();
 
       const runQueries = db.run.mock.calls.map(call => call[0]);
-      const beginIdx = runQueries.indexOf('BEGIN');
-      const insertCall = db.run.mock.calls.find(call => call[0].includes('INSERT INTO schema_migrations'));
-      expect(beginIdx).toBeGreaterThan(-1);
-      expect(insertCall[1]).toEqual([1, 'initial_schema']);
-      expect(runQueries.indexOf('COMMIT')).toBeGreaterThan(beginIdx);
+      const runOrder = (match) => {
+        const idx = runQueries.findIndex(match);
+        expect(idx).toBeGreaterThan(-1);
+        return db.run.mock.invocationCallOrder[idx];
+      };
+      const beginOrder = runOrder(q => q === 'BEGIN');
+      const insertOrder = runOrder(q => q.includes('INSERT INTO schema_migrations'));
+      const commitOrder = runOrder(q => q === 'COMMIT');
+      const [schemaOrder] = db.exec.mock.invocationCallOrder;
+
+      expect(db.exec.mock.calls[0][0]).toContain('CREATE TABLE IF NOT EXISTS users');
+      expect(schemaOrder).toBeGreaterThan(beginOrder);
+      expect(insertOrder).toBeGreaterThan(schemaOrder);
+      expect(commitOrder).toBeGreaterThan(insertOrder);
+      expect(db.run.mock.calls[runQueries.findIndex(q => q.includes('INSERT INTO schema_migrations'))][1])
+        .toEqual([1, 'initial_schema']);
       expect(runQueries).not.toContain('ROLLBACK');
     });
 
@@ -200,9 +216,7 @@ describe('Database Initialization', () => {
       const db = getDatabase();
       await initializeDatabase();
 
-      const userTableQuery = executedSql(db).find(sql =>
-        sql.includes('CREATE TABLE IF NOT EXISTS users')
-      );
+      const userTableQuery = statementFor(db, 'CREATE TABLE IF NOT EXISTS users');
 
       expect(userTableQuery).toBeDefined();
       expect(userTableQuery).toContain('email TEXT PRIMARY KEY');
@@ -213,9 +227,7 @@ describe('Database Initialization', () => {
       const db = getDatabase();
       await initializeDatabase();
 
-      const clientTableQuery = executedSql(db).find(sql =>
-        sql.includes('CREATE TABLE IF NOT EXISTS clients')
-      );
+      const clientTableQuery = statementFor(db, 'CREATE TABLE IF NOT EXISTS clients');
 
       expect(clientTableQuery).toBeDefined();
       expect(clientTableQuery).toContain('user_email TEXT NOT NULL');
@@ -226,9 +238,7 @@ describe('Database Initialization', () => {
       const db = getDatabase();
       await initializeDatabase();
 
-      const workEntriesQuery = executedSql(db).find(sql =>
-        sql.includes('CREATE TABLE IF NOT EXISTS work_entries')
-      );
+      const workEntriesQuery = statementFor(db, 'CREATE TABLE IF NOT EXISTS work_entries');
 
       expect(workEntriesQuery).toBeDefined();
       expect(workEntriesQuery).toContain('FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE');
