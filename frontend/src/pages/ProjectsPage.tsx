@@ -29,15 +29,14 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
 } from '@mui/icons-material';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import apiClient from '../api/client';
 import {
-  type Client,
-  type Project,
-  type ProjectStatus,
-  type CreateProjectRequest,
-  type UpdateProjectRequest,
-} from '../types/api';
+  useProjects,
+  useClients,
+  useCreateProject,
+  useUpdateProject,
+  useDeleteProject,
+} from '../hooks/useProjects';
+import { type Client, type Project, type ProjectStatus } from '../types/api';
 
 interface ProjectFormData {
   name: string;
@@ -67,52 +66,26 @@ const ProjectsPage: React.FC = () => {
   const [formData, setFormData] = useState<ProjectFormData>(emptyFormData);
   const [error, setError] = useState('');
 
-  const queryClient = useQueryClient();
+  const showError = (fallback: string) => (err: unknown) => {
+    const error = err as { response?: { data?: { error?: string } } };
+    setError(error.response?.data?.error || fallback);
+  };
 
-  const { data: projectsData, isLoading: projectsLoading } = useQuery({
-    queryKey: ['projects'],
-    queryFn: () => apiClient.getProjects(),
+  const { data: projectsData, isLoading: projectsLoading } = useProjects();
+  const { data: clientsData, isLoading: clientsLoading } = useClients();
+
+  const createMutation = useCreateProject({
+    onSuccess: () => handleClose(),
+    onError: showError('Failed to create project'),
   });
 
-  const { data: clientsData, isLoading: clientsLoading } = useQuery({
-    queryKey: ['clients'],
-    queryFn: () => apiClient.getClients(),
+  const updateMutation = useUpdateProject({
+    onSuccess: () => handleClose(),
+    onError: showError('Failed to update project'),
   });
 
-  const createMutation = useMutation({
-    mutationFn: (projectData: CreateProjectRequest) => apiClient.createProject(projectData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      handleClose();
-    },
-    onError: (err: unknown) => {
-      const error = err as { response?: { data?: { error?: string } } };
-      setError(error.response?.data?.error || 'Failed to create project');
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateProjectRequest }) =>
-      apiClient.updateProject(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      handleClose();
-    },
-    onError: (err: unknown) => {
-      const error = err as { response?: { data?: { error?: string } } };
-      setError(error.response?.data?.error || 'Failed to update project');
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiClient.deleteProject(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-    },
-    onError: (err: unknown) => {
-      const error = err as { response?: { data?: { error?: string } } };
-      setError(error.response?.data?.error || 'Failed to delete project');
-    },
+  const deleteMutation = useDeleteProject({
+    onError: showError('Failed to delete project'),
   });
 
   const projects: Project[] = projectsData?.projects || [];
