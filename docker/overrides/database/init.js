@@ -56,12 +56,23 @@ async function initializeDatabase() {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
           description TEXT,
+          department TEXT,
+          email TEXT,
           user_email TEXT NOT NULL,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (user_email) REFERENCES users (email) ON DELETE CASCADE
         )
       `);
+
+      // Add columns missing from clients tables created by older images
+      ['department', 'email'].forEach((column) => {
+        database.run(`ALTER TABLE clients ADD COLUMN ${column} TEXT`, (err) => {
+          if (err && !/duplicate column name/.test(err.message)) {
+            console.error(`Error adding clients.${column}:`, err);
+          }
+        });
+      });
 
       // Create work_entries table
       database.run(`
