@@ -334,4 +334,97 @@ describe('Project Routes', () => {
       expect(response.body).toEqual({ error: 'Invalid project ID' });
     });
   });
+
+  describe('Database error handling', () => {
+    const dbError = new Error('Database error');
+    const okRun = (ctx) => function(query, params, callback) { callback.call(ctx, null); };
+
+    test('GET /:id returns 500 on database error', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(dbError));
+
+      const response = await request(app).get('/api/projects/1');
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Internal server error' });
+    });
+
+    test('POST returns 500 when client lookup fails', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(dbError));
+
+      const response = await request(app).post('/api/projects').send({ name: 'P', clientId: 1 });
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Internal server error' });
+    });
+
+    test('POST returns 500 when insert fails', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, { id: 1 }));
+      mockDb.run.mockImplementation((query, params, callback) => callback(dbError));
+
+      const response = await request(app).post('/api/projects').send({ name: 'P', clientId: 1 });
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Failed to create project' });
+    });
+
+    test('POST returns 500 when reading created project fails', async () => {
+      mockDb.get
+        .mockImplementationOnce((query, params, callback) => callback(null, { id: 1 }))
+        .mockImplementationOnce((query, params, callback) => callback(dbError));
+      mockDb.run.mockImplementation(okRun({ lastID: 1 }));
+
+      const response = await request(app).post('/api/projects').send({ name: 'P', clientId: 1 });
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Project created but failed to retrieve' });
+    });
+
+    test('PUT returns 500 when client lookup fails', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(dbError));
+
+      const response = await request(app).put('/api/projects/1').send({ clientId: 2 });
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Internal server error' });
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('PUT returns 400 when new client does not belong to user', async () => {
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, null));
+
+      const response = await request(app).put('/api/projects/1').send({ clientId: 2 });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Client not found or does not belong to user' });
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('PUT returns 500 when update fails', async () => {
+      mockDb.run.mockImplementation((query, params, callback) => callback(dbError));
+
+      const response = await request(app).put('/api/projects/1').send({ name: 'Updated' });
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Failed to update project' });
+    });
+
+    test('PUT returns 500 when reading updated project fails', async () => {
+      mockDb.run.mockImplementation(okRun({ changes: 1 }));
+      mockDb.get.mockImplementation((query, params, callback) => callback(dbError));
+
+      const response = await request(app).put('/api/projects/1').send({ name: 'Updated' });
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Project updated but failed to retrieve' });
+    });
+
+    test('DELETE returns 500 when delete fails', async () => {
+      mockDb.run.mockImplementation((query, params, callback) => callback(dbError));
+
+      const response = await request(app).delete('/api/projects/1');
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Failed to delete project' });
+    });
+  });
 });
