@@ -90,6 +90,7 @@ describe('Database Initialization', () => {
       expect(queries.some(q => q.includes('CREATE TABLE IF NOT EXISTS clients'))).toBe(true);
       expect(queries.some(q => q.includes('CREATE TABLE IF NOT EXISTS work_entries'))).toBe(true);
       expect(queries.some(q => q.includes('CREATE TABLE IF NOT EXISTS projects'))).toBe(true);
+      expect(queries).toContain('PRAGMA foreign_keys = ON');
     });
 
     test('should create indexes for performance', async () => {
