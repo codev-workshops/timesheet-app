@@ -231,13 +231,15 @@ describe('Project Routes', () => {
       mockDb.run.mockImplementation(function(query, params, callback) {
         callback.call({ changes: 1 }, null);
       });
-      mockDb.get.mockImplementation((query, params, callback) => callback(null, mockProject));
+      const clearedProject = { ...mockProject, description: null, start_date: null };
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, clearedProject));
 
       const response = await request(app)
         .put('/api/projects/1')
         .send({ description: '', startDate: null });
 
       expect(response.status).toBe(200);
+      expect(response.body.project).toEqual(clearedProject);
       expect(mockDb.run).toHaveBeenCalledWith(
         'UPDATE projects SET description = ?, start_date = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_email = ?',
         [null, null, 1, 'test@example.com'],
