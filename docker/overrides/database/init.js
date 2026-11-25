@@ -34,24 +34,19 @@ function getDatabase() {
   return db;
 }
 
-async function initializeDatabase() {
-  const database = getDatabase();
-  
-  return new Promise((resolve, reject) => {
-    database.serialize(() => {
-      // Enable foreign keys
-      database.run('PRAGMA foreign_keys = ON');
-      
-      // Create users table
-      database.run(`
+// Versioned schema migrations, applied in ascending order and recorded in
+// schema_migrations. Never edit a migration once it has shipped (including
+// migration 1): add every schema change as a new entry with the next version.
+const migrations = [
+  {
+    version: 1,
+    name: 'initial_schema',
+    sql: `
         CREATE TABLE IF NOT EXISTS users (
           email TEXT PRIMARY KEY,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+        );
 
-      // Create clients table
-      database.run(`
         CREATE TABLE IF NOT EXISTS clients (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
@@ -60,11 +55,8 @@ async function initializeDatabase() {
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (user_email) REFERENCES users (email) ON DELETE CASCADE
-        )
-      `);
+        );
 
-      // Create work_entries table
-      database.run(`
         CREATE TABLE IF NOT EXISTS work_entries (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           client_id INTEGER NOT NULL,
@@ -76,19 +68,77 @@ async function initializeDatabase() {
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE,
           FOREIGN KEY (user_email) REFERENCES users (email) ON DELETE CASCADE
-        )
-      `);
+        );
 
-      // Create indexes for better performance
-      database.run(`CREATE INDEX IF NOT EXISTS idx_clients_user_email ON clients (user_email)`);
-      database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_client_id ON work_entries (client_id)`);
-      database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_user_email ON work_entries (user_email)`);
-      database.run(`CREATE INDEX IF NOT EXISTS idx_work_entries_date ON work_entries (date)`);
+        CREATE INDEX IF NOT EXISTS idx_clients_user_email ON clients (user_email);
+        CREATE INDEX IF NOT EXISTS idx_work_entries_client_id ON work_entries (client_id);
+        CREATE INDEX IF NOT EXISTS idx_work_entries_user_email ON work_entries (user_email);
+        CREATE INDEX IF NOT EXISTS idx_work_entries_date ON work_entries (date);
+    `
+  }
+];
 
-      console.log('Database tables created successfully');
-      resolve();
-    });
+function run(database, sql, params = []) {
+  return new Promise((resolve, reject) => {
+    database.run(sql, params, (err) => (err ? reject(err) : resolve()));
   });
+}
+
+function get(database, sql, params = []) {
+  return new Promise((resolve, reject) => {
+    database.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
+  });
+}
+
+function exec(database, sql) {
+  return new Promise((resolve, reject) => {
+    database.exec(sql, (err) => (err ? reject(err) : resolve()));
+  });
+}
+
+async function initializeDatabase() {
+  const database = getDatabase();
+
+  // Enable foreign keys (must run outside a transaction)
+  await run(database, 'PRAGMA foreign_keys = ON');
+
+  await run(database, `
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      version INTEGER PRIMARY KEY,
+      name TEXT,
+      applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  const row = await get(database, 'SELECT MAX(version) AS version FROM schema_migrations');
+  const currentVersion = (row && row.version) || 0;
+
+  const pending = migrations
+    .filter((migration) => migration.version > currentVersion)
+    .sort((a, b) => a.version - b.version);
+
+  for (const migration of pending) {
+    await run(database, 'BEGIN');
+    try {
+      await exec(database, migration.sql);
+      await run(database, 'INSERT INTO schema_migrations (version, name) VALUES (?, ?)', [
+        migration.version,
+        migration.name
+      ]);
+      await run(database, 'COMMIT');
+    } catch (err) {
+      try {
+        await run(database, 'ROLLBACK');
+      } catch (rollbackErr) {
+        console.error('Error rolling back migration:', rollbackErr);
+      }
+      console.error(`Migration ${migration.version} (${migration.name}) failed:`, err);
+      throw err;
+    }
+    console.log(`Applied migration ${migration.version}: ${migration.name}`);
+  }
+
+  console.log('Database tables created successfully');
 }
 
 function closeDatabase() {
