@@ -227,6 +227,24 @@ describe('Project Routes', () => {
       );
     });
 
+    test('should clear description and start date', async () => {
+      mockDb.run.mockImplementation(function(query, params, callback) {
+        callback.call({ changes: 1 }, null);
+      });
+      mockDb.get.mockImplementation((query, params, callback) => callback(null, mockProject));
+
+      const response = await request(app)
+        .put('/api/projects/1')
+        .send({ description: '', startDate: null });
+
+      expect(response.status).toBe(200);
+      expect(mockDb.run).toHaveBeenCalledWith(
+        'UPDATE projects SET description = ?, start_date = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_email = ?',
+        [null, null, 1, 'test@example.com'],
+        expect.any(Function)
+      );
+    });
+
     test('should verify client ownership when clientId changes', async () => {
       mockDb.get
         .mockImplementationOnce((query, params, callback) => callback(null, { id: 2 }))

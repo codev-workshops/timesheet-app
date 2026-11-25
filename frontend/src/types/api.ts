@@ -89,7 +89,7 @@ export interface UpdateProjectRequest {
   name?: string;
   description?: string;
   clientId?: number;
-  startDate?: string;
+  startDate?: string | null;
   status?: ProjectStatus;
 }
 

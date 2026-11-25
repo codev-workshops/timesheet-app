@@ -158,18 +158,25 @@ const ProjectsPage: React.FC = () => {
       return;
     }
 
-    const projectData = {
-      name: formData.name,
-      description: formData.description || undefined,
-      clientId: formData.clientId,
-      startDate: formData.startDate || undefined,
-      status: formData.status,
-    };
-
     if (editingProject) {
-      updateMutation.mutate({ id: editingProject.id, data: projectData });
+      updateMutation.mutate({
+        id: editingProject.id,
+        data: {
+          name: formData.name,
+          description: formData.description,
+          clientId: formData.clientId,
+          startDate: formData.startDate || null,
+          status: formData.status,
+        },
+      });
     } else {
-      createMutation.mutate(projectData);
+      createMutation.mutate({
+        name: formData.name,
+        description: formData.description || undefined,
+        clientId: formData.clientId,
+        startDate: formData.startDate || undefined,
+        status: formData.status,
+      });
     }
   };
 

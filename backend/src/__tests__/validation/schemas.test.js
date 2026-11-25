@@ -374,6 +374,11 @@ describe('Validation Schemas', () => {
       expect(error).toBeUndefined();
     });
 
+    test('should allow clearing startDate with null', () => {
+      const { error } = updateProjectSchema.validate({ startDate: null });
+      expect(error).toBeUndefined();
+    });
+
     test('should reject empty update', () => {
       const { error } = updateProjectSchema.validate({});
       expect(error).toBeDefined();

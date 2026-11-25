@@ -42,7 +42,7 @@ const updateProjectSchema = Joi.object({
   name: Joi.string().trim().min(1).max(255).optional(),
   description: Joi.string().trim().max(1000).optional().allow(''),
   clientId: Joi.number().integer().positive().optional(),
-  startDate: Joi.date().iso().optional(),
+  startDate: Joi.date().iso().optional().allow(null),
   status: Joi.string().valid(...projectStatuses).optional()
 }).min(1); // At least one field must be provided
 
