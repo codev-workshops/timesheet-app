@@ -71,8 +71,12 @@ const ProjectsPage: React.FC = () => {
     setError(error.response?.data?.error || fallback);
   };
 
-  const { data: projectsData, isLoading: projectsLoading } = useProjects();
-  const { data: clientsData, isLoading: clientsLoading } = useClients();
+  const {
+    data: projectsData,
+    isLoading: projectsLoading,
+    isError: projectsError,
+  } = useProjects();
+  const { data: clientsData, isLoading: clientsLoading, isError: clientsError } = useClients();
 
   const createMutation = useCreateProject({
     onSuccess: () => handleClose(),
@@ -184,7 +188,13 @@ const ProjectsPage: React.FC = () => {
         </Button>
       </Box>
 
-      {clients.length === 0 && (
+      {(projectsError || clientsError) && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {projectsError ? 'Failed to load projects' : 'Failed to load clients'}
+        </Alert>
+      )}
+
+      {!clientsError && clients.length === 0 && (
         <Alert severity="info" sx={{ mb: 2 }}>
           You need to create at least one client before adding projects.
         </Alert>
