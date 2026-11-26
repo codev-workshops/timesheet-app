@@ -111,6 +111,9 @@ function exec(database, sql) {
 async function initializeDatabase() {
   const database = getDatabase();
 
+  // Enable foreign keys (must run outside a transaction)
+  await run(database, 'PRAGMA foreign_keys = ON');
+
   await run(database, `
     CREATE TABLE IF NOT EXISTS schema_migrations (
       version INTEGER PRIMARY KEY,

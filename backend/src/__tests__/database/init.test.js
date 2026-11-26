@@ -119,6 +119,13 @@ describe('Database Initialization', () => {
       expect(queries.some(q => q.includes('CREATE INDEX IF NOT EXISTS idx_projects_client_id'))).toBe(true);
     });
 
+    test('should enable foreign key enforcement', async () => {
+      const db = getDatabase();
+      await initializeDatabase();
+
+      expect(db.run.mock.calls[0][0]).toBe('PRAGMA foreign_keys = ON');
+    });
+
     test('should log success message', async () => {
       await initializeDatabase();
       
