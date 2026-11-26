@@ -67,6 +67,34 @@ const migrations = [
         CREATE INDEX IF NOT EXISTS idx_work_entries_date ON work_entries (date);
     `
   },
+  {
+    version: 2,
+    name: 'create_projects',
+    sql: `
+        CREATE TABLE IF NOT EXISTS projects (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          description TEXT,
+          client_id INTEGER NOT NULL,
+          start_date DATE NOT NULL,
+          status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed', 'on-hold')),
+          user_email TEXT NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE,
+          FOREIGN KEY (user_email) REFERENCES users (email) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_projects_user_email ON projects (user_email);
+        CREATE INDEX IF NOT EXISTS idx_projects_client_id ON projects (client_id);
+    `
+  },
+  {
+    // No-op here (migration 1 already has these columns); keeps versions aligned with docker/overrides/database/init.js, which adds them.
+    version: 3,
+    name: 'add_client_department_email',
+    sql: `SELECT 1;`
+  },
   normalizeWorkEntryDates
 ];
 
@@ -90,6 +118,9 @@ function exec(database, sql) {
 
 async function initializeDatabase() {
   const database = getDatabase();
+
+  // Enable foreign keys (must run outside a transaction)
+  await run(database, 'PRAGMA foreign_keys = ON');
 
   await run(database, `
     CREATE TABLE IF NOT EXISTS schema_migrations (

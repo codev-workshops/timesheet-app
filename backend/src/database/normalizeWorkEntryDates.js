@@ -1,5 +1,5 @@
 module.exports = {
-  version: 2,
+  version: 4,
   name: 'normalize_work_entry_dates',
   sql: `
       UPDATE work_entries

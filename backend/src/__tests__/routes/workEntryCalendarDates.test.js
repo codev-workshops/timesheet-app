@@ -82,12 +82,12 @@ describe('work-entry calendar dates with SQLite', () => {
       .set('x-user-email', userEmail).send({ date }).expect(400);
   });
 
-  it('converts version 1 epoch milliseconds without changing existing text dates', async () => {
+  it('converts legacy epoch milliseconds without changing existing text dates', async () => {
     for (const date of ['2024-02-29', Date.UTC(2024, 2, 1), -1]) {
       await run('INSERT INTO work_entries (client_id, user_email, hours, date) VALUES (?, ?, ?, ?)',
         [clientId, userEmail, 1, date]);
     }
-    await run('DELETE FROM schema_migrations WHERE version > 1');
+    await run('DELETE FROM schema_migrations WHERE version = 4');
     await initializeDatabase();
     await initializeDatabase();
 
