@@ -33,13 +33,19 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { format, isValid, parseISO } from 'date-fns';
 import apiClient from '../api/client';
 import { type WorkEntry } from '../types/api';
 
 const WorkEntriesPage: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<WorkEntry | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    clientId: number;
+    hours: string;
+    description: string;
+    date: Date | null;
+  }>({
     clientId: 0,
     hours: '',
     description: '',
@@ -106,7 +112,7 @@ const WorkEntriesPage: React.FC = () => {
         clientId: entry.client_id,
         hours: entry.hours.toString(),
         description: entry.description || '',
-        date: new Date(entry.date),
+        date: parseISO(entry.date),
       });
     } else {
       setEditingEntry(null);
@@ -153,11 +159,16 @@ const WorkEntriesPage: React.FC = () => {
       return;
     }
 
+    if (!isValid(formData.date)) {
+      setError('Please enter a valid date');
+      return;
+    }
+
     const entryData = {
       clientId: formData.clientId,
       hours,
       description: formData.description || undefined,
-      date: formData.date.toISOString().split('T')[0],
+      date: format(formData.date, 'yyyy-MM-dd'),
     };
 
     if (editingEntry) {
@@ -233,7 +244,7 @@ const WorkEntriesPage: React.FC = () => {
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2">
-                            {new Date(entry.date).toLocaleDateString()}
+                            {parseISO(entry.date).toLocaleDateString()}
                           </Typography>
                         </TableCell>
                         <TableCell>
@@ -321,7 +332,7 @@ const WorkEntriesPage: React.FC = () => {
               <DatePicker
                 label="Date"
                 value={formData.date}
-                onChange={(date) => date && setFormData({ ...formData, date })}
+                onChange={(date) => setFormData({ ...formData, date })}
                 slotProps={{
                   textField: {
                     fullWidth: true,

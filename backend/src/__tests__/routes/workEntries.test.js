@@ -150,6 +150,11 @@ describe('Work Entry Routes', () => {
 
       expect(response.status).toBe(201);
       expect(response.body.message).toBe('Work entry created successfully');
+      expect(mockDb.run).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO work_entries'),
+        [newEntry.clientId, 'test@example.com', newEntry.hours, newEntry.description, newEntry.date],
+        expect.any(Function)
+      );
     });
 
     test('should return 400 if client not found', async () => {
@@ -522,6 +527,11 @@ describe('Work Entry Routes', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.message).toBe('Work entry updated successfully');
+      expect(mockDb.run).toHaveBeenCalledWith(
+        expect.stringContaining('UPDATE work_entries SET date = ?'),
+        ['2024-02-01', 1, 'test@example.com'],
+        expect.any(Function)
+      );
     });
 
     test('should update work entry description', async () => {

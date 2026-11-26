@@ -28,6 +28,7 @@ import {
   Description as CsvIcon,
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
+import { parseISO } from 'date-fns';
 import apiClient from '../api/client';
 import { type ClientReport } from '../types/api';
 
@@ -232,7 +233,7 @@ const ReportsPage: React.FC = () => {
                           <TableRow key={entry.id}>
                             <TableCell>
                               <Typography variant="body2">
-                                {new Date(entry.date).toLocaleDateString()}
+                                {parseISO(entry.date).toLocaleDateString()}
                               </Typography>
                             </TableCell>
                             <TableCell>

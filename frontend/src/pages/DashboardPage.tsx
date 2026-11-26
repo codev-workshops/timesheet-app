@@ -16,6 +16,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { parseISO } from 'date-fns';
 import apiClient from '../api/client';
 
 const DashboardPage: React.FC = () => {
@@ -129,7 +130,7 @@ const DashboardPage: React.FC = () => {
                 <Box key={entry.id} sx={{ mb: 2, pb: 2, borderBottom: '1px solid #eee' }}>
                   <Typography variant="subtitle1">{entry.client_name}</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {entry.hours} hours - {new Date(entry.date).toLocaleDateString()}
+                    {entry.hours} hours - {parseISO(entry.date).toLocaleDateString()}
                   </Typography>
                   {entry.description && (
                     <Typography variant="body2" sx={{ mt: 1 }}>
