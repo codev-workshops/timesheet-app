@@ -147,13 +147,13 @@ const ClientsPage: React.FC = () => {
   };
 
   const handleDelete = (client: Client) => {
-    if (window.confirm(`Are you sure you want to delete "${client.name}"?`)) {
+    if (window.confirm(`Are you sure you want to delete "${client.name}"? Its projects and work entries will also be deleted.`)) {
       deleteMutation.mutate(client.id);
     }
   };
 
   const handleDeleteAll = () => {
-    if (window.confirm('Are you sure you want to delete ALL clients? This action cannot be undone.')) {
+    if (window.confirm('Are you sure you want to delete ALL clients and their projects and work entries? This action cannot be undone.')) {
       deleteAllMutation.mutate();
     }
   };

@@ -102,6 +102,7 @@ describe('Database Initialization', () => {
       expect(queries.some(q => q.includes('CREATE TABLE IF NOT EXISTS users'))).toBe(true);
       expect(queries.some(q => q.includes('CREATE TABLE IF NOT EXISTS clients'))).toBe(true);
       expect(queries.some(q => q.includes('CREATE TABLE IF NOT EXISTS work_entries'))).toBe(true);
+      expect(queries.some(q => q.includes('CREATE TABLE IF NOT EXISTS projects'))).toBe(true);
     });
 
     test('should create indexes for performance', async () => {
@@ -114,6 +115,15 @@ describe('Database Initialization', () => {
       expect(queries.some(q => q.includes('CREATE INDEX IF NOT EXISTS idx_work_entries_client_id'))).toBe(true);
       expect(queries.some(q => q.includes('CREATE INDEX IF NOT EXISTS idx_work_entries_user_email'))).toBe(true);
       expect(queries.some(q => q.includes('CREATE INDEX IF NOT EXISTS idx_work_entries_date'))).toBe(true);
+      expect(queries.some(q => q.includes('CREATE INDEX IF NOT EXISTS idx_projects_user_email'))).toBe(true);
+      expect(queries.some(q => q.includes('CREATE INDEX IF NOT EXISTS idx_projects_client_id'))).toBe(true);
+    });
+
+    test('should enable foreign key enforcement', async () => {
+      const db = getDatabase();
+      await initializeDatabase();
+
+      expect(db.run.mock.calls[0][0]).toBe('PRAGMA foreign_keys = ON');
     });
 
     test('should log success message', async () => {
@@ -159,9 +169,22 @@ describe('Database Initialization', () => {
       expect(runQueries).not.toContain('ROLLBACK');
     });
 
-    test('should skip migrations that are already applied', async () => {
+    test('should apply only migrations newer than the recorded version', async () => {
       const db = getDatabase();
       db.get.mockImplementationOnce((query, params, callback) => callback(null, { version: 1 }));
+
+      await initializeDatabase();
+
+      expect(db.exec).toHaveBeenCalledTimes(2);
+      expect(db.exec.mock.calls[0][0]).toContain('CREATE TABLE IF NOT EXISTS projects');
+      expect(db.exec.mock.calls[0][0]).not.toContain('CREATE TABLE IF NOT EXISTS users');
+      const inserts = db.run.mock.calls.filter(call => call[0].includes('INSERT INTO schema_migrations'));
+      expect(inserts.map(call => call[1])).toEqual([[2, 'create_projects'], [3, 'add_client_department_email']]);
+    });
+
+    test('should skip migrations that are already applied', async () => {
+      const db = getDatabase();
+      db.get.mockImplementationOnce((query, params, callback) => callback(null, { version: 3 }));
 
       await initializeDatabase();
 
@@ -232,6 +255,19 @@ describe('Database Initialization', () => {
       expect(clientTableQuery).toBeDefined();
       expect(clientTableQuery).toContain('user_email TEXT NOT NULL');
       expect(clientTableQuery).toContain('FOREIGN KEY (user_email) REFERENCES users (email) ON DELETE CASCADE');
+    });
+
+    test('projects table should reference clients and restrict status', async () => {
+      const db = getDatabase();
+      await initializeDatabase();
+
+      const projectsQuery = statementFor(db, 'CREATE TABLE IF NOT EXISTS projects');
+
+      expect(projectsQuery).toBeDefined();
+      expect(projectsQuery).toContain('user_email TEXT NOT NULL');
+      expect(projectsQuery).toContain('start_date DATE NOT NULL');
+      expect(projectsQuery).toContain("CHECK (status IN ('active', 'completed', 'on-hold'))");
+      expect(projectsQuery).toContain('FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE');
     });
 
     test('work_entries table should have foreign keys', async () => {
