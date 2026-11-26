@@ -33,7 +33,7 @@ import { useQuery } from '@tanstack/react-query';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { format, parseISO } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns';
 import apiClient from '../api/client';
 import { useCreateProject, useDeleteProject, useProjects, useUpdateProject } from '../hooks/useProjects';
 import { type Client, type Project, type ProjectStatus } from '../types/api';
@@ -122,6 +122,11 @@ const ProjectsPage: React.FC = () => {
 
     if (!formData.clientId) {
       setError('Please select a client');
+      return;
+    }
+
+    if (!isValid(formData.startDate)) {
+      setError('Please enter a valid start date');
       return;
     }
 
