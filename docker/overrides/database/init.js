@@ -1,6 +1,7 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
+const normalizeWorkEntryDates = require('./normalizeWorkEntryDates');
 
 let db = null;
 let isClosing = false;
@@ -75,7 +76,8 @@ const migrations = [
         CREATE INDEX IF NOT EXISTS idx_work_entries_user_email ON work_entries (user_email);
         CREATE INDEX IF NOT EXISTS idx_work_entries_date ON work_entries (date);
     `
-  }
+  },
+  normalizeWorkEntryDates
 ];
 
 function run(database, sql, params = []) {

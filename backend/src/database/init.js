@@ -1,5 +1,6 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const normalizeWorkEntryDates = require('./normalizeWorkEntryDates');
 
 let db = null;
 let isClosing = false;
@@ -66,16 +67,7 @@ const migrations = [
         CREATE INDEX IF NOT EXISTS idx_work_entries_date ON work_entries (date);
     `
   },
-  {
-    version: 2,
-    name: 'normalize_work_entry_dates',
-    sql: `
-        UPDATE work_entries
-        SET date = date(date / 1000.0, 'unixepoch')
-        WHERE typeof(date) IN ('integer', 'real')
-          AND length(date(date / 1000.0, 'unixepoch')) = 10;
-    `
-  }
+  normalizeWorkEntryDates
 ];
 
 function run(database, sql, params = []) {
