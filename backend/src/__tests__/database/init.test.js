@@ -161,7 +161,7 @@ describe('Database Initialization', () => {
 
     test('should skip migrations that are already applied', async () => {
       const db = getDatabase();
-      db.get.mockImplementationOnce((query, params, callback) => callback(null, { version: 1 }));
+      db.get.mockImplementationOnce((query, params, callback) => callback(null, { version: 2 }));
 
       await initializeDatabase();
 

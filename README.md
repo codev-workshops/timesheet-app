@@ -178,6 +178,8 @@ Frontend will be running at `http://localhost:5173`
 - `PUT /api/work-entries/:id` - Update work entry
 - `DELETE /api/work-entries/:id` - Delete work entry
 
+The work-entry `date` is a calendar date in `YYYY-MM-DD` format, not a timestamp. The API rejects impossible dates and returns dates in the same format.
+
 ### Reports
 - `GET /api/reports/client/:clientId` - Get hourly report for client
 - `GET /api/reports/export/csv/:clientId` - Export report as CSV
