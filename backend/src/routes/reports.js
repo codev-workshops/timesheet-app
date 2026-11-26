@@ -1,5 +1,6 @@
 const express = require('express');
 const { getDatabase } = require('../database/init');
+const { workEntryDateColumn } = require('../database/workEntryDate');
 const { authenticateUser } = require('../middleware/auth');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const PDFDocument = require('pdfkit');
@@ -37,8 +38,8 @@ router.get('/client/:clientId', (req, res) => {
       
       // Get work entries for this client
       db.all(
-        `SELECT id, hours, description, date, created_at, updated_at
-         FROM work_entries 
+        `SELECT id, hours, description, ${workEntryDateColumn}, created_at, updated_at
+         FROM work_entries we
          WHERE client_id = ? AND user_email = ? 
          ORDER BY date DESC`,
         [clientId, req.userEmail],
@@ -89,8 +90,8 @@ router.get('/export/csv/:clientId', (req, res) => {
       
       // Get work entries
       db.all(
-        `SELECT hours, description, date, created_at
-         FROM work_entries 
+        `SELECT hours, description, ${workEntryDateColumn}, created_at
+         FROM work_entries we
          WHERE client_id = ? AND user_email = ? 
          ORDER BY date DESC`,
         [clientId, req.userEmail],
@@ -172,8 +173,8 @@ router.get('/export/pdf/:clientId', (req, res) => {
       
       // Get work entries
       db.all(
-        `SELECT hours, description, date, created_at
-         FROM work_entries 
+        `SELECT hours, description, ${workEntryDateColumn}, created_at
+         FROM work_entries we
          WHERE client_id = ? AND user_email = ? 
          ORDER BY date DESC`,
         [clientId, req.userEmail],
