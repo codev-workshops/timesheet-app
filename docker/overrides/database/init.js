@@ -97,6 +97,15 @@ const migrations = [
         CREATE INDEX IF NOT EXISTS idx_projects_user_email ON projects (user_email);
         CREATE INDEX IF NOT EXISTS idx_projects_client_id ON projects (client_id);
     `
+  },
+  {
+    // Brings Docker databases in line with the backend schema, whose migration 1 already has these columns.
+    version: 3,
+    name: 'add_client_department_email',
+    sql: `
+        ALTER TABLE clients ADD COLUMN department TEXT;
+        ALTER TABLE clients ADD COLUMN email TEXT;
+    `
   }
 ];
 

@@ -175,16 +175,16 @@ describe('Database Initialization', () => {
 
       await initializeDatabase();
 
-      expect(db.exec).toHaveBeenCalledTimes(1);
+      expect(db.exec).toHaveBeenCalledTimes(2);
       expect(db.exec.mock.calls[0][0]).toContain('CREATE TABLE IF NOT EXISTS projects');
       expect(db.exec.mock.calls[0][0]).not.toContain('CREATE TABLE IF NOT EXISTS users');
-      const insert = db.run.mock.calls.find(call => call[0].includes('INSERT INTO schema_migrations'));
-      expect(insert[1]).toEqual([2, 'create_projects']);
+      const inserts = db.run.mock.calls.filter(call => call[0].includes('INSERT INTO schema_migrations'));
+      expect(inserts.map(call => call[1])).toEqual([[2, 'create_projects'], [3, 'add_client_department_email']]);
     });
 
     test('should skip migrations that are already applied', async () => {
       const db = getDatabase();
-      db.get.mockImplementationOnce((query, params, callback) => callback(null, { version: 2 }));
+      db.get.mockImplementationOnce((query, params, callback) => callback(null, { version: 3 }));
 
       await initializeDatabase();
 

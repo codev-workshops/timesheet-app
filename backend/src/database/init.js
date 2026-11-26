@@ -87,6 +87,12 @@ const migrations = [
         CREATE INDEX IF NOT EXISTS idx_projects_user_email ON projects (user_email);
         CREATE INDEX IF NOT EXISTS idx_projects_client_id ON projects (client_id);
     `
+  },
+  {
+    // No-op here (migration 1 already has these columns); keeps versions aligned with docker/overrides/database/init.js, which adds them.
+    version: 3,
+    name: 'add_client_department_email',
+    sql: `SELECT 1;`
   }
 ];
 
