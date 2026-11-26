@@ -14,7 +14,7 @@ The work-entry create and update validators used `Joi.date().iso()`, which conve
 
 ## Fix and regression coverage
 
-Create and update still validate ISO date input, but pass a `YYYY-MM-DD` string to SQLite. This keeps the API and both report exports on the same date-only representation, and the strings retain chronological sort order. The database is in memory and recreated when the server restarts, so no stored-data migration is needed.
+Create and update still validate ISO date input, but pass a `YYYY-MM-DD` string to SQLite. Reads convert any legacy epoch-millisecond dates to the same format before sorting or returning them. This keeps the API and both report exports on the same date-only representation, even when old and new records coexist.
 
 The date picker sends the selected local calendar day. The Work Entries list, Dashboard, and Reports show the stored date directly, independent of the browser's time zone. Editing hours without changing the date leaves the stored date alone. This matters for dates such as December 30, 2011, which the Pacific/Apia time zone skipped: the edit dialog shows the stored date instead of treating December 31 as the selected day. Empty or invalid picker values are not submitted when setting a date. Existing route tests check that both inserts and updates bind a calendar-date string instead of a JavaScript `Date`.
 
