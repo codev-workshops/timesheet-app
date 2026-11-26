@@ -33,7 +33,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { formatISO, isValid, parseISO } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns';
 import apiClient from '../api/client';
 import { type WorkEntry } from '../types/api';
 
@@ -154,8 +154,13 @@ const WorkEntriesPage: React.FC = () => {
       return;
     }
 
-    if (!formData.date || !isValid(formData.date)) {
-      setError('Please select a valid date');
+    if (!formData.date) {
+      setError('Please select a date');
+      return;
+    }
+
+    if (!isValid(formData.date)) {
+      setError('Please enter a valid date');
       return;
     }
 
@@ -163,7 +168,7 @@ const WorkEntriesPage: React.FC = () => {
       clientId: formData.clientId,
       hours,
       description: formData.description || undefined,
-      date: formatISO(formData.date, { representation: 'date' }),
+      date: format(formData.date, 'yyyy-MM-dd'),
     };
 
     if (editingEntry) {

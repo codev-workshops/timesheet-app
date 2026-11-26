@@ -1,6 +1,6 @@
 const Joi = require('joi');
 
-const calendarDate = Joi.string().custom((value, helpers) => {
+const workEntryDate = Joi.string().custom((value, helpers) => {
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     const utcDate = new Date(`${value}T00:00:00Z`);
     if (Number.isFinite(utcDate.getTime()) && utcDate.toISOString().slice(0, 10) === value) {
@@ -21,14 +21,14 @@ const workEntrySchema = Joi.object({
   clientId: Joi.number().integer().positive().required(),
   hours: Joi.number().positive().max(24).precision(2).required(),
   description: Joi.string().trim().max(1000).optional().allow(''),
-  date: calendarDate.required()
+  date: workEntryDate.required()
 });
 
 const updateWorkEntrySchema = Joi.object({
   clientId: Joi.number().integer().positive().optional(),
   hours: Joi.number().positive().max(24).precision(2).optional(),
   description: Joi.string().trim().max(1000).optional().allow(''),
-  date: calendarDate.optional()
+  date: workEntryDate.optional()
 }).min(1); // At least one field must be provided
 
 const updateClientSchema = Joi.object({
