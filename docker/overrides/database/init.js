@@ -1,6 +1,7 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
+const normalizeWorkEntryDates = require('./normalizeWorkEntryDates');
 
 let db = null;
 let isClosing = false;
@@ -106,7 +107,8 @@ const migrations = [
         ALTER TABLE clients ADD COLUMN department TEXT;
         ALTER TABLE clients ADD COLUMN email TEXT;
     `
-  }
+  },
+  normalizeWorkEntryDates
 ];
 
 function run(database, sql, params = []) {

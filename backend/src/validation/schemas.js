@@ -1,6 +1,14 @@
 const Joi = require('joi');
 
-const workEntryDate = Joi.date().iso().custom(date => date.toISOString().split('T')[0]);
+const workEntryDate = Joi.string().custom((value, helpers) => {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const utcDate = new Date(`${value}T00:00:00Z`);
+    if (Number.isFinite(utcDate.getTime()) && utcDate.toISOString().slice(0, 10) === value) {
+      return value;
+    }
+  }
+  return helpers.error('any.invalid');
+}).messages({ 'any.invalid': '{{#label}} must be a valid calendar date (YYYY-MM-DD)' });
 
 const clientSchema = Joi.object({
   name: Joi.string().trim().min(1).max(255).required(),
