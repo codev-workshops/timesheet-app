@@ -266,6 +266,15 @@ npm run preview  # Preview production build
 
 See `backend/DEPLOYMENT.md` for detailed production deployment instructions.
 
+### Deployment secrets
+The Deploy workflow (`.github/workflows/deploy.yml`) reads its credentials from GitHub Actions repository secrets. Set these under **Settings → Secrets and variables → Actions**:
+
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `SLACK_BOT_TOKEN`
+- `GITHUB_PAT`
+- `STRIPE_SECRET_KEY`
+
 ### Quick Production Checklist
 - [ ] Set strong `JWT_SECRET` in environment variables
 - [ ] Configure proper `FRONTEND_URL` for CORS
