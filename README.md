@@ -113,7 +113,12 @@ PORT=3001
 NODE_ENV=development
 FRONTEND_URL=http://localhost:5173
 JWT_SECRET=your-secure-secret-key-change-this
+JWT_EXPIRES_IN=24h
+DATABASE_URL=
+SENDGRID_API_KEY=
 ```
+
+In production, `JWT_SECRET`, `DATABASE_URL` and `SENDGRID_API_KEY` must be provided from the hosting platform's secret store; `config/production.js` throws at startup if any of them is missing.
 
 5. Start the development server:
 ```bash
