@@ -542,8 +542,10 @@ describe('Report Routes', () => {
       const response = await request(app).get('/api/reports/export/csv/7');
 
       expect(response.status).toBe(200);
+      const writerConfig = csvWriter.createObjectCsvWriter.mock.calls[0][0];
+      expect(writerConfig.header.map(column => column.title)).toEqual(['Date', 'Hours', 'Description', 'Created At']);
       expect(writeRecords).toHaveBeenCalledWith([]);
-      expect(downloadSpy).toHaveBeenCalledTimes(1);
+      expect(downloadSpy).toHaveBeenCalledWith(writerConfig.path, path.basename(writerConfig.path), expect.any(Function));
     });
 
     test('should log a send failure and still delete the temp file', async () => {
@@ -689,12 +691,18 @@ describe('Report Routes', () => {
 
     test('should add a new page when the cursor is past the bottom of the page', async () => {
       doc.y = 750;
-      mockClientWithEntries(entriesOf(2));
+      doc.addPage.mockImplementation(() => {
+        doc.y = 50;
+        return doc;
+      });
+      const [entry] = entriesOf(1);
+      mockClientWithEntries([entry]);
 
       const response = await request(app).get('/api/reports/export/pdf/7');
 
       expect(response.status).toBe(200);
-      expect(doc.addPage).toHaveBeenCalledTimes(2);
+      expect(doc.addPage).toHaveBeenCalledTimes(1);
+      expect(doc.text).toHaveBeenCalledWith(entry.date, 50, 50, { width: 100 });
     });
 
     test('should not add a page while there is room on the current page', async () => {
