@@ -33,13 +33,20 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { format, isValid, parseISO } from 'date-fns';
 import apiClient from '../api/client';
 import { type WorkEntry } from '../types/api';
 
 const WorkEntriesPage: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<WorkEntry | null>(null);
-  const [formData, setFormData] = useState({
+  const [dateEdited, setDateEdited] = useState(false);
+  const [formData, setFormData] = useState<{
+    clientId: number;
+    hours: string;
+    description: string;
+    date: Date | null;
+  }>({
     clientId: 0,
     hours: '',
     description: '',
@@ -100,13 +107,15 @@ const WorkEntriesPage: React.FC = () => {
   const clients = clientsData?.clients || [];
 
   const handleOpen = (entry?: WorkEntry) => {
+    setDateEdited(false);
     if (entry) {
+      const localDate = parseISO(entry.date);
       setEditingEntry(entry);
       setFormData({
         clientId: entry.client_id,
         hours: entry.hours.toString(),
         description: entry.description || '',
-        date: new Date(entry.date),
+        date: format(localDate, 'yyyy-MM-dd') === entry.date ? localDate : null,
       });
     } else {
       setEditingEntry(null);
@@ -148,25 +157,36 @@ const WorkEntriesPage: React.FC = () => {
       return;
     }
 
+    const entryData = {
+      clientId: formData.clientId,
+      hours,
+      description: formData.description || undefined,
+    };
+
+    if (editingEntry && !dateEdited) {
+      updateMutation.mutate({ id: editingEntry.id, data: entryData });
+      return;
+    }
+
     if (!formData.date) {
       setError('Please select a date');
       return;
     }
 
-    const entryData = {
-      clientId: formData.clientId,
-      hours,
-      description: formData.description || undefined,
-      date: formData.date.toISOString().split('T')[0],
-    };
+    if (!isValid(formData.date)) {
+      setError('Please enter a valid date');
+      return;
+    }
+
+    const date = format(formData.date, 'yyyy-MM-dd');
 
     if (editingEntry) {
       updateMutation.mutate({
         id: editingEntry.id,
-        data: entryData,
+        data: date === editingEntry.date ? entryData : { ...entryData, date },
       });
     } else {
-      createMutation.mutate(entryData);
+      createMutation.mutate({ ...entryData, date });
     }
   };
 
@@ -233,7 +253,7 @@ const WorkEntriesPage: React.FC = () => {
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2">
-                            {new Date(entry.date).toLocaleDateString()}
+                            {entry.date}
                           </Typography>
                         </TableCell>
                         <TableCell>
@@ -321,12 +341,18 @@ const WorkEntriesPage: React.FC = () => {
               <DatePicker
                 label="Date"
                 value={formData.date}
-                onChange={(date) => date && setFormData({ ...formData, date })}
+                onChange={(date) => {
+                  setFormData({ ...formData, date });
+                  setDateEdited(true);
+                }}
                 slotProps={{
                   textField: {
                     fullWidth: true,
                     margin: 'dense',
-                    required: true,
+                    required: !editingEntry || dateEdited,
+                    helperText: editingEntry && !dateEdited && !formData.date
+                      ? `Stored date: ${editingEntry.date}`
+                      : undefined,
                     disabled: createMutation.isPending || updateMutation.isPending,
                   },
                 }}

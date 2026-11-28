@@ -113,7 +113,12 @@ PORT=3001
 NODE_ENV=development
 FRONTEND_URL=http://localhost:5173
 JWT_SECRET=your-secure-secret-key-change-this
+JWT_EXPIRES_IN=24h
+DATABASE_URL=
+SENDGRID_API_KEY=
 ```
+
+In production, `JWT_SECRET`, `DATABASE_URL` and `SENDGRID_API_KEY` must be provided from the hosting platform's secret store; `config/production.js` throws at startup if any of them is missing.
 
 5. Start the development server:
 ```bash
@@ -177,6 +182,8 @@ Frontend will be running at `http://localhost:5173`
 - `GET /api/work-entries/:id` - Get specific work entry
 - `PUT /api/work-entries/:id` - Update work entry
 - `DELETE /api/work-entries/:id` - Delete work entry
+
+The work-entry `date` is a calendar date in `YYYY-MM-DD` format, not a timestamp. The API rejects impossible dates and returns dates in the same format.
 
 ### Reports
 - `GET /api/reports/client/:clientId` - Get hourly report for client
@@ -258,6 +265,15 @@ npm run preview  # Preview production build
 ## Production Deployment
 
 See `backend/DEPLOYMENT.md` for detailed production deployment instructions.
+
+### Deployment secrets
+The Deploy workflow (`.github/workflows/deploy.yml`) reads its credentials from GitHub Actions repository secrets. Set these under **Settings → Secrets and variables → Actions**:
+
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `SLACK_BOT_TOKEN`
+- `GITHUB_PAT`
+- `STRIPE_SECRET_KEY`
 
 ### Quick Production Checklist
 - [ ] Set strong `JWT_SECRET` in environment variables

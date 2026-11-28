@@ -3,6 +3,8 @@ const {
   workEntrySchema,
   updateWorkEntrySchema,
   updateClientSchema,
+  projectSchema,
+  updateProjectSchema,
   emailSchema
 } = require('../../validation/schemas');
 
@@ -287,6 +289,59 @@ describe('Validation Schemas', () => {
 
       const { error } = updateClientSchema.validate(update);
       expect(error).toBeUndefined();
+    });
+  });
+
+  describe('projectSchema', () => {
+    const valid = { name: 'Website', clientId: 1, startDate: '2024-02-01' };
+
+    test('should validate a minimal project and default status to active', () => {
+      const { error, value } = projectSchema.validate(valid);
+      expect(error).toBeUndefined();
+      expect(value.status).toBe('active');
+    });
+
+    test.each(['active', 'completed', 'on-hold'])('should accept status %s', (status) => {
+      const { error } = projectSchema.validate({ ...valid, status });
+      expect(error).toBeUndefined();
+    });
+
+    test('should reject an unknown status', () => {
+      const { error } = projectSchema.validate({ ...valid, status: 'archived' });
+      expect(error).toBeDefined();
+    });
+
+    test('should require name, clientId and startDate', () => {
+      expect(projectSchema.validate({ clientId: 1, startDate: '2024-02-01' }).error).toBeDefined();
+      expect(projectSchema.validate({ name: 'Website', startDate: '2024-02-01' }).error).toBeDefined();
+      expect(projectSchema.validate({ name: 'Website', clientId: 1 }).error).toBeDefined();
+    });
+
+    test('should reject a name over 255 characters', () => {
+      const { error } = projectSchema.validate({ ...valid, name: 'a'.repeat(256) });
+      expect(error).toBeDefined();
+    });
+
+    test('should reject a description over 1000 characters', () => {
+      const { error } = projectSchema.validate({ ...valid, description: 'a'.repeat(1001) });
+      expect(error).toBeDefined();
+    });
+  });
+
+  describe('updateProjectSchema', () => {
+    test('should validate a status-only update', () => {
+      const { error } = updateProjectSchema.validate({ status: 'on-hold' });
+      expect(error).toBeUndefined();
+    });
+
+    test('should reject an empty update', () => {
+      const { error } = updateProjectSchema.validate({});
+      expect(error).toBeDefined();
+    });
+
+    test('should reject an invalid start date', () => {
+      const { error } = updateProjectSchema.validate({ startDate: 'tomorrow' });
+      expect(error).toBeDefined();
     });
   });
 
