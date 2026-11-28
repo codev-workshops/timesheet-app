@@ -310,3 +310,24 @@ jobs:
             echo "$HTTP_BODY"
             exit 1
           fi
+
+  backend-tests:
+    name: Backend Tests (Jest + coverage)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Run tests with coverage thresholds
+        working-directory: backend
+        run: npm run test:ci
