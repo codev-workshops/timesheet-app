@@ -438,4 +438,304 @@ describe('Report Routes', () => {
       );
     });
   });
+
+  describe('GET /api/reports/client/:clientId - tenant isolation and totals', () => {
+    test('should return 404 and skip the work-entries query when the client belongs to another user', async () => {
+      mockDb.get.mockImplementationOnce((query, params, callback) => callback(null, undefined));
+
+      const response = await request(app).get('/api/reports/client/7');
+
+      expect(response.status).toBe(404);
+      expect(response.body).toEqual({ error: 'Client not found' });
+      expect(mockDb.get.mock.calls[0][1]).toEqual([7, 'test@example.com']);
+      expect(mockDb.all).not.toHaveBeenCalled();
+    });
+
+    test('should not query work entries when the client lookup fails', async () => {
+      mockDb.get.mockImplementationOnce((query, params, callback) => callback(new Error('Database error')));
+
+      const response = await request(app).get('/api/reports/client/7');
+
+      expect(response.status).toBe(500);
+      expect(mockDb.all).not.toHaveBeenCalled();
+    });
+
+    test('should scope both queries to the user and sum hours stored as strings', async () => {
+      const client = { id: 7, name: 'Acme' };
+      const entries = [
+        { id: 1, hours: '1.5', description: 'A', date: '2024-01-02' },
+        { id: 2, hours: '2.25', description: 'B', date: '2024-01-01' }
+      ];
+      mockDb.get.mockImplementationOnce((query, params, callback) => callback(null, client));
+      mockDb.all.mockImplementationOnce((query, params, callback) => callback(null, entries));
+
+      const response = await request(app).get('/api/reports/client/7');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ client, workEntries: entries, totalHours: 3.75, entryCount: 2 });
+      expect(mockDb.get.mock.calls[0][1]).toEqual([7, 'test@example.com']);
+      expect(mockDb.all.mock.calls[0][1]).toEqual([7, 'test@example.com']);
+    });
+  });
+
+  describe('GET /api/reports/export/csv/:clientId - file generation', () => {
+    const client = { id: 7, name: 'Acme Corp!' };
+    const entries = [
+      { date: '2024-01-02', hours: 2, description: 'Design', created_at: '2024-01-02 10:00:00' },
+      { date: '2024-01-01', hours: 3.5, description: null, created_at: '2024-01-01 09:00:00' }
+    ];
+    let csvWriter;
+    let writeRecords;
+    let downloadSpy;
+    let consoleErrorSpy;
+
+    beforeEach(() => {
+      csvWriter = require('csv-writer');
+      writeRecords = jest.fn().mockResolvedValue(undefined);
+      csvWriter.createObjectCsvWriter.mockReturnValue({ writeRecords });
+      downloadSpy = jest.spyOn(express.response, 'download').mockImplementation(function(filePath, filename, callback) {
+        this.status(200).send('csv-body');
+        callback(null);
+      });
+      consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    });
+
+    afterEach(() => {
+      downloadSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
+    });
+
+    function mockClientWithEntries(rows) {
+      mockDb.get.mockImplementationOnce((query, params, callback) => callback(null, client));
+      mockDb.all.mockImplementationOnce((query, params, callback) => callback(null, rows));
+    }
+
+    test('should write the work entries to a CSV file, send it and delete it', async () => {
+      mockClientWithEntries(entries);
+
+      const response = await request(app).get('/api/reports/export/csv/7');
+
+      expect(response.status).toBe(200);
+      expect(response.text).toBe('csv-body');
+      expect(mockDb.get.mock.calls[0][1]).toEqual([7, 'test@example.com']);
+      expect(mockDb.all.mock.calls[0][1]).toEqual([7, 'test@example.com']);
+
+      const writerConfig = csvWriter.createObjectCsvWriter.mock.calls[0][0];
+      expect(path.basename(writerConfig.path)).toMatch(/^Acme_Corp__report_.+\.csv$/);
+      expect(writerConfig.header).toEqual([
+        { id: 'date', title: 'Date' },
+        { id: 'hours', title: 'Hours' },
+        { id: 'description', title: 'Description' },
+        { id: 'created_at', title: 'Created At' }
+      ]);
+      expect(writeRecords).toHaveBeenCalledWith(entries);
+
+      const [downloadPath, downloadName] = downloadSpy.mock.calls[0];
+      expect(downloadPath).toBe(writerConfig.path);
+      expect(downloadName).toBe(path.basename(writerConfig.path));
+      expect(fs.unlink).toHaveBeenCalledWith(writerConfig.path, expect.any(Function));
+    });
+
+    test('should send a CSV with only headers for a client with no work entries', async () => {
+      mockClientWithEntries([]);
+
+      const response = await request(app).get('/api/reports/export/csv/7');
+
+      expect(response.status).toBe(200);
+      expect(writeRecords).toHaveBeenCalledWith([]);
+      expect(downloadSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test('should log a send failure and still delete the temp file', async () => {
+      downloadSpy.mockImplementation(function(filePath, filename, callback) {
+        this.status(200).end();
+        callback(new Error('socket closed'));
+      });
+      mockClientWithEntries(entries);
+
+      await request(app).get('/api/reports/export/csv/7');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Error sending file:', expect.any(Error));
+      expect(fs.unlink).toHaveBeenCalledTimes(1);
+    });
+
+    test('should log a temp file deletion failure', async () => {
+      fs.unlink = jest.fn((filePath, callback) => callback(new Error('EACCES')));
+      mockClientWithEntries(entries);
+
+      const response = await request(app).get('/api/reports/export/csv/7');
+
+      expect(response.status).toBe(200);
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Error deleting temp file:', expect.any(Error));
+    });
+
+    test('should return 500 and not send a file when writing the CSV fails', async () => {
+      writeRecords.mockRejectedValue(new Error('disk full'));
+      mockClientWithEntries(entries);
+
+      const response = await request(app).get('/api/reports/export/csv/7');
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Failed to generate CSV report' });
+      expect(downloadSpy).not.toHaveBeenCalled();
+    });
+
+    test('should return 404 without creating a file when the client belongs to another user', async () => {
+      mockDb.get.mockImplementationOnce((query, params, callback) => callback(null, undefined));
+
+      const response = await request(app).get('/api/reports/export/csv/7');
+
+      expect(response.status).toBe(404);
+      expect(mockDb.get.mock.calls[0][1]).toEqual([7, 'test@example.com']);
+      expect(mockDb.all).not.toHaveBeenCalled();
+      expect(csvWriter.createObjectCsvWriter).not.toHaveBeenCalled();
+    });
+
+    test('should not create a file when the work-entries query fails', async () => {
+      mockDb.get.mockImplementationOnce((query, params, callback) => callback(null, client));
+      mockDb.all.mockImplementationOnce((query, params, callback) => callback(new Error('Database error')));
+
+      const response = await request(app).get('/api/reports/export/csv/7');
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Internal server error' });
+      expect(csvWriter.createObjectCsvWriter).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('GET /api/reports/export/pdf/:clientId - document generation', () => {
+    const PDFDocument = require('pdfkit');
+    const client = { id: 7, name: 'Acme Corp!' };
+    let doc;
+
+    beforeEach(() => {
+      let destination;
+      doc = {
+        fontSize: jest.fn().mockReturnThis(),
+        text: jest.fn().mockReturnThis(),
+        moveDown: jest.fn().mockReturnThis(),
+        moveTo: jest.fn().mockReturnThis(),
+        lineTo: jest.fn().mockReturnThis(),
+        stroke: jest.fn().mockReturnThis(),
+        addPage: jest.fn().mockReturnThis(),
+        pipe: jest.fn((stream) => { destination = stream; }),
+        end: jest.fn(() => destination.end()),
+        y: 100
+      };
+      PDFDocument.mockImplementation(() => doc);
+    });
+
+    function mockClientWithEntries(rows) {
+      mockDb.get.mockImplementationOnce((query, params, callback) => callback(null, client));
+      mockDb.all.mockImplementationOnce((query, params, callback) => callback(null, rows));
+    }
+
+    function entriesOf(count) {
+      return Array.from({ length: count }, (_, i) => ({
+        date: `2024-01-${String(i + 1).padStart(2, '0')}`,
+        hours: 1,
+        description: `Task ${i + 1}`
+      }));
+    }
+
+    test('should stream a PDF with the report totals and entries', async () => {
+      mockClientWithEntries([
+        { date: '2024-01-02', hours: 5.5, description: 'Design' },
+        { date: '2024-01-01', hours: 3, description: null }
+      ]);
+
+      const response = await request(app).get('/api/reports/export/pdf/7');
+
+      expect(response.status).toBe(200);
+      expect(response.headers['content-type']).toBe('application/pdf');
+      expect(response.headers['content-disposition']).toMatch(/^attachment; filename="Acme_Corp__report_.+\.pdf"$/);
+      expect(doc.pipe).toHaveBeenCalledTimes(1);
+      expect(doc.end).toHaveBeenCalledTimes(1);
+      expect(doc.text).toHaveBeenCalledWith('Time Report for Acme Corp!', { align: 'center' });
+      expect(doc.text).toHaveBeenCalledWith('Total Hours: 8.50');
+      expect(doc.text).toHaveBeenCalledWith('Total Entries: 2');
+      expect(doc.text).toHaveBeenCalledWith('2024-01-02', 50, 100, { width: 100 });
+      expect(doc.text).toHaveBeenCalledWith('5.5', 150, 100, { width: 80 });
+      expect(doc.text).toHaveBeenCalledWith('Design', 230, 100, { width: 300 });
+      expect(doc.text).toHaveBeenCalledWith('No description', 230, 100, { width: 300 });
+      expect(mockDb.get.mock.calls[0][1]).toEqual([7, 'test@example.com']);
+      expect(mockDb.all.mock.calls[0][1]).toEqual([7, 'test@example.com']);
+    });
+
+    test('should produce a PDF with zero totals for a client with no work entries', async () => {
+      mockClientWithEntries([]);
+
+      const response = await request(app).get('/api/reports/export/pdf/7');
+
+      expect(response.status).toBe(200);
+      expect(response.headers['content-type']).toBe('application/pdf');
+      expect(doc.text).toHaveBeenCalledWith('Total Hours: 0.00');
+      expect(doc.text).toHaveBeenCalledWith('Total Entries: 0');
+      expect(doc.end).toHaveBeenCalledTimes(1);
+    });
+
+    test.each([
+      [4, 1],
+      [5, 2],
+      [10, 3]
+    ])('should draw a separator after every 5 entries (%i entries -> %i lines)', async (count, lines) => {
+      mockClientWithEntries(entriesOf(count));
+
+      await request(app).get('/api/reports/export/pdf/7');
+
+      expect(doc.moveTo).toHaveBeenCalledTimes(lines);
+      expect(doc.stroke).toHaveBeenCalledTimes(lines);
+    });
+
+    test('should add a new page when the cursor is past the bottom of the page', async () => {
+      doc.y = 750;
+      mockClientWithEntries(entriesOf(2));
+
+      const response = await request(app).get('/api/reports/export/pdf/7');
+
+      expect(response.status).toBe(200);
+      expect(doc.addPage).toHaveBeenCalledTimes(2);
+    });
+
+    test('should not add a page while there is room on the current page', async () => {
+      mockClientWithEntries(entriesOf(2));
+
+      await request(app).get('/api/reports/export/pdf/7');
+
+      expect(doc.addPage).not.toHaveBeenCalled();
+    });
+
+    test('should return 404 without creating a document when the client belongs to another user', async () => {
+      mockDb.get.mockImplementationOnce((query, params, callback) => callback(null, undefined));
+
+      const response = await request(app).get('/api/reports/export/pdf/7');
+
+      expect(response.status).toBe(404);
+      expect(response.body).toEqual({ error: 'Client not found' });
+      expect(mockDb.get.mock.calls[0][1]).toEqual([7, 'test@example.com']);
+      expect(mockDb.all).not.toHaveBeenCalled();
+      expect(PDFDocument).not.toHaveBeenCalled();
+    });
+
+    test('should not create a document when the work-entries query fails', async () => {
+      mockDb.get.mockImplementationOnce((query, params, callback) => callback(null, client));
+      mockDb.all.mockImplementationOnce((query, params, callback) => callback(new Error('Database error')));
+
+      const response = await request(app).get('/api/reports/export/pdf/7');
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Internal server error' });
+      expect(PDFDocument).not.toHaveBeenCalled();
+    });
+
+    test('should not query work entries when the client lookup fails', async () => {
+      mockDb.get.mockImplementationOnce((query, params, callback) => callback(new Error('Database error')));
+
+      const response = await request(app).get('/api/reports/export/pdf/7');
+
+      expect(response.status).toBe(500);
+      expect(mockDb.all).not.toHaveBeenCalled();
+      expect(PDFDocument).not.toHaveBeenCalled();
+    });
+  });
 });
