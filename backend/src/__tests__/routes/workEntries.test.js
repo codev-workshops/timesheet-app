@@ -2,6 +2,7 @@ const request = require('supertest');
 const express = require('express');
 const workEntryRoutes = require('../../routes/workEntries');
 const { getDatabase } = require('../../database/init');
+const { errorHandler } = require('../../middleware/errorHandler');
 
 jest.mock('../../database/init');
 jest.mock('../../middleware/auth', () => ({
@@ -760,24 +761,29 @@ describe('Work Entry Routes', () => {
   });
 
   describe('Unexpected errors', () => {
+    const appWithErrorHandler = express();
+    appWithErrorHandler.use(express.json());
+    appWithErrorHandler.use('/api/work-entries', workEntryRoutes);
+    appWithErrorHandler.use(errorHandler);
+
     test('should pass synchronous errors on create to the error handler', async () => {
       getDatabase.mockImplementation(() => { throw new Error('Database unavailable'); });
 
-      const response = await request(app)
+      const response = await request(appWithErrorHandler)
         .post('/api/work-entries')
         .send({ clientId: 1, hours: 2, date: '2024-01-15' });
 
       expect(response.status).toBe(500);
-      expect(response.body).toEqual({ error: 'Internal server error' });
+      expect(response.body).toEqual({ error: 'Database unavailable' });
     });
 
     test('should pass synchronous errors on update to the error handler', async () => {
       getDatabase.mockImplementation(() => { throw new Error('Database unavailable'); });
 
-      const response = await request(app).put('/api/work-entries/1').send({ hours: 2 });
+      const response = await request(appWithErrorHandler).put('/api/work-entries/1').send({ hours: 2 });
 
       expect(response.status).toBe(500);
-      expect(response.body).toEqual({ error: 'Internal server error' });
+      expect(response.body).toEqual({ error: 'Database unavailable' });
     });
   });
 });
