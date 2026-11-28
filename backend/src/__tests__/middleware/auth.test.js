@@ -182,4 +182,51 @@ describe('Authentication Middleware', () => {
       expect(mockDb.get).toHaveBeenCalled();
     });
   });
+  describe('Malformed Header Handling', () => {
+    test('should return 401 for an empty x-user-email header without querying the database', () => {
+      req.headers['x-user-email'] = '';
+
+      authenticateUser(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.json).toHaveBeenCalledWith({ error: 'User email required in x-user-email header' });
+      expect(mockDb.get).not.toHaveBeenCalled();
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    test.each([
+      ['whitespace inside the address', 'test user@example.com'],
+      ['multiple @ signs', 'test@@example.com'],
+      ['a Bearer token instead of an email', 'Bearer abc.def.ghi'],
+      ['only whitespace', '   ']
+    ])('should return 400 for %s without querying the database', (label, header) => {
+      req.headers['x-user-email'] = header;
+
+      authenticateUser(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Invalid email format' });
+      expect(mockDb.get).not.toHaveBeenCalled();
+      expect(req.userEmail).toBeUndefined();
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    test('should look up the user by the exact header value', (done) => {
+      req.headers['x-user-email'] = 'Mixed.Case@Example.com';
+      mockDb.get.mockImplementation((query, params, callback) => {
+        callback(null, { email: 'Mixed.Case@Example.com' });
+      });
+
+      authenticateUser(req, res, () => {
+        expect(mockDb.get).toHaveBeenCalledWith(
+          'SELECT email FROM users WHERE email = ?',
+          ['Mixed.Case@Example.com'],
+          expect.any(Function)
+        );
+        expect(mockDb.run).not.toHaveBeenCalled();
+        expect(req.userEmail).toBe('Mixed.Case@Example.com');
+        done();
+      });
+    });
+  });
 });

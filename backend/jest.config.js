@@ -11,10 +11,10 @@ module.exports = {
   testMatch: ['**/__tests__/**/*.test.js'],
   coverageThreshold: {
     global: {
-      branches: 60,
-      functions: 65,
-      lines: 60,
-      statements: 60
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
     }
   },
   verbose: true,

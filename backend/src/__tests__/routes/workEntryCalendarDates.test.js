@@ -93,4 +93,56 @@ describe('work-entry calendar dates with SQLite', () => {
 
     expect(await storedDates()).toEqual(['2024-03-01', '2024-02-29', '1969-12-31']);
   });
+
+  function storedRows() {
+    return new Promise((resolve, reject) => {
+      getDatabase().all(
+        'SELECT typeof(date) AS type, date FROM work_entries WHERE client_id = ? AND user_email = ? ORDER BY id',
+        [clientId, userEmail],
+        (err, rows) => (err ? reject(err) : resolve(rows))
+      );
+    });
+  }
+
+  async function insertLegacyDates(dates) {
+    for (const date of dates) {
+      await run('INSERT INTO work_entries (client_id, user_email, hours, date) VALUES (?, ?, ?, ?)',
+        [clientId, userEmail, 1, date]);
+    }
+    return new Promise((resolve, reject) => {
+      getDatabase().all('SELECT id FROM work_entries WHERE client_id = ? ORDER BY id', [clientId],
+        (err, rows) => (err ? reject(err) : resolve(rows.map(row => row.id))));
+    });
+  }
+
+  const lastMsOfLeapDay = Date.UTC(2024, 1, 29, 23, 59, 59, 999);
+  const fractionalMs = Date.UTC(2024, 2, 1) + 0.5;
+  const outOfRange = 1e20;
+
+  it('reads epoch-millisecond edge cases as UTC calendar dates before migration', async () => {
+    const ids = await insertLegacyDates([0, lastMsOfLeapDay, fractionalMs, outOfRange, 'not-a-date']);
+
+    const dates = [];
+    for (const id of ids) {
+      const response = await request(app).get(`/api/work-entries/${id}`)
+        .set('x-user-email', userEmail).expect(200);
+      dates.push(response.body.workEntry.date);
+    }
+
+    expect(dates).toEqual(['1970-01-01', '2024-02-29', '2024-03-01', null, 'not-a-date']);
+  });
+
+  it('migrates convertible epoch values to text and leaves unconvertible values unchanged', async () => {
+    await insertLegacyDates([0, lastMsOfLeapDay, fractionalMs, outOfRange, 'not-a-date']);
+    await run('DELETE FROM schema_migrations WHERE version = 4');
+    await initializeDatabase();
+
+    expect(await storedRows()).toEqual([
+      { type: 'text', date: '1970-01-01' },
+      { type: 'text', date: '2024-02-29' },
+      { type: 'text', date: '2024-03-01' },
+      { type: 'real', date: outOfRange },
+      { type: 'text', date: 'not-a-date' }
+    ]);
+  });
 });
