@@ -595,4 +595,189 @@ describe('Work Entry Routes', () => {
       expect(response.body.message).toBe('Work entry updated successfully');
     });
   });
+
+  describe('Tenant isolation', () => {
+    test('should scope the list query to the authenticated user', async () => {
+      mockDb.all.mockImplementationOnce((query, params, callback) => callback(null, []));
+
+      const response = await request(app).get('/api/work-entries');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ workEntries: [] });
+      const [query, params] = mockDb.all.mock.calls[0];
+      expect(query).toContain('WHERE we.user_email = ?');
+      expect(query).not.toContain('we.client_id = ?');
+      expect(params).toEqual(['test@example.com']);
+    });
+
+    test('should scope the single-entry query to the authenticated user', async () => {
+      mockDb.get.mockImplementationOnce((query, params, callback) => callback(null, undefined));
+
+      const response = await request(app).get('/api/work-entries/5');
+
+      expect(response.status).toBe(404);
+      expect(mockDb.get.mock.calls[0][0]).toContain('WHERE we.id = ? AND we.user_email = ?');
+      expect(mockDb.get.mock.calls[0][1]).toEqual([5, 'test@example.com']);
+    });
+
+    test('should verify the client, insert and re-read the entry for the authenticated user', async () => {
+      const created = { id: 42, client_id: 3, hours: 2, description: null, date: '2024-01-15', client_name: 'Acme' };
+      mockDb.get
+        .mockImplementationOnce((query, params, callback) => callback(null, { id: 3 }))
+        .mockImplementationOnce((query, params, callback) => callback(null, created));
+      mockDb.run.mockImplementationOnce(function(query, params, callback) {
+        callback.call({ lastID: 42 }, null);
+      });
+
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 3, hours: 2, date: '2024-01-15' });
+
+      expect(response.status).toBe(201);
+      expect(response.body).toEqual({ message: 'Work entry created successfully', workEntry: created });
+      expect(mockDb.get.mock.calls[0][0]).toBe('SELECT id FROM clients WHERE id = ? AND user_email = ?');
+      expect(mockDb.get.mock.calls[0][1]).toEqual([3, 'test@example.com']);
+      expect(mockDb.run.mock.calls[0][1]).toEqual([3, 'test@example.com', 2, null, '2024-01-15']);
+      expect(mockDb.get.mock.calls[1][1]).toEqual([42, 'test@example.com']);
+    });
+
+    test('should not insert when the client belongs to another user', async () => {
+      mockDb.get.mockImplementationOnce((query, params, callback) => callback(null, undefined));
+
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 9, hours: 2, date: '2024-01-15' });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Client not found or does not belong to user' });
+      expect(mockDb.get.mock.calls[0][1]).toEqual([9, 'test@example.com']);
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('should check entry and new client ownership before updating', async () => {
+      const updated = { id: 1, client_id: 2, hours: 4, client_name: 'Beta' };
+      mockDb.get
+        .mockImplementationOnce((query, params, callback) => callback(null, { id: 1 }))
+        .mockImplementationOnce((query, params, callback) => callback(null, { id: 2 }))
+        .mockImplementationOnce((query, params, callback) => callback(null, updated));
+      mockDb.run.mockImplementationOnce((query, params, callback) => callback(null));
+
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ clientId: 2, hours: 4 });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ message: 'Work entry updated successfully', workEntry: updated });
+      expect(mockDb.get.mock.calls[0][1]).toEqual([1, 'test@example.com']);
+      expect(mockDb.get.mock.calls[1][0]).toBe('SELECT id FROM clients WHERE id = ? AND user_email = ?');
+      expect(mockDb.get.mock.calls[1][1]).toEqual([2, 'test@example.com']);
+      const [query, params] = mockDb.run.mock.calls[0];
+      expect(query).toBe('UPDATE work_entries SET client_id = ?, hours = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_email = ?');
+      expect(params).toEqual([2, 4, 1, 'test@example.com']);
+      expect(mockDb.get.mock.calls[2][1]).toEqual([1, 'test@example.com']);
+    });
+
+    test('should not update when moving the entry to another user\'s client', async () => {
+      mockDb.get
+        .mockImplementationOnce((query, params, callback) => callback(null, { id: 1 }))
+        .mockImplementationOnce((query, params, callback) => callback(null, undefined));
+
+      const response = await request(app)
+        .put('/api/work-entries/1')
+        .send({ clientId: 9 });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Client not found or does not belong to user' });
+      expect(mockDb.get.mock.calls[1][1]).toEqual([9, 'test@example.com']);
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('should not update an entry that belongs to another user', async () => {
+      mockDb.get.mockImplementationOnce((query, params, callback) => callback(null, undefined));
+
+      const response = await request(app)
+        .put('/api/work-entries/6')
+        .send({ hours: 2 });
+
+      expect(response.status).toBe(404);
+      expect(mockDb.get.mock.calls[0][1]).toEqual([6, 'test@example.com']);
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test('should scope the delete to the authenticated user', async () => {
+      mockDb.get.mockImplementationOnce((query, params, callback) => callback(null, { id: 4 }));
+      mockDb.run.mockImplementationOnce((query, params, callback) => callback(null));
+
+      const response = await request(app).delete('/api/work-entries/4');
+
+      expect(response.status).toBe(200);
+      expect(mockDb.get.mock.calls[0][1]).toEqual([4, 'test@example.com']);
+      expect(mockDb.run.mock.calls[0][0]).toBe('DELETE FROM work_entries WHERE id = ? AND user_email = ?');
+      expect(mockDb.run.mock.calls[0][1]).toEqual([4, 'test@example.com']);
+    });
+
+    test('should not delete an entry that belongs to another user', async () => {
+      mockDb.get.mockImplementationOnce((query, params, callback) => callback(null, undefined));
+
+      const response = await request(app).delete('/api/work-entries/4');
+
+      expect(response.status).toBe(404);
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Validation errors', () => {
+    test.each([
+      ['missing hours', { clientId: 1, date: '2024-01-15' }],
+      ['non-numeric hours', { clientId: 1, hours: 'abc', date: '2024-01-15' }],
+      ['zero hours', { clientId: 1, hours: 0, date: '2024-01-15' }],
+      ['missing date', { clientId: 1, hours: 2 }],
+      ['invalid date', { clientId: 1, hours: 2, date: 'not-a-date' }],
+      ['impossible calendar date', { clientId: 1, hours: 2, date: '2024-13-01' }],
+      ['missing client', { hours: 2, date: '2024-01-15' }],
+      ['non-numeric client', { clientId: 'abc', hours: 2, date: '2024-01-15' }]
+    ])('should return 400 on create for %s without touching the database', async (label, body) => {
+      const response = await request(app).post('/api/work-entries').send(body);
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Validation error' });
+      expect(mockDb.get).not.toHaveBeenCalled();
+      expect(mockDb.run).not.toHaveBeenCalled();
+    });
+
+    test.each([
+      ['non-numeric hours', { hours: 'abc' }],
+      ['negative hours', { hours: -1 }],
+      ['hours over 24', { hours: 24.5 }],
+      ['invalid date', { date: '2024-02-30' }]
+    ])('should return 400 on update for %s without touching the database', async (label, body) => {
+      const response = await request(app).put('/api/work-entries/1').send(body);
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Validation error' });
+      expect(mockDb.get).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Unexpected errors', () => {
+    test('should pass synchronous errors on create to the error handler', async () => {
+      getDatabase.mockImplementation(() => { throw new Error('Database unavailable'); });
+
+      const response = await request(app)
+        .post('/api/work-entries')
+        .send({ clientId: 1, hours: 2, date: '2024-01-15' });
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Internal server error' });
+    });
+
+    test('should pass synchronous errors on update to the error handler', async () => {
+      getDatabase.mockImplementation(() => { throw new Error('Database unavailable'); });
+
+      const response = await request(app).put('/api/work-entries/1').send({ hours: 2 });
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: 'Internal server error' });
+    });
+  });
 });
